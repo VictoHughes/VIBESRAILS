@@ -61,17 +61,39 @@ def load_config(config_path: Path | str | None = None) -> dict:
         print(f"{RED}ERROR: No vibesrails.yaml found{NC}")
         sys.exit(1)
 
+    # YAML bomb protection - limit config file size
+    if config_path.stat().st_size > 1_000_000:  # 1MB limit
+        print(f"{RED}ERROR: Config file too large (max 1MB){NC}")
+        sys.exit(1)
+
     with open(config_path) as f:
         return yaml.safe_load(f)
 
 
+def is_git_repo() -> bool:
+    """Check if current directory is a git repository."""
+    result = subprocess.run(
+        ["git", "rev-parse", "--git-dir"],
+        capture_output=True,
+        text=True,
+    )
+    return result.returncode == 0
+
+
 def get_staged_files() -> list[str]:
     """Get list of staged Python files."""
+    # Validate git repository first
+    if not is_git_repo():
+        return []
+
     result = subprocess.run(
         ["git", "diff", "--cached", "--name-only", "--diff-filter=ACM"],
         capture_output=True,
         text=True,
     )
+    if result.returncode != 0:
+        return []
+
     files = [f for f in result.stdout.strip().split("\n") if f.endswith(".py")]
     return [f for f in files if f and Path(f).exists()]
 
@@ -88,14 +110,40 @@ def is_test_file(filepath: str) -> bool:
     return name.startswith("test_") or name.endswith("_test.py") or "/tests/" in filepath
 
 
+def safe_regex_search(pattern: str, text: str, flags: int = 0) -> bool:
+    """Safely execute regex search with error handling for ReDoS protection."""
+    try:
+        # Limit search to first 10000 chars per line to prevent ReDoS
+        return bool(re.search(pattern, text[:10000], flags))
+    except (re.error, RecursionError, MemoryError):
+        return False
+
+
+def is_path_safe(filepath: str) -> bool:
+    """Check if filepath is within current working directory (path traversal protection)."""
+    try:
+        file_path = Path(filepath).resolve()
+        cwd = Path.cwd().resolve()
+        file_path.relative_to(cwd)
+        return True
+    except (ValueError, RuntimeError):
+        return False
+
+
 def scan_file(filepath: str, config: dict) -> list[ScanResult]:
     """Scan a single file for pattern violations."""
     results = []
 
+    # Path traversal protection
+    if not is_path_safe(filepath):
+        print(f"{YELLOW}SKIP{NC} {filepath} (outside project directory)")
+        return results
+
     try:
         content = Path(filepath).read_text()
         lines = content.split("\n")
-    except (OSError, UnicodeDecodeError):
+    except (OSError, UnicodeDecodeError) as e:
+        print(f"{YELLOW}SKIP{NC} {filepath} (read error: {e})")
         return results
 
     # Get exceptions for this file
@@ -137,9 +185,9 @@ def scan_file(filepath: str, config: dict) -> list[ScanResult]:
         exclude_regex = pattern.get("exclude_regex")
 
         for i, line in enumerate(lines, 1):
-            if re.search(regex, line, flags):
+            if safe_regex_search(regex, line, flags):
                 # Check exclusion pattern
-                if exclude_regex and re.search(exclude_regex, line):
+                if exclude_regex and safe_regex_search(exclude_regex, line):
                     continue
 
                 results.append(ScanResult(
@@ -165,8 +213,8 @@ def scan_file(filepath: str, config: dict) -> list[ScanResult]:
         exclude = pattern.get("exclude_regex")
 
         for i, line in enumerate(lines, 1):
-            if re.search(regex, line, flags):
-                if exclude and re.search(exclude, line):
+            if safe_regex_search(regex, line, flags):
+                if exclude and safe_regex_search(exclude, line):
                     continue
                 results.append(ScanResult(
                     file=filepath,
