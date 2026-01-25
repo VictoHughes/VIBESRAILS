@@ -118,6 +118,48 @@ def is_test_file(filepath: str) -> bool:
     return name.startswith("test_") or name.endswith("_test.py") or "/tests/" in filepath
 
 
+# Suppression comment patterns
+SUPPRESS_PATTERNS = [
+    r"#\s*vibesrails:\s*ignore\b",           # vibesrails: ignore
+    r"#\s*vibesrails:\s*disable\b",          # vibesrails: disable (alias)
+    r"#\s*noqa:\s*vibesrails\b",             # noqa: vibesrails (familiar syntax)
+]
+SUPPRESS_REGEX = re.compile("|".join(SUPPRESS_PATTERNS), re.IGNORECASE)
+SUPPRESS_NEXT_LINE_REGEX = re.compile(
+    r"#\s*vibesrails:\s*ignore[_-]?next[_-]?line\b", re.IGNORECASE
+)
+SUPPRESS_PATTERN_REGEX = re.compile(
+    r"#\s*vibesrails:\s*ignore\s*\[([^\]]+)\]", re.IGNORECASE
+)
+
+
+def is_line_suppressed(line: str, pattern_id: str, prev_line: str | None = None) -> bool:
+    """Check if a line has suppression comments.
+
+    Supports:
+    - `# vibesrails: ignore` - ignore all patterns on this line
+    - `# vibesrails: disable` - alias for ignore
+    - `# noqa: vibesrails` - familiar syntax for Python devs
+    - `# vibesrails: ignore [pattern_id]` - ignore specific pattern
+    - `# vibesrails: ignore-next-line` - on previous line
+    """
+    # Check same-line suppression
+    if SUPPRESS_REGEX.search(line):
+        # Check if it's pattern-specific
+        match = SUPPRESS_PATTERN_REGEX.search(line)
+        if match:
+            # Only suppress if pattern_id matches
+            suppressed_ids = [p.strip() for p in match.group(1).split(",")]
+            return pattern_id in suppressed_ids
+        return True  # Suppress all patterns
+
+    # Check previous line for ignore-next-line
+    if prev_line and SUPPRESS_NEXT_LINE_REGEX.search(prev_line):
+        return True
+
+    return False
+
+
 def safe_regex_search(pattern: str, text: str, flags: int = 0) -> bool:
     """Safely execute regex search with error handling for ReDoS protection."""
     try:
@@ -198,6 +240,11 @@ def scan_file(filepath: str, config: dict) -> list[ScanResult]:
                 if exclude_regex and safe_regex_search(exclude_regex, line):
                     continue
 
+                # Check inline suppression
+                prev_line = lines[i - 2] if i > 1 else None
+                if is_line_suppressed(line, pattern_id, prev_line):
+                    continue
+
                 results.append(ScanResult(
                     file=filepath,
                     line=i,
@@ -224,6 +271,12 @@ def scan_file(filepath: str, config: dict) -> list[ScanResult]:
             if safe_regex_search(regex, line, flags):
                 if exclude and safe_regex_search(exclude, line):
                     continue
+
+                # Check inline suppression
+                prev_line = lines[i - 2] if i > 1 else None
+                if is_line_suppressed(line, pattern["id"], prev_line):
+                    continue
+
                 results.append(ScanResult(
                     file=filepath,
                     line=i,
