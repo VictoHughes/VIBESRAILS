@@ -1,0 +1,119 @@
+# vibesrails - Scale up your vibe coding safely
+# Single source of truth for security & quality patterns
+#
+# Usage:
+#   python3 scripts/vibesrails.py --show     # voir patterns
+#   python3 scripts/vibesrails.py --all      # scanner tout
+#   python3 scripts/vibesrails.py            # scanner staged (pre-commit)
+
+version: "1.0"
+
+# KIONOS Safety Formula
+kionos:
+  formula: "C(q,x̂) = αS + βV + γR"
+  threshold: 0.7
+
+# ═══════════════════════════════════════════════════════════════
+# 🔒 SECURITY - Bloque le commit
+# ═══════════════════════════════════════════════════════════════
+blocking:
+  - id: hardcoded_secret
+    name: "Hardcoded Secret"
+    regex: "(api_key|password|secret|token|pwd|passwd)\\s*=\\s*[\"'][^\"']{4,}"
+    flags: "i"
+    message: "Secret hardcodé - utiliser variables d'environnement"
+
+  - id: sql_injection
+    name: "SQL Injection"
+    regex: "\\.execute\\s*\\([^)]*f[\"']"
+    message: "SQL injection - utiliser requêtes paramétrées"
+
+  - id: shell_injection
+    name: "Shell Injection"
+    regex: "shell\\s*=\\s*True"
+    message: "shell=True dangereux - utiliser subprocess avec liste"
+
+  - id: unsafe_yaml
+    name: "Unsafe YAML"
+    regex: "yaml\\.load\\s*\\("
+    exclude_regex: "Loader\\s*="
+    message: "Utiliser yaml.safe_load()"
+
+  - id: unsafe_numpy
+    name: "Unsafe NumPy"
+    regex: "allow_pickle\\s*=\\s*True"
+    message: "Permet exécution de code arbitraire"
+
+# ═══════════════════════════════════════════════════════════════
+# ⚠️ WARNINGS - Signalé mais autorisé
+# ═══════════════════════════════════════════════════════════════
+warning:
+  - id: star_import
+    name: "Star Import"
+    regex: "from\\s+\\S+\\s+import\\s+\\*"
+    message: "Éviter star imports"
+    skip_in_tests: true
+
+  - id: none_comparison
+    name: "None Comparison"
+    regex: "==\\s*None"
+    message: "Utiliser 'is None'"
+    skip_in_tests: true
+
+  - id: bare_except
+    name: "Bare Except"
+    regex: "except\\s*:"
+    message: "Attraper exceptions spécifiques"
+    skip_in_tests: true
+
+# ═══════════════════════════════════════════════════════════════
+# 🐛 BUGS - Patterns causant des bugs silencieux
+# ═══════════════════════════════════════════════════════════════
+bugs:
+  - id: mutable_default
+    name: "Mutable Default (B006)"
+    regex: "def \\w+\\([^)]*=\\s*\\[\\]|def \\w+\\([^)]*=\\s*\\{\\}"
+    message: "Mutable default partagé entre appels"
+    level: "BLOCK"
+
+  - id: assert_in_prod
+    name: "Assert in Production"
+    regex: "^\\s*assert\\s+(?!.*#.*test)"
+    message: "assert ignoré avec python -O"
+    level: "WARN"
+    skip_in_tests: true
+
+# ═══════════════════════════════════════════════════════════════
+# 🏗️ ARCHITECTURE - Règles projet
+# ═══════════════════════════════════════════════════════════════
+architecture:
+  - id: dip_domain_infra
+    name: "DIP Violation"
+    regex: "from backend\\.infrastructure"
+    scope: ["backend/domain/**/*.py"]
+    message: "Domain ne doit pas importer Infrastructure"
+    level: "BLOCK"
+
+# ═══════════════════════════════════════════════════════════════
+# 🔧 MAINTENABILITÉ
+# ═══════════════════════════════════════════════════════════════
+maintainability:
+  - id: print_debug
+    name: "Print Debug"
+    regex: "^\\s*print\\(.*debug|^\\s*print\\(f?[\"']\\s*(DEBUG|TODO|FIXME)"
+    message: "Print oublié - utiliser logging"
+    level: "WARN"
+
+# ═══════════════════════════════════════════════════════════════
+# ✅ EXCEPTIONS
+# ═══════════════════════════════════════════════════════════════
+exceptions:
+  test_files:
+    patterns: ["test_*.py", "*_test.py", "**/tests/**/*.py"]
+    allowed: ["hardcoded_secret", "shell_injection", "mutable_default"]
+    reason: "Tests peuvent mocker patterns dangereux"
+
+# Complexity (utilisé par quality-gate.sh)
+complexity:
+  max_file_lines: 300
+  max_function_lines: 50
