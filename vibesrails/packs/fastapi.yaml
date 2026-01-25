@@ -6,11 +6,6 @@ version: "1.0"
 
 blocking:
   # Authentication
-  - id: fastapi_no_auth_endpoint
-    name: "Endpoint Without Auth"
-    regex: "@(app|router)\\.(get|post|put|delete|patch)\\([^)]*\\)\\s*\\n\\s*(async\\s+)?def\\s+\\w+\\([^)]*\\)(?!.*Depends)"
-    message: "Endpoint may lack authentication - add Depends() with auth"
-
   - id: fastapi_oauth2_no_https
     name: "OAuth2 Without HTTPS"
     regex: "OAuth2PasswordBearer\\([^)]*http://"
@@ -28,14 +23,14 @@ blocking:
     regex: "allow_origins\\s*=\\s*\\[\\s*[\"']\\*[\"']\\s*\\]"
     message: "Don't allow all origins in production"
 
-  # Security Headers
+warning:
+  # Security Headers (moved to warning - hard to detect across lines)
   - id: fastapi_no_trusted_host
     name: "Missing Trusted Host Middleware"
     regex: "app\\s*=\\s*FastAPI\\("
-    exclude_regex: "TrustedHostMiddleware"
+    exclude_regex: "TrustedHostMiddleware|# ?vibesrails"
     message: "Consider adding TrustedHostMiddleware for host validation"
 
-warning:
   # Response Security
   - id: fastapi_return_dict
     name: "Return Dict Instead of Model"
