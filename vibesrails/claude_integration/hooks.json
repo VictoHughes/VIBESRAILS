@@ -28,9 +28,9 @@
     ],
     "PreCompact": [
       {
-        "type": "command",
-        "command": "echo '⚠️ Compaction imminente - le contexte va être résumé'",
-        "description": "Warn about compaction"
+        "type": "prompt",
+        "prompt": "AVANT COMPACTION: Sauvegarde automatique de l'état. Écris un résumé de la tâche en cours dans .claude/current-task.md avec: 1) Le plan actif (docs/plans/*.md), 2) L'étape actuelle, 3) Les prochaines actions. Format: markdown court, 5-10 lignes max.",
+        "description": "Auto-save task state before compaction"
       }
     ]
   }
