@@ -19,6 +19,7 @@ vibesrails --setup     # Auto-configuration intelligente
 vibesrails --show      # Voir patterns actifs
 vibesrails --fix       # Auto-corriger patterns simples
 vibesrails --all       # Scanner tout le projet
+vibesrails --watch     # Mode surveillance continue
 ```
 
 ### Règles à suivre
@@ -34,3 +35,17 @@ vibesrails détecte automatiquement Claude Code et active le mode Guardian:
 - Vérifications plus strictes
 - Warnings traités comme bloquants
 - Logging pour analyse
+
+## Skills disponibles
+
+Si l'utilisateur demande de scanner le code ou configurer la sécurité:
+
+- `/vibesrails-setup` - Configurer vibesrails pour ce projet
+- `/vibesrails-scan` - Scanner le code pour les problèmes de sécurité
+
+### Workflow recommandé
+
+1. Au début d'un projet: `vibesrails --setup`
+2. Pendant le dev: les commits sont auto-scannés
+3. Si BLOCK: corriger le code, pas bypass
+4. Si faux positif: `# vibesrails: ignore` avec justification

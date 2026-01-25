@@ -242,8 +242,32 @@ def prompt_extra_patterns() -> list[dict]:
     return extra_patterns
 
 
+def get_package_data_path(relative_path: str) -> Path | None:
+    """Get path to a file in the package data."""
+    try:
+        import importlib.resources as resources
+        # Python 3.9+
+        with resources.files("vibesrails").joinpath(relative_path) as p:
+            if p.exists():
+                return Path(p)
+    except Exception:
+        pass
+
+    # Fallback: relative to this file
+    pkg_path = Path(__file__).parent / relative_path
+    if pkg_path.exists():
+        return pkg_path
+    return None
+
+
 def generate_claude_md() -> str:
     """Generate CLAUDE.md content for Claude Code integration."""
+    # Try to load from template
+    template_path = get_package_data_path("claude_integration/CLAUDE.md.template")
+    if template_path and template_path.exists():
+        return template_path.read_text()
+
+    # Fallback to hardcoded content
     return '''# vibesrails - Instructions Claude Code
 
 ## Ce projet utilise vibesrails
@@ -287,6 +311,44 @@ vibesrails detecte automatiquement Claude Code et active le mode Guardian:
 
 Fichier: `vibesrails.yaml`
 '''
+
+
+def install_claude_hooks(project_root: Path) -> bool:
+    """Install Claude Code hooks for vibesrails integration."""
+    import json
+
+    hooks_source = get_package_data_path("claude_integration/hooks.json")
+    if not hooks_source or not hooks_source.exists():
+        return False
+
+    # Claude Code hooks go in .claude/settings.local.json or project root
+    claude_dir = project_root / ".claude"
+    claude_dir.mkdir(exist_ok=True)
+
+    hooks_dest = claude_dir / "hooks.json"
+
+    # Load source hooks
+    source_hooks = json.loads(hooks_source.read_text())
+
+    # If hooks file exists, merge; otherwise create
+    if hooks_dest.exists():
+        existing = json.loads(hooks_dest.read_text())
+        # Merge hooks
+        for event, handlers in source_hooks.get("hooks", {}).items():
+            if event not in existing.get("hooks", {}):
+                existing.setdefault("hooks", {})[event] = handlers
+            else:
+                # Check if vibesrails hook already exists
+                existing_commands = [h.get("command", "") for h in existing["hooks"][event]]
+                for handler in handlers:
+                    if "vibesrails" in handler.get("command", "") and \
+                       not any("vibesrails" in cmd for cmd in existing_commands):
+                        existing["hooks"][event].append(handler)
+        hooks_dest.write_text(json.dumps(existing, indent=2))
+    else:
+        hooks_dest.write_text(json.dumps(source_hooks, indent=2))
+
+    return True
 
 
 def generate_config_with_extras(
@@ -509,12 +571,30 @@ def smart_setup(
 
     result["claude_md_created"] = True
 
+    # Offer Claude Code hooks installation
+    result["hooks_installed"] = False
+    if interactive:
+        print()
+        if prompt_user(f"{BLUE}Installer les hooks Claude Code (integration avancee)?{NC}", default="y"):
+            if install_claude_hooks(project_root):
+                print(f"{GREEN}Cree: .claude/hooks.json (hooks Claude Code){NC}")
+                result["hooks_installed"] = True
+            else:
+                print(f"{YELLOW}Hooks non disponibles dans cette installation{NC}")
+    else:
+        # Non-interactive: install hooks by default
+        if install_claude_hooks(project_root):
+            print(f"{GREEN}Cree: .claude/hooks.json (hooks Claude Code){NC}")
+            result["hooks_installed"] = True
+
     print()
     print(f"{GREEN}Smart Setup termine!{NC}")
     print(f"\nFichiers crees:")
     print(f"  - vibesrails.yaml (configuration)")
     print(f"  - .git/hooks/pre-commit (scan automatique)")
     print(f"  - CLAUDE.md (instructions Claude Code)")
+    if result["hooks_installed"]:
+        print(f"  - .claude/hooks.json (integration Claude Code)")
     print(f"\nProchaines etapes:")
     print(f"  1. Commitez normalement - vibesrails scanne automatiquement")
     print(f"  2. Pour scanner tout: vibesrails --all")

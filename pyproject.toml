@@ -46,7 +46,13 @@ where = ["."]
 include = ["vibesrails*"]
 
 [tool.setuptools.package-data]
-vibesrails = ["config/*.yaml", "packs/*.yaml"]
+vibesrails = [
+    "config/*.yaml",
+    "packs/*.yaml",
+    "claude_integration/*.json",
+    "claude_integration/*.md",
+    "claude_integration/skills/*.md",
+]
 
 [tool.ruff]
 line-length = 100
