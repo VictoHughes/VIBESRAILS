@@ -51,6 +51,7 @@ vibesrails = [
     "packs/*.yaml",
     "claude_integration/*.json",
     "claude_integration/*.md",
+    "claude_integration/*.template",
     "claude_integration/skills/*.md",
 ]
 
