@@ -69,6 +69,52 @@ def init_config(target: Path = Path("vibesrails.yaml")) -> bool:
     return True
 
 
+def uninstall() -> bool:
+    """Uninstall vibesrails from current project."""
+    removed = []
+
+    # Remove vibesrails.yaml if exists
+    config_file = Path("vibesrails.yaml")
+    if config_file.exists():
+        config_file.unlink()
+        removed.append(str(config_file))
+
+    # Remove hook
+    hook_path = Path(".git/hooks/pre-commit")
+    if hook_path.exists():
+        content = hook_path.read_text()
+        if "vibesrails" in content:
+            # Remove vibesrails lines from hook
+            lines = content.split("\n")
+            new_lines = [l for l in lines if "vibesrails" not in l.lower()]
+            new_content = "\n".join(new_lines).strip()
+
+            if new_content and new_content != "#!/bin/bash":
+                hook_path.write_text(new_content)
+                print(f"{YELLOW}Removed vibesrails from pre-commit hook{NC}")
+            else:
+                hook_path.unlink()
+                removed.append(str(hook_path))
+
+    # Remove .vibesrails directory (guardian logs, etc.)
+    vibesrails_dir = Path(".vibesrails")
+    if vibesrails_dir.exists():
+        import shutil
+        shutil.rmtree(vibesrails_dir)
+        removed.append(str(vibesrails_dir))
+
+    if removed:
+        print(f"{GREEN}Removed:{NC}")
+        for f in removed:
+            print(f"  - {f}")
+        print(f"\n{GREEN}vibesrails uninstalled from this project{NC}")
+        print(f"To uninstall the package: pip uninstall vibesrails")
+    else:
+        print(f"{YELLOW}Nothing to uninstall{NC}")
+
+    return True
+
+
 def install_hook() -> bool:
     """Install git pre-commit hook."""
     git_dir = Path(".git")
@@ -118,8 +164,19 @@ fi
 
 def run_scan(config: dict, files: list[str]) -> int:
     """Run scan and return exit code."""
+    from .guardian import (
+        should_apply_guardian,
+        apply_guardian_rules,
+        print_guardian_status,
+        log_guardian_block,
+        get_ai_agent_name,
+    )
+
     print(f"{BLUE}vibesrails - Security Scan{NC}")
     print("=" * 30)
+
+    # Show guardian status if active
+    print_guardian_status(config)
 
     if not files:
         print(f"{GREEN}No Python files to scan{NC}")
@@ -128,8 +185,16 @@ def run_scan(config: dict, files: list[str]) -> int:
     print(f"Scanning {len(files)} file(s)...\n")
 
     all_results = []
+    guardian_active = should_apply_guardian(config)
+    agent_name = get_ai_agent_name() if guardian_active else None
+
     for filepath in files:
         results = scan_file(filepath, config)
+
+        # Apply guardian rules if active
+        if guardian_active:
+            results = apply_guardian_rules(results, config, filepath)
+
         all_results.extend(results)
 
     # Report results
@@ -139,6 +204,10 @@ def run_scan(config: dict, files: list[str]) -> int:
     for r in blocking:
         print(f"{RED}BLOCK{NC} {r.file}:{r.line}")
         print(f"  [{r.pattern_id}] {r.message}")
+
+        # Log guardian blocks for statistics
+        if guardian_active:
+            log_guardian_block(r, agent_name)
 
     for r in warnings:
         print(f"{YELLOW}WARN{NC} {r.file}:{r.line}")
@@ -168,11 +237,13 @@ Examples:
   vibesrails --hook       Install git pre-commit hook
   vibesrails --learn      Claude-powered pattern discovery
   vibesrails --watch      Live scanning on file save
+  vibesrails --guardian-stats  Show AI coding block statistics
         """,
     )
     parser.add_argument("--version", "-v", action="version", version=f"vibesrails {__version__}")
     parser.add_argument("--init", action="store_true", help="Initialize vibesrails.yaml")
     parser.add_argument("--hook", action="store_true", help="Install git pre-commit hook")
+    parser.add_argument("--uninstall", action="store_true", help="Remove vibesrails from project")
     parser.add_argument("--validate", action="store_true", help="Validate YAML config")
     parser.add_argument("--show", action="store_true", help="Show all patterns")
     parser.add_argument("--all", action="store_true", help="Scan all Python files")
@@ -180,7 +251,23 @@ Examples:
     parser.add_argument("--config", "-c", help="Path to vibesrails.yaml")
     parser.add_argument("--learn", action="store_true", help="Claude-powered pattern discovery")
     parser.add_argument("--watch", action="store_true", help="Live scanning on file save")
+    parser.add_argument("--guardian-stats", action="store_true", help="Show AI coding block statistics")
+    parser.add_argument("--fix", action="store_true", help="Auto-fix simple patterns")
+    parser.add_argument("--dry-run", action="store_true", help="Show what --fix would change")
+    parser.add_argument("--fixable", action="store_true", help="Show auto-fixable patterns")
     args = parser.parse_args()
+
+    # Handle guardian stats
+    if args.guardian_stats:
+        from .guardian import show_guardian_stats
+        show_guardian_stats()
+        sys.exit(0)
+
+    # Handle fixable patterns list
+    if args.fixable:
+        from .autofix import show_fixable_patterns
+        show_fixable_patterns()
+        sys.exit(0)
 
     # Handle watch mode
     if args.watch:
@@ -200,6 +287,10 @@ Examples:
     # Handle hook (doesn't need config)
     if args.hook:
         sys.exit(0 if install_hook() else 1)
+
+    # Handle uninstall
+    if args.uninstall:
+        sys.exit(0 if uninstall() else 1)
 
     # Find config
     if args.config:
@@ -228,6 +319,15 @@ Examples:
         files = get_all_python_files()
     else:
         files = get_staged_files()
+
+    # Handle auto-fix
+    if args.fix or args.dry_run:
+        from .autofix import run_autofix
+        run_autofix(config, files, dry_run=args.dry_run)
+        if args.dry_run:
+            sys.exit(0)
+        # After fix, re-scan to show remaining issues
+        print()
 
     sys.exit(run_scan(config, files))
 

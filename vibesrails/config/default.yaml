@@ -117,3 +117,12 @@ exceptions:
 complexity:
   max_file_lines: 300
   max_function_lines: 50
+
+# ═══════════════════════════════════════════════════════════════
+# 🤖 GUARDIAN - AI Coding Safety
+# ═══════════════════════════════════════════════════════════════
+guardian:
+  enabled: false           # Set to true to activate
+  auto_detect: true        # Auto-detect AI coding sessions
+  warnings_as_blocking: false  # Escalate warnings to blocking in AI mode
+  # stricter_patterns: []  # Additional patterns for AI mode
