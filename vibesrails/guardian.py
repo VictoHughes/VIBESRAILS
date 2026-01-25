@@ -139,9 +139,18 @@ def apply_guardian_rules(
 def log_guardian_block(result: ScanResult, agent_name: str | None = None):
     """Log when guardian blocks AI-generated code."""
     log_dir = Path(".vibesrails")
-    log_dir.mkdir(exist_ok=True)
 
-    log_file = log_dir / "guardian.log"
+    # Symlink protection: ensure log directory is under cwd
+    cwd = Path.cwd().resolve()
+    log_dir_resolved = (cwd / log_dir).resolve()
+
+    if not str(log_dir_resolved).startswith(str(cwd)):
+        # Symlink attack detected - log dir points outside cwd
+        print(f"{YELLOW}WARN: Guardian log directory is a symlink outside project{NC}")
+        return
+
+    log_dir_resolved.mkdir(exist_ok=True)
+    log_file = log_dir_resolved / "guardian.log"
 
     entry = {
         "timestamp": datetime.now().isoformat(),
@@ -159,7 +168,13 @@ def log_guardian_block(result: ScanResult, agent_name: str | None = None):
 
 def get_guardian_stats() -> dict[str, Any]:
     """Get statistics from guardian log."""
-    log_file = Path(".vibesrails") / "guardian.log"
+    # Symlink protection: ensure log file is under cwd
+    cwd = Path.cwd().resolve()
+    log_file = (cwd / ".vibesrails" / "guardian.log").resolve()
+
+    if not str(log_file).startswith(str(cwd)):
+        # Symlink attack - don't read
+        return {"total_blocks": 0, "by_pattern": {}, "by_agent": {}, "error": "symlink_detected"}
 
     if not log_file.exists():
         return {"total_blocks": 0, "by_pattern": {}, "by_agent": {}}

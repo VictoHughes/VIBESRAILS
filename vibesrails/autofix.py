@@ -98,8 +98,19 @@ def apply_fix_to_line(line: str, fix: Fix) -> tuple[str, bool]:
     return new_line, new_line != line
 
 
-def apply_fix_to_file(filepath: str, fix: Fix, dry_run: bool = False) -> list[tuple[int, str, str]]:
+def apply_fix_to_file(
+    filepath: str,
+    fix: Fix,
+    dry_run: bool = False,
+    backup: bool = True
+) -> list[tuple[int, str, str]]:
     """Apply a fix to all matching lines in a file.
+
+    Args:
+        filepath: Path to the file to fix
+        fix: The Fix to apply
+        dry_run: If True, don't write changes
+        backup: If True, create .bak backup before writing
 
     Returns list of (line_number, old_line, new_line) tuples.
     """
@@ -118,19 +129,37 @@ def apply_fix_to_file(filepath: str, fix: Fix, dry_run: bool = False) -> list[tu
             changes.append((i, line.strip(), new_line.strip()))
 
     if changes and not dry_run:
+        # Create backup before modifying
+        if backup:
+            backup_path = Path(f"{filepath}.bak")
+            backup_path.write_text(content)
+
         path.write_text("\n".join(new_lines))
 
     return changes
 
 
-def run_autofix(config: dict, files: list[str], dry_run: bool = False) -> int:
+def run_autofix(
+    config: dict,
+    files: list[str],
+    dry_run: bool = False,
+    backup: bool = True
+) -> int:
     """Run auto-fix on files.
+
+    Args:
+        config: vibesrails config dict
+        files: List of files to fix
+        dry_run: If True, only show what would change
+        backup: If True, create .bak files before modifying
 
     Returns number of files modified.
     """
     from .scanner import scan_file
 
-    print(f"{BLUE}vibesrails --fix{' (dry run)' if dry_run else ''}{NC}")
+    mode_str = " (dry run)" if dry_run else ""
+    backup_str = "" if backup or dry_run else " (no backup)"
+    print(f"{BLUE}vibesrails --fix{mode_str}{backup_str}{NC}")
     print("=" * 40)
 
     total_fixes = 0
@@ -146,7 +175,7 @@ def run_autofix(config: dict, files: list[str], dry_run: bool = False) -> int:
             if not fix:
                 continue
 
-            changes = apply_fix_to_file(filepath, fix, dry_run)
+            changes = apply_fix_to_file(filepath, fix, dry_run, backup)
 
             for line_num, old, new in changes:
                 if dry_run:

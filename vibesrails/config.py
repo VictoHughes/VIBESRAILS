@@ -15,8 +15,17 @@ from typing import Any
 
 import yaml
 
-from .scanner import RED, YELLOW, NC
+from .scanner import RED, YELLOW, GREEN, NC
 
+
+# Allowed domains for remote config fetch (SSRF protection)
+ALLOWED_REMOTE_DOMAINS = {
+    "github.com",
+    "raw.githubusercontent.com",
+    "gitlab.com",
+    "bitbucket.org",
+    "gist.githubusercontent.com",
+}
 
 # Built-in pattern packs (bundled with vibesrails)
 BUILTIN_PACKS = {
@@ -68,8 +77,40 @@ def resolve_pack_path(pack_name: str) -> Path | None:
     return None
 
 
-def fetch_remote_config(url: str, timeout: int = 10) -> dict | None:
-    """Fetch config from remote URL with caching."""
+def is_allowed_remote_domain(url: str, extra_domains: set[str] | None = None) -> bool:
+    """Check if URL domain is in the allowlist (SSRF protection)."""
+    from urllib.parse import urlparse
+
+    try:
+        parsed = urlparse(url)
+        domain = parsed.netloc.lower()
+
+        # Remove port if present
+        if ":" in domain:
+            domain = domain.split(":")[0]
+
+        allowed = ALLOWED_REMOTE_DOMAINS.copy()
+        if extra_domains:
+            allowed.update(extra_domains)
+
+        return domain in allowed
+    except Exception:
+        return False
+
+
+def fetch_remote_config(
+    url: str,
+    timeout: int = 10,
+    extra_domains: set[str] | None = None
+) -> dict | None:
+    """Fetch config from remote URL with caching and domain validation."""
+    # SSRF protection: validate domain allowlist
+    if not is_allowed_remote_domain(url, extra_domains):
+        print(f"{RED}BLOCKED: Remote domain not allowed: {url}{NC}")
+        print(f"  Allowed domains: {', '.join(sorted(ALLOWED_REMOTE_DOMAINS))}")
+        print(f"  Add trusted domains to config: remote_domains: [\"example.com\"]")
+        return None
+
     if url in _remote_cache:
         return _remote_cache[url]
 

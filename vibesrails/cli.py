@@ -254,6 +254,7 @@ Examples:
     parser.add_argument("--guardian-stats", action="store_true", help="Show AI coding block statistics")
     parser.add_argument("--fix", action="store_true", help="Auto-fix simple patterns")
     parser.add_argument("--dry-run", action="store_true", help="Show what --fix would change")
+    parser.add_argument("--no-backup", action="store_true", help="Don't create .bak files with --fix")
     parser.add_argument("--fixable", action="store_true", help="Show auto-fixable patterns")
     args = parser.parse_args()
 
@@ -323,7 +324,7 @@ Examples:
     # Handle auto-fix
     if args.fix or args.dry_run:
         from .autofix import run_autofix
-        run_autofix(config, files, dry_run=args.dry_run)
+        run_autofix(config, files, dry_run=args.dry_run, backup=not args.no_backup)
         if args.dry_run:
             sys.exit(0)
         # After fix, re-scan to show remaining issues
