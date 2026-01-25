@@ -46,6 +46,44 @@ SECRET_INDICATORS = [
     r"ANTHROPIC_",
 ]
 
+# Predefined protection categories for vibe coders (no regex knowledge needed)
+VIBE_PROTECTIONS = {
+    "api_keys": {
+        "name": "Clés API (OpenAI, Anthropic, AWS, Google...)",
+        "patterns": [
+            {"id": "openai_key", "regex": r"sk-[a-zA-Z0-9]{20,}", "message": "Clé OpenAI détectée"},
+            {"id": "anthropic_key", "regex": r"sk-ant-[a-zA-Z0-9-]{20,}", "message": "Clé Anthropic détectée"},
+            {"id": "aws_key", "regex": r"AKIA[0-9A-Z]{16}", "message": "Clé AWS détectée"},
+            {"id": "google_key", "regex": r"AIza[0-9A-Za-z-_]{35}", "message": "Clé Google API détectée"},
+            {"id": "github_token", "regex": r"ghp_[a-zA-Z0-9]{36}", "message": "Token GitHub détecté"},
+            {"id": "generic_api_key", "regex": r"['\"][a-zA-Z0-9]{32,}['\"]", "message": "Possible clé API détectée"},
+        ],
+    },
+    "passwords": {
+        "name": "Mots de passe hardcodés",
+        "patterns": [
+            {"id": "password_assign", "regex": r"password\s*=\s*['\"][^'\"]+['\"]", "message": "Mot de passe hardcodé"},
+            {"id": "pwd_assign", "regex": r"pwd\s*=\s*['\"][^'\"]+['\"]", "message": "Mot de passe hardcodé"},
+            {"id": "passwd_assign", "regex": r"passwd\s*=\s*['\"][^'\"]+['\"]", "message": "Mot de passe hardcodé"},
+        ],
+    },
+    "tokens": {
+        "name": "Tokens et secrets",
+        "patterns": [
+            {"id": "bearer_token", "regex": r"Bearer\s+[a-zA-Z0-9._-]+", "message": "Bearer token détecté"},
+            {"id": "jwt_token", "regex": r"eyJ[a-zA-Z0-9_-]*\.eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*", "message": "JWT token détecté"},
+            {"id": "secret_assign", "regex": r"secret\s*=\s*['\"][^'\"]+['\"]", "message": "Secret hardcodé"},
+        ],
+    },
+    "urls": {
+        "name": "URLs avec credentials",
+        "patterns": [
+            {"id": "url_with_creds", "regex": r"://[^:]+:[^@]+@", "message": "URL avec credentials détectée"},
+            {"id": "localhost_creds", "regex": r"localhost:[0-9]+.*password", "message": "Credentials localhost"},
+        ],
+    },
+}
+
 
 def detect_project_type(project_root: Path) -> list[str]:
     """Detect project type(s) based on files and imports."""
@@ -123,6 +161,229 @@ def detect_env_files(project_root: Path) -> list[Path]:
             found.append(path)
 
     return found
+
+
+# =============================================================================
+# VIBE CODER FUNCTIONS - No regex knowledge needed
+# =============================================================================
+
+def scan_for_secrets(project_root: Path) -> dict[str, list[dict]]:
+    """Scan project and find actual secrets, grouped by category.
+
+    Returns dict like:
+    {
+        "api_keys": [{"file": "main.py", "line": 10, "preview": "sk-abc..."}],
+        "passwords": [...],
+    }
+    """
+    import re
+
+    found = {category: [] for category in VIBE_PROTECTIONS}
+
+    for py_file in project_root.rglob("*.py"):
+        # Skip virtual environments and cache
+        if any(part in py_file.parts for part in [".venv", "venv", "__pycache__", ".git", "node_modules"]):
+            continue
+
+        try:
+            content = py_file.read_text(errors="ignore")
+            rel_path = py_file.relative_to(project_root)
+
+            for line_num, line in enumerate(content.split("\n"), 1):
+                # Skip comments and very long lines
+                if line.strip().startswith("#") or len(line) > 500:
+                    continue
+                # Skip lines with vibesrails: ignore
+                if "vibesrails: ignore" in line:
+                    continue
+
+                for category, config in VIBE_PROTECTIONS.items():
+                    for pattern_info in config["patterns"]:
+                        try:
+                            match = re.search(pattern_info["regex"], line)
+                            if match:
+                                # Mask the secret for preview
+                                secret = match.group(0)
+                                if len(secret) > 8:
+                                    masked = secret[:4] + "..." + secret[-4:]
+                                else:
+                                    masked = secret[:2] + "***"
+
+                                found[category].append({
+                                    "file": str(rel_path),
+                                    "line": line_num,
+                                    "preview": masked,
+                                    "pattern_id": pattern_info["id"],
+                                })
+                        except re.error:
+                            continue
+        except Exception:
+            continue
+
+    # Remove empty categories
+    return {k: v for k, v in found.items() if v}
+
+
+def natural_language_to_pattern(description: str, project_name: str | None = None) -> dict | None:
+    """Convert natural language description to a blocking pattern.
+
+    Examples:
+    - "mon nom de domaine mycompany.com" → regex for mycompany.com
+    - "le nom du projet" → regex for project name
+    - "emails de l'entreprise" → regex for @company.com
+    """
+    import re
+
+    description_lower = description.lower()
+
+    # Extract quoted strings or specific values
+    quoted = re.findall(r'["\']([^"\']+)["\']', description)
+
+    # Domain/URL patterns
+    domains = re.findall(r'([a-zA-Z0-9-]+\.[a-zA-Z]{2,})', description)
+
+    # Email patterns
+    emails = re.findall(r'@([a-zA-Z0-9-]+\.[a-zA-Z]{2,})', description)
+
+    if quoted:
+        # User specified exact string
+        value = quoted[0]
+        escaped = re.escape(value)
+        return {
+            "id": f"custom_{value[:10].replace(' ', '_')}",
+            "regex": escaped,
+            "message": f"Valeur protégée: {value}",
+        }
+
+    if domains:
+        domain = domains[0]
+        escaped = re.escape(domain)
+        return {
+            "id": f"domain_{domain.replace('.', '_')}",
+            "regex": escaped,
+            "message": f"Domaine protégé: {domain}",
+        }
+
+    if emails:
+        domain = emails[0]
+        escaped = re.escape(f"@{domain}")
+        return {
+            "id": f"email_{domain.replace('.', '_')}",
+            "regex": escaped,
+            "message": f"Email domaine protégé: @{domain}",
+        }
+
+    # Project name reference
+    if project_name and any(word in description_lower for word in ["projet", "project", "nom du"]):
+        escaped = re.escape(project_name)
+        return {
+            "id": f"project_name",
+            "regex": escaped,
+            "message": f"Nom du projet protégé: {project_name}",
+        }
+
+    # Generic: treat the whole input as something to block
+    words = description.split()
+    if len(words) <= 3:
+        # Short input - probably a value to block
+        escaped = re.escape(description)
+        return {
+            "id": f"custom_{description[:10].replace(' ', '_')}",
+            "regex": escaped,
+            "message": f"Valeur protégée: {description}",
+        }
+
+    return None
+
+
+def prompt_vibe_protections(project_root: Path) -> list[dict]:
+    """Vibe-coder-friendly protection setup - no regex knowledge needed.
+
+    1. Shows found secrets and offers to block them
+    2. Offers predefined protection categories
+    3. Accepts natural language for custom patterns
+    """
+    selected_patterns = []
+    project_name = project_root.name
+
+    print(f"\n{BLUE}=== Protection du code (mode simple) ==={NC}")
+
+    # Step 1: Scan for existing secrets
+    print(f"\n{YELLOW}Analyse du projet...{NC}")
+    found_secrets = scan_for_secrets(project_root)
+
+    if found_secrets:
+        total = sum(len(v) for v in found_secrets.values())
+        print(f"\n{RED}⚠️  J'ai trouvé {total} secret(s) potentiel(s):{NC}")
+
+        for category, secrets in found_secrets.items():
+            cat_name = VIBE_PROTECTIONS[category]["name"]
+            print(f"\n  {YELLOW}{cat_name}:{NC}")
+            for secret in secrets[:3]:  # Show max 3 per category
+                print(f"    • {secret['file']}:{secret['line']} → {secret['preview']}")
+            if len(secrets) > 3:
+                print(f"    ... et {len(secrets) - 3} autres")
+
+        print()
+        if prompt_user(f"{GREEN}Activer la protection pour ces catégories?{NC}", default="y"):
+            for category in found_secrets.keys():
+                selected_patterns.extend(VIBE_PROTECTIONS[category]["patterns"])
+            print(f"  {GREEN}✓ Protections activées{NC}")
+    else:
+        print(f"  {GREEN}✓ Aucun secret détecté dans le code{NC}")
+
+    # Step 2: Offer additional protections
+    print(f"\n{YELLOW}Protections supplémentaires disponibles:{NC}")
+
+    available_categories = [cat for cat in VIBE_PROTECTIONS if cat not in found_secrets]
+
+    for i, category in enumerate(available_categories, 1):
+        cat_name = VIBE_PROTECTIONS[category]["name"]
+        print(f"  {i}. {cat_name}")
+
+    if available_categories:
+        print(f"  0. Aucune")
+        print()
+        choice = input("  Ajouter des protections (numéros séparés par virgule, ou 0): ").strip()
+
+        if choice and choice != "0":
+            try:
+                indices = [int(x.strip()) for x in choice.split(",") if x.strip()]
+                for idx in indices:
+                    if 1 <= idx <= len(available_categories):
+                        category = available_categories[idx - 1]
+                        selected_patterns.extend(VIBE_PROTECTIONS[category]["patterns"])
+                        print(f"  {GREEN}✓ {VIBE_PROTECTIONS[category]['name']}{NC}")
+            except ValueError:
+                pass
+
+    # Step 3: Natural language custom patterns
+    print(f"\n{YELLOW}Protection personnalisée (langage naturel):{NC}")
+    print("  Exemples: 'mycompany.com', 'le nom du projet', '@entreprise.fr'")
+    print("  (Entrée vide pour terminer)")
+
+    while True:
+        try:
+            user_input = input(f"\n  Que veux-tu protéger? ").strip()
+            if not user_input:
+                break
+
+            pattern = natural_language_to_pattern(user_input, project_name)
+
+            if pattern:
+                print(f"  {BLUE}→ Je vais bloquer: {pattern['regex']}{NC}")
+                if prompt_user("  Confirmer?", default="y"):
+                    selected_patterns.append(pattern)
+                    print(f"  {GREEN}✓ Ajouté{NC}")
+            else:
+                print(f"  {YELLOW}Je n'ai pas compris. Essaie avec une valeur précise entre guillemets.{NC}")
+                print(f"  Exemple: \"motdepasse123\" ou \"api.mycompany.com\"")
+
+        except (EOFError, KeyboardInterrupt):
+            print()
+            break
+
+    return selected_patterns
 
 
 def generate_config(
@@ -582,11 +843,21 @@ def smart_setup(
             print("Utilisez --force pour ecraser")
             return {"created": False, "reason": "exists"}
 
-    # Interactive: ask for extra patterns
+    # Interactive: ask for protections (vibe coder mode by default)
     extra_patterns = []
     if interactive and not dry_run:
-        if prompt_user("\nAjouter des patterns personnalises?", default="n"):
+        print(f"\n{YELLOW}Mode de configuration:{NC}")
+        print("  1. Simple (recommandé) - Je te guide, pas besoin de connaître les regex")
+        print("  2. Avancé - Tu entres les regex toi-même")
+        print("  3. Passer - Utiliser la config par défaut")
+
+        mode = input("\n  Choix [1/2/3]: ").strip()
+
+        if mode == "1":
+            extra_patterns = prompt_vibe_protections(project_root)
+        elif mode == "2":
             extra_patterns = prompt_extra_patterns(project_root)
+        # mode 3 or other = skip
 
     # Generate config
     config_content = generate_config_with_extras(
