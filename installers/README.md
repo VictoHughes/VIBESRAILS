@@ -2,19 +2,60 @@
 
 Choose your installation method:
 
-| Method | Use Case | Command |
-|--------|----------|---------|
-| **[pip](./pip/)** | Standard installation | `pip install vibesrails` |
-| **[source](./source/)** | Development / latest | `./source/install.sh` |
-| **[claude-code](./claude-code/)** | Full Claude Code integration | `./claude-code/install.sh` |
+| Method | Use Case | Platforms |
+|--------|----------|-----------|
+| **[pip](./pip/)** | Standard installation | All |
+| **[source](./source/)** | Development / latest features | All |
+| **[claude-code](./claude-code/)** | Full Claude Code integration | All |
 
-## Quickstart
+## Quick Install
+
+### pip (recommended)
 
 ```bash
-# Install
 pip install vibesrails
+```
 
-# Setup your project
+### From source
+
+**Unix/Mac:**
+```bash
+./source/install.sh
+```
+
+**Windows:**
+```cmd
+source\install.bat
+```
+
+**Cross-platform:**
+```bash
+python source/install.py
+```
+
+### With Claude Code integration
+
+**Unix/Mac:**
+```bash
+cd your-project
+/path/to/claude-code/install.sh
+```
+
+**Windows:**
+```cmd
+cd your-project
+\path\to\claude-code\install.bat
+```
+
+**Cross-platform:**
+```bash
+cd your-project
+python /path/to/claude-code/install.py
+```
+
+## After Installation
+
+```bash
 cd your-project
 vibesrails --setup
 ```
@@ -22,4 +63,15 @@ vibesrails --setup
 ## Requirements
 
 - Python 3.10+
-- git (for pre-commit hooks)
+- pip
+- git (for pre-commit hooks and source install)
+
+## Platform Support
+
+| Platform | Shell Script | Batch Script | Python Script |
+|----------|--------------|--------------|---------------|
+| Linux | `.sh` | - | `.py` |
+| macOS | `.sh` | - | `.py` |
+| Windows | - | `.bat` | `.py` |
+
+The Python scripts (`install.py`) work on all platforms.
