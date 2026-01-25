@@ -36,6 +36,17 @@ vibesrails détecte automatiquement Claude Code et active le mode Guardian:
 - Warnings traités comme bloquants
 - Logging pour analyse
 
+#### Statistiques Guardian
+
+```bash
+vibesrails --guardian-stats   # Voir les stats de blocks
+```
+
+Les logs sont stockés dans `.vibesrails/guardian.log` (format JSONL):
+```json
+{"timestamp": "...", "agent": "claude", "file": "...", "pattern_id": "...", "level": "BLOCK"}
+```
+
 ## Skills disponibles
 
 Si l'utilisateur demande de scanner le code ou configurer la sécurité:

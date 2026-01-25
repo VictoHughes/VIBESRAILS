@@ -209,8 +209,63 @@ def prompt_user(question: str, default: str = "y") -> bool:
         return False
 
 
-def prompt_extra_patterns() -> list[dict]:
-    """Ask user for additional patterns to add."""
+def validate_and_preview_regex(pattern: str, project_root: Path) -> tuple[bool, list[str]]:
+    """Validate regex and preview matches in project.
+
+    Returns (is_valid, list of matching lines preview).
+    """
+    import re
+
+    # 1. Validate regex compiles
+    try:
+        compiled = re.compile(pattern)
+    except re.error as e:
+        return False, [f"Regex invalide: {e}"]
+
+    # 2. Check for ReDoS patterns (catastrophic backtracking)
+    dangerous_patterns = [
+        r'\(\.\*\)\+',      # (.*)+
+        r'\(\.\+\)\+',      # (.+)+
+        r'\(\[.*\]\*\)\+',  # ([...]*)+
+    ]
+    for danger in dangerous_patterns:
+        if re.search(danger, pattern):
+            return False, ["Regex potentiellement dangereuse (ReDoS)"]
+
+    # 3. Preview matches (max 5 files, 3 lines per file)
+    matches = []
+    files_checked = 0
+    max_files = 5
+    max_lines_per_file = 3
+
+    for py_file in project_root.rglob("*.py"):
+        if files_checked >= max_files:
+            break
+        try:
+            content = py_file.read_text(errors="ignore")
+            file_matches = 0
+            for i, line in enumerate(content.split("\n"), 1):
+                if len(line) > 500:  # Skip very long lines
+                    continue
+                if compiled.search(line):
+                    rel_path = py_file.relative_to(project_root)
+                    matches.append(f"  {rel_path}:{i}: {line[:60]}...")
+                    file_matches += 1
+                    if file_matches >= max_lines_per_file:
+                        break
+            if file_matches > 0:
+                files_checked += 1
+        except Exception:
+            continue
+
+    return True, matches
+
+
+def prompt_extra_patterns(project_root: Path | None = None) -> list[dict]:
+    """Ask user for additional patterns to add with validation and preview."""
+    if project_root is None:
+        project_root = Path.cwd()
+
     extra_patterns = []
 
     print(f"\n{YELLOW}Patterns additionnels?{NC}")
@@ -222,6 +277,29 @@ def prompt_extra_patterns() -> list[dict]:
             pattern_input = input(f"\n  Regex a bloquer (ou Entree): ").strip()
             if not pattern_input:
                 break
+
+            # Validate and preview
+            is_valid, preview = validate_and_preview_regex(pattern_input, project_root)
+
+            if not is_valid:
+                print(f"  {RED}{preview[0]}{NC}")
+                continue
+
+            # Show preview
+            if preview:
+                print(f"  {YELLOW}Apercu des matches ({len(preview)} trouve(s)):{NC}")
+                for match in preview[:5]:
+                    print(f"  {match}")
+                if len(preview) > 5:
+                    print(f"  ... et {len(preview) - 5} autres")
+            else:
+                print(f"  {YELLOW}Aucun match trouve dans le projet actuel{NC}")
+
+            # Confirm
+            confirm = input(f"  Ajouter ce pattern? [O/n]: ").strip().lower()
+            if confirm in ("n", "no", "non"):
+                print(f"  {YELLOW}Pattern ignore{NC}")
+                continue
 
             message = input(f"  Message d'erreur: ").strip()
             if not message:
@@ -508,7 +586,7 @@ def smart_setup(
     extra_patterns = []
     if interactive and not dry_run:
         if prompt_user("\nAjouter des patterns personnalises?", default="n"):
-            extra_patterns = prompt_extra_patterns()
+            extra_patterns = prompt_extra_patterns(project_root)
 
     # Generate config
     config_content = generate_config_with_extras(
