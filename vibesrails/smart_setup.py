@@ -242,6 +242,53 @@ def prompt_extra_patterns() -> list[dict]:
     return extra_patterns
 
 
+def generate_claude_md() -> str:
+    """Generate CLAUDE.md content for Claude Code integration."""
+    return '''# vibesrails - Instructions Claude Code
+
+## Ce projet utilise vibesrails
+
+vibesrails scanne automatiquement chaque commit pour detecter:
+- Secrets hardcodes (API keys, passwords, tokens)
+- Injections SQL
+- Patterns dangereux
+
+## Regles a suivre
+
+1. **Ne jamais hardcoder de secrets**
+   ```python
+   # MAUVAIS - vibesrails va bloquer
+   api_key = "sk-1234567890"  # vibesrails: ignore (example)
+
+   # BON
+   import os
+   api_key = os.environ.get("API_KEY")
+   ```
+
+2. **Si vibesrails bloque un faux positif**
+   ```python
+   code = "example"  # vibesrails: ignore
+   ```
+
+3. **Commandes utiles**
+   ```bash
+   vibesrails --all    # Scanner tout le projet
+   vibesrails --fix    # Auto-corriger les patterns simples
+   vibesrails --show   # Voir les patterns actifs
+   ```
+
+## Guardian Mode
+
+vibesrails detecte automatiquement Claude Code et active le mode Guardian:
+- Verifications plus strictes pour le code genere par AI
+- Les warnings peuvent devenir des blocks
+
+## Configuration
+
+Fichier: `vibesrails.yaml`
+'''
+
+
 def generate_config_with_extras(
     project_types: list[str],
     has_secrets: bool,
@@ -444,12 +491,33 @@ def smart_setup(
     from .cli import install_hook
     install_hook()
 
+    # Create or update CLAUDE.md for Claude Code integration
+    claude_md_path = project_root / "CLAUDE.md"
+    claude_md_content = generate_claude_md()
+
+    if claude_md_path.exists():
+        # Append vibesrails section if not already present
+        existing_content = claude_md_path.read_text()
+        if "vibesrails" not in existing_content.lower():
+            claude_md_path.write_text(existing_content + "\n\n" + claude_md_content)
+            print(f"{GREEN}Mis a jour: CLAUDE.md (section vibesrails ajoutee){NC}")
+        else:
+            print(f"{YELLOW}CLAUDE.md existe deja avec instructions vibesrails{NC}")
+    else:
+        claude_md_path.write_text(claude_md_content)
+        print(f"{GREEN}Cree: CLAUDE.md (instructions pour Claude Code){NC}")
+
+    result["claude_md_created"] = True
+
     print()
     print(f"{GREEN}Smart Setup termine!{NC}")
+    print(f"\nFichiers crees:")
+    print(f"  - vibesrails.yaml (configuration)")
+    print(f"  - .git/hooks/pre-commit (scan automatique)")
+    print(f"  - CLAUDE.md (instructions Claude Code)")
     print(f"\nProchaines etapes:")
-    print(f"  1. Verifiez vibesrails.yaml si besoin")
-    print(f"  2. Commitez normalement - vibesrails scanne automatiquement")
-    print(f"  3. Pour scanner tout: vibesrails --all")
+    print(f"  1. Commitez normalement - vibesrails scanne automatiquement")
+    print(f"  2. Pour scanner tout: vibesrails --all")
 
     return result
 
