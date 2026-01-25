@@ -1,57 +1,49 @@
 # vibesrails Installers
 
-Choose your installation method:
+## By Operating System
 
-| Method | Use Case | Platforms |
-|--------|----------|-----------|
-| **[pip](./pip/)** | Standard installation | All |
-| **[source](./source/)** | Development / latest features | All |
-| **[claude-code](./claude-code/)** | Full Claude Code integration | All |
+| OS | Folder | Scripts |
+|----|--------|---------|
+| **Linux/macOS** | [unix/](./unix/) | `.sh` |
+| **Windows** | [windows/](./windows/) | `.bat` |
+| **Any** | [cross-platform/](./cross-platform/) | `.py` |
 
-## Quick Install
+## By Installation Type
 
-### pip (recommended)
+| Type | Description | Usage |
+|------|-------------|-------|
+| **pip** | Standard installation | `pip install vibesrails` |
+| **source** | Development / latest | Clone + `pip install -e .` |
+| **claude-code** | Full Claude Code integration | Install + setup project |
 
+## Quick Reference
+
+### Unix/Mac
 ```bash
-pip install vibesrails
+./unix/pip/install.sh              # Standard
+./unix/source/install.sh           # Development
+./unix/claude-code/install.sh      # Claude Code
 ```
 
-### From source
-
-**Unix/Mac:**
-```bash
-./source/install.sh
-```
-
-**Windows:**
+### Windows
 ```cmd
-source\install.bat
+windows\pip\install.bat            # Standard
+windows\source\install.bat         # Development
+windows\claude-code\install.bat    # Claude Code
 ```
 
-**Cross-platform:**
+### Cross-Platform (Python)
 ```bash
-python source/install.py
+python cross-platform/pip/install.py              # Standard
+python cross-platform/source/install.py           # Development
+python cross-platform/claude-code/install.py      # Claude Code
 ```
 
-### With Claude Code integration
+## Requirements
 
-**Unix/Mac:**
-```bash
-cd your-project
-/path/to/claude-code/install.sh
-```
-
-**Windows:**
-```cmd
-cd your-project
-\path\to\claude-code\install.bat
-```
-
-**Cross-platform:**
-```bash
-cd your-project
-python /path/to/claude-code/install.py
-```
+- Python 3.10+
+- pip
+- git (for source and claude-code)
 
 ## After Installation
 
@@ -59,19 +51,3 @@ python /path/to/claude-code/install.py
 cd your-project
 vibesrails --setup
 ```
-
-## Requirements
-
-- Python 3.10+
-- pip
-- git (for pre-commit hooks and source install)
-
-## Platform Support
-
-| Platform | Shell Script | Batch Script | Python Script |
-|----------|--------------|--------------|---------------|
-| Linux | `.sh` | - | `.py` |
-| macOS | `.sh` | - | `.py` |
-| Windows | - | `.bat` | `.py` |
-
-The Python scripts (`install.py`) work on all platforms.
