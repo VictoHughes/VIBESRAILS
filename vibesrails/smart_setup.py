@@ -54,12 +54,12 @@ MESSAGES = {
         "install_hooks": "Install Claude Code hooks (advanced integration)?",
         "hooks_not_available": "Hooks not available in this installation",
         "setup_complete": "Smart Setup complete!",
-        "files_created": "Files created:",
+        "files_created": "Files created",
         "config_file": "configuration",
         "auto_scan": "automatic scan",
         "claude_instructions": "Claude Code instructions",
         "claude_hooks": "Claude Code integration",
-        "next_steps": "Next steps:",
+        "next_steps": "Next steps",
         "commit_normally": "Commit normally - vibesrails scans automatically",
         "scan_all": "To scan everything",
         # Vibe coder messages
@@ -120,12 +120,12 @@ MESSAGES = {
         "install_hooks": "Installer les hooks Claude Code (integration avancee)?",
         "hooks_not_available": "Hooks non disponibles dans cette installation",
         "setup_complete": "Smart Setup termine!",
-        "files_created": "Fichiers crees:",
+        "files_created": "Fichiers crees",
         "config_file": "configuration",
         "auto_scan": "scan automatique",
         "claude_instructions": "instructions Claude Code",
         "claude_hooks": "integration Claude Code",
-        "next_steps": "Prochaines etapes:",
+        "next_steps": "Prochaines etapes",
         "commit_normally": "Commitez normalement - vibesrails scanne automatiquement",
         "scan_all": "Pour scanner tout",
         # Vibe coder messages
@@ -898,21 +898,22 @@ def generate_config_with_extras(
         "",
     ])
 
-    # Project-specific patterns
-    has_blocking = has_secrets or env_files or extra_patterns
-    if has_blocking:
+    # Project-specific patterns (only add if there are actual patterns)
+    has_actual_patterns = env_files or extra_patterns
+    if has_actual_patterns:
         lines.extend([
             "# Project-specific patterns",
             "blocking:",
         ])
 
         if env_files:
+            env_msg = "Do not commit .env files" if LANG == "en" else "Ne pas commiter les fichiers .env"
             lines.extend([
                 "  - id: env_file_content",
                 "    name: \"Env File Content\"",
                 '    regex: "^[A-Z_]+=.{10,}"',
                 '    scope: [".env*"]',
-                '    message: "Ne pas commiter les fichiers .env"',
+                f'    message: "{env_msg}"',
                 "",
             ])
 
