@@ -11,6 +11,165 @@ from typing import Any
 from .scanner import RED, YELLOW, GREEN, BLUE, NC
 
 
+# =============================================================================
+# INTERNATIONALIZATION (i18n) - Default: English, Auto-detect French
+# =============================================================================
+
+def _detect_language() -> str:
+    """Detect user language from environment. Default: English."""
+    lang = os.environ.get("LANG", "").lower()
+    lang_var = os.environ.get("LANGUAGE", "").lower()
+    # Check for French
+    if lang.startswith("fr") or lang_var.startswith("fr"):
+        return "fr"
+    return "en"
+
+LANG = _detect_language()
+
+# Message translations
+MESSAGES = {
+    "en": {
+        "smart_setup": "vibesrails Smart Setup",
+        "analyzing": "Analyzing",
+        "project_analysis": "Project analysis:",
+        "detected_types": "Detected type(s)",
+        "generic_python": "Generic Python",
+        "packs_to_include": "Packs to include",
+        "existing_configs": "Existing configs",
+        "secret_patterns_detected": "! Secret patterns detected in code",
+        "env_files": ".env files",
+        "config_exists": "vibesrails.yaml already exists",
+        "overwrite_config": "Overwrite existing configuration?",
+        "setup_cancelled": "Setup cancelled",
+        "use_force": "Use --force to overwrite",
+        "config_mode": "Configuration mode:",
+        "mode_simple": "Simple (recommended) - I'll guide you, no regex knowledge needed",
+        "mode_advanced": "Advanced - Enter regex patterns yourself",
+        "mode_skip": "Skip - Use default config",
+        "choice": "Choice",
+        "proposed_config": "Proposed configuration:",
+        "create_config": "Create vibesrails.yaml and install hook?",
+        "created": "Created",
+        "updated": "Updated",
+        "install_hooks": "Install Claude Code hooks (advanced integration)?",
+        "hooks_not_available": "Hooks not available in this installation",
+        "setup_complete": "Smart Setup complete!",
+        "files_created": "Files created:",
+        "config_file": "configuration",
+        "auto_scan": "automatic scan",
+        "claude_instructions": "Claude Code instructions",
+        "claude_hooks": "Claude Code integration",
+        "next_steps": "Next steps:",
+        "commit_normally": "Commit normally - vibesrails scans automatically",
+        "scan_all": "To scan everything",
+        # Vibe coder messages
+        "protection_mode": "=== Code Protection (simple mode) ===",
+        "analyzing_project": "Analyzing project...",
+        "found_secrets": "I found {count} potential secret(s):",
+        "no_secrets_found": "No secrets detected in code",
+        "enable_protection": "Enable protection for these categories?",
+        "protections_enabled": "Protections enabled",
+        "additional_protections": "Additional protections available:",
+        "none": "None",
+        "add_protections": "Add protections (comma-separated numbers, or 0)",
+        "custom_protection": "Custom protection (natural language):",
+        "examples": "Examples",
+        "empty_to_finish": "(empty to finish)",
+        "what_to_protect": "What do you want to protect?",
+        "will_block": "I will block",
+        "confirm": "Confirm?",
+        "added": "Added",
+        "not_understood": "I didn't understand. Try with a specific value in quotes.",
+        "example": "Example",
+        "pattern_ignored": "Pattern ignored",
+        # Regex validation
+        "invalid_regex": "Invalid regex",
+        "dangerous_regex": "Potentially dangerous regex (ReDoS)",
+        "preview_matches": "Preview of matches ({count} found):",
+        "no_matches": "No matches found in current project",
+        "add_pattern": "Add this pattern?",
+        "regex_to_block": "Regex to block (or Enter)",
+        "error_message": "Error message",
+        "forbidden_pattern": "Forbidden pattern",
+        "additional_patterns": "Additional patterns?",
+        "custom_patterns": "Add custom patterns?",
+    },
+    "fr": {
+        "smart_setup": "vibesrails Smart Setup",
+        "analyzing": "Analyse",
+        "project_analysis": "Analyse du projet:",
+        "detected_types": "Type(s) detecte(s)",
+        "generic_python": "Python generique",
+        "packs_to_include": "Packs a inclure",
+        "existing_configs": "Configs existants",
+        "secret_patterns_detected": "! Patterns de secrets detectes dans le code",
+        "env_files": "Fichiers .env",
+        "config_exists": "vibesrails.yaml existe deja",
+        "overwrite_config": "Ecraser la configuration existante?",
+        "setup_cancelled": "Setup annule",
+        "use_force": "Utilisez --force pour ecraser",
+        "config_mode": "Mode de configuration:",
+        "mode_simple": "Simple (recommande) - Je te guide, pas besoin de connaitre les regex",
+        "mode_advanced": "Avance - Tu entres les regex toi-meme",
+        "mode_skip": "Passer - Utiliser la config par defaut",
+        "choice": "Choix",
+        "proposed_config": "Configuration proposee:",
+        "create_config": "Creer vibesrails.yaml et installer le hook?",
+        "created": "Cree",
+        "updated": "Mis a jour",
+        "install_hooks": "Installer les hooks Claude Code (integration avancee)?",
+        "hooks_not_available": "Hooks non disponibles dans cette installation",
+        "setup_complete": "Smart Setup termine!",
+        "files_created": "Fichiers crees:",
+        "config_file": "configuration",
+        "auto_scan": "scan automatique",
+        "claude_instructions": "instructions Claude Code",
+        "claude_hooks": "integration Claude Code",
+        "next_steps": "Prochaines etapes:",
+        "commit_normally": "Commitez normalement - vibesrails scanne automatiquement",
+        "scan_all": "Pour scanner tout",
+        # Vibe coder messages
+        "protection_mode": "=== Protection du code (mode simple) ===",
+        "analyzing_project": "Analyse du projet...",
+        "found_secrets": "J'ai trouve {count} secret(s) potentiel(s):",
+        "no_secrets_found": "Aucun secret detecte dans le code",
+        "enable_protection": "Activer la protection pour ces categories?",
+        "protections_enabled": "Protections activees",
+        "additional_protections": "Protections supplementaires disponibles:",
+        "none": "Aucune",
+        "add_protections": "Ajouter des protections (numeros separes par virgule, ou 0)",
+        "custom_protection": "Protection personnalisee (langage naturel):",
+        "examples": "Exemples",
+        "empty_to_finish": "(Entree vide pour terminer)",
+        "what_to_protect": "Que veux-tu proteger?",
+        "will_block": "Je vais bloquer",
+        "confirm": "Confirmer?",
+        "added": "Ajoute",
+        "not_understood": "Je n'ai pas compris. Essaie avec une valeur precise entre guillemets.",
+        "example": "Exemple",
+        "pattern_ignored": "Pattern ignore",
+        # Regex validation
+        "invalid_regex": "Regex invalide",
+        "dangerous_regex": "Regex potentiellement dangereuse (ReDoS)",
+        "preview_matches": "Apercu des matches ({count} trouve(s)):",
+        "no_matches": "Aucun match trouve dans le projet actuel",
+        "add_pattern": "Ajouter ce pattern?",
+        "regex_to_block": "Regex a bloquer (ou Entree)",
+        "error_message": "Message d'erreur",
+        "forbidden_pattern": "Pattern interdit",
+        "additional_patterns": "Patterns additionnels?",
+        "custom_patterns": "Ajouter des patterns personnalises?",
+    },
+}
+
+def msg(key: str, **kwargs) -> str:
+    """Get translated message."""
+    text = MESSAGES.get(LANG, MESSAGES["en"]).get(key, key)
+    if kwargs:
+        return text.format(**kwargs)
+    return text
+
+
 # Project type detection patterns
 PROJECT_SIGNATURES = {
     "fastapi": {
@@ -306,15 +465,15 @@ def prompt_vibe_protections(project_root: Path) -> list[dict]:
     selected_patterns = []
     project_name = project_root.name
 
-    print(f"\n{BLUE}=== Protection du code (mode simple) ==={NC}")
+    print(f"\n{BLUE}{msg('protection_mode')}{NC}")
 
     # Step 1: Scan for existing secrets
-    print(f"\n{YELLOW}Analyse du projet...{NC}")
+    print(f"\n{YELLOW}{msg('analyzing_project')}{NC}")
     found_secrets = scan_for_secrets(project_root)
 
     if found_secrets:
         total = sum(len(v) for v in found_secrets.values())
-        print(f"\n{RED}⚠️  J'ai trouvé {total} secret(s) potentiel(s):{NC}")
+        print(f"\n{RED}⚠️  {msg('found_secrets', count=total)}{NC}")
 
         for category, secrets in found_secrets.items():
             cat_name = VIBE_PROTECTIONS[category]["name"]
@@ -322,18 +481,21 @@ def prompt_vibe_protections(project_root: Path) -> list[dict]:
             for secret in secrets[:3]:  # Show max 3 per category
                 print(f"    • {secret['file']}:{secret['line']} → {secret['preview']}")
             if len(secrets) > 3:
-                print(f"    ... et {len(secrets) - 3} autres")
+                remaining = len(secrets) - 3
+                more = "and" if LANG == "en" else "et"
+                others = "others" if LANG == "en" else "autres"
+                print(f"    ... {more} {remaining} {others}")
 
         print()
-        if prompt_user(f"{GREEN}Activer la protection pour ces catégories?{NC}", default="y"):
+        if prompt_user(f"{GREEN}{msg('enable_protection')}{NC}", default="y"):
             for category in found_secrets.keys():
                 selected_patterns.extend(VIBE_PROTECTIONS[category]["patterns"])
-            print(f"  {GREEN}✓ Protections activées{NC}")
+            print(f"  {GREEN}✓ {msg('protections_enabled')}{NC}")
     else:
-        print(f"  {GREEN}✓ Aucun secret détecté dans le code{NC}")
+        print(f"  {GREEN}✓ {msg('no_secrets_found')}{NC}")
 
     # Step 2: Offer additional protections
-    print(f"\n{YELLOW}Protections supplémentaires disponibles:{NC}")
+    print(f"\n{YELLOW}{msg('additional_protections')}{NC}")
 
     available_categories = [cat for cat in VIBE_PROTECTIONS if cat not in found_secrets]
 
@@ -342,9 +504,9 @@ def prompt_vibe_protections(project_root: Path) -> list[dict]:
         print(f"  {i}. {cat_name}")
 
     if available_categories:
-        print(f"  0. Aucune")
+        print(f"  0. {msg('none')}")
         print()
-        choice = input("  Ajouter des protections (numéros séparés par virgule, ou 0): ").strip()
+        choice = input(f"  {msg('add_protections')}: ").strip()
 
         if choice and choice != "0":
             try:
@@ -358,26 +520,28 @@ def prompt_vibe_protections(project_root: Path) -> list[dict]:
                 pass
 
     # Step 3: Natural language custom patterns
-    print(f"\n{YELLOW}Protection personnalisée (langage naturel):{NC}")
-    print("  Exemples: 'mycompany.com', 'le nom du projet', '@entreprise.fr'")
-    print("  (Entrée vide pour terminer)")
+    print(f"\n{YELLOW}{msg('custom_protection')}{NC}")
+    examples = "'mycompany.com', 'project name', '@company.com'" if LANG == "en" else "'mycompany.com', 'le nom du projet', '@entreprise.fr'"
+    print(f"  {msg('examples')}: {examples}")
+    print(f"  {msg('empty_to_finish')}")
 
     while True:
         try:
-            user_input = input(f"\n  Que veux-tu protéger? ").strip()
+            user_input = input(f"\n  {msg('what_to_protect')} ").strip()
             if not user_input:
                 break
 
             pattern = natural_language_to_pattern(user_input, project_name)
 
             if pattern:
-                print(f"  {BLUE}→ Je vais bloquer: {pattern['regex']}{NC}")
-                if prompt_user("  Confirmer?", default="y"):
+                print(f"  {BLUE}→ {msg('will_block')}: {pattern['regex']}{NC}")
+                if prompt_user(f"  {msg('confirm')}", default="y"):
                     selected_patterns.append(pattern)
-                    print(f"  {GREEN}✓ Ajouté{NC}")
+                    print(f"  {GREEN}✓ {msg('added')}{NC}")
             else:
-                print(f"  {YELLOW}Je n'ai pas compris. Essaie avec une valeur précise entre guillemets.{NC}")
-                print(f"  Exemple: \"motdepasse123\" ou \"api.mycompany.com\"")
+                print(f"  {YELLOW}{msg('not_understood')}{NC}")
+                example = '"password123" or "api.mycompany.com"' if LANG == "en" else '"motdepasse123" ou "api.mycompany.com"'
+                print(f"  {msg('example')}: {example}")
 
         except (EOFError, KeyboardInterrupt):
             print()
@@ -795,9 +959,9 @@ def smart_setup(
 
     project_root = Path(project_root).resolve()
 
-    print(f"{BLUE}vibesrails Smart Setup{NC}")
+    print(f"{BLUE}{msg('smart_setup')}{NC}")
     print("=" * 40)
-    print(f"Analyzing: {project_root.name}/")
+    print(f"{msg('analyzing')}: {project_root.name}/")
     print()
 
     # Detect project characteristics
@@ -807,12 +971,12 @@ def smart_setup(
     env_files = detect_env_files(project_root)
 
     # Report findings
-    print(f"{YELLOW}Analyse du projet:{NC}")
+    print(f"{YELLOW}{msg('project_analysis')}{NC}")
 
     if project_types:
-        print(f"  Type(s) detecte(s): {', '.join(project_types)}")
+        print(f"  {msg('detected_types')}: {', '.join(project_types)}")
     else:
-        print("  Type: Python generique")
+        print(f"  Type: {msg('generic_python')}")
 
     packs_to_use = ["@vibesrails/security-pack"]
     for proj_type in project_types:
@@ -820,38 +984,38 @@ def smart_setup(
         if pack and pack not in packs_to_use:
             packs_to_use.append(pack)
 
-    print(f"  Packs a inclure: {', '.join(packs_to_use)}")
+    print(f"  {msg('packs_to_include')}: {', '.join(packs_to_use)}")
 
     if existing_configs:
-        print(f"  Configs existants: {', '.join(existing_configs.keys())}")
+        print(f"  {msg('existing_configs')}: {', '.join(existing_configs.keys())}")
 
     if has_secrets:
-        print(f"  {RED}! Patterns de secrets detectes dans le code{NC}")
+        print(f"  {RED}{msg('secret_patterns_detected')}{NC}")
 
     if env_files:
-        print(f"  Fichiers .env: {', '.join(f.name for f in env_files)}")
+        print(f"  {msg('env_files')}: {', '.join(f.name for f in env_files)}")
 
     # Check if config already exists
     config_path = project_root / "vibesrails.yaml"
     if config_path.exists() and not force:
-        print(f"\n{YELLOW}vibesrails.yaml existe deja{NC}")
+        print(f"\n{YELLOW}{msg('config_exists')}{NC}")
         if interactive:
-            if not prompt_user("Ecraser la configuration existante?", default="n"):
-                print(f"{YELLOW}Setup annule{NC}")
+            if not prompt_user(msg('overwrite_config'), default="n"):
+                print(f"{YELLOW}{msg('setup_cancelled')}{NC}")
                 return {"created": False, "reason": "exists"}
         else:
-            print("Utilisez --force pour ecraser")
+            print(msg('use_force'))
             return {"created": False, "reason": "exists"}
 
     # Interactive: ask for protections (vibe coder mode by default)
     extra_patterns = []
     if interactive and not dry_run:
-        print(f"\n{YELLOW}Mode de configuration:{NC}")
-        print("  1. Simple (recommandé) - Je te guide, pas besoin de connaître les regex")
-        print("  2. Avancé - Tu entres les regex toi-même")
-        print("  3. Passer - Utiliser la config par défaut")
+        print(f"\n{YELLOW}{msg('config_mode')}{NC}")
+        print(f"  1. {msg('mode_simple')}")
+        print(f"  2. {msg('mode_advanced')}")
+        print(f"  3. {msg('mode_skip')}")
 
-        mode = input("\n  Choix [1/2/3]: ").strip()
+        mode = input(f"\n  {msg('choice')} [1/2/3]: ").strip()
 
         if mode == "1":
             extra_patterns = prompt_vibe_protections(project_root)
@@ -865,7 +1029,7 @@ def smart_setup(
     )
 
     # Show preview
-    print(f"\n{YELLOW}Configuration proposee:{NC}")
+    print(f"\n{YELLOW}{msg('proposed_config')}{NC}")
     print("-" * 40)
     print(config_content)
     print("-" * 40)
@@ -881,21 +1045,22 @@ def smart_setup(
     }
 
     if dry_run:
-        print(f"\n{YELLOW}(Mode dry-run - aucun fichier cree){NC}")
+        dry_run_msg = "(Dry-run mode - no files created)" if LANG == "en" else "(Mode dry-run - aucun fichier cree)"
+        print(f"\n{YELLOW}{dry_run_msg}{NC}")
         result["created"] = False
         return result
 
     # Final confirmation
     if interactive:
         print()
-        if not prompt_user(f"{GREEN}Creer vibesrails.yaml et installer le hook?{NC}"):
-            print(f"{YELLOW}Setup annule{NC}")
+        if not prompt_user(f"{GREEN}{msg('create_config')}{NC}"):
+            print(f"{YELLOW}{msg('setup_cancelled')}{NC}")
             result["created"] = False
             return result
 
     # Create config file
     config_path.write_text(config_content)
-    print(f"\n{GREEN}Cree: vibesrails.yaml{NC}")
+    print(f"\n{GREEN}{msg('created')}: vibesrails.yaml{NC}")
     result["created"] = True
 
     # Install hook
@@ -911,12 +1076,13 @@ def smart_setup(
         existing_content = claude_md_path.read_text()
         if "vibesrails" not in existing_content.lower():
             claude_md_path.write_text(existing_content + "\n\n" + claude_md_content)
-            print(f"{GREEN}Mis a jour: CLAUDE.md (section vibesrails ajoutee){NC}")
+            print(f"{GREEN}{msg('updated')}: CLAUDE.md ({msg('claude_instructions')}){NC}")
         else:
-            print(f"{YELLOW}CLAUDE.md existe deja avec instructions vibesrails{NC}")
+            existing_msg = "CLAUDE.md already has vibesrails instructions" if LANG == "en" else "CLAUDE.md existe deja avec instructions vibesrails"
+            print(f"{YELLOW}{existing_msg}{NC}")
     else:
         claude_md_path.write_text(claude_md_content)
-        print(f"{GREEN}Cree: CLAUDE.md (instructions pour Claude Code){NC}")
+        print(f"{GREEN}{msg('created')}: CLAUDE.md ({msg('claude_instructions')}){NC}")
 
     result["claude_md_created"] = True
 
@@ -924,29 +1090,29 @@ def smart_setup(
     result["hooks_installed"] = False
     if interactive:
         print()
-        if prompt_user(f"{BLUE}Installer les hooks Claude Code (integration avancee)?{NC}", default="y"):
+        if prompt_user(f"{BLUE}{msg('install_hooks')}{NC}", default="y"):
             if install_claude_hooks(project_root):
-                print(f"{GREEN}Cree: .claude/hooks.json (hooks Claude Code){NC}")
+                print(f"{GREEN}{msg('created')}: .claude/hooks.json ({msg('claude_hooks')}){NC}")
                 result["hooks_installed"] = True
             else:
-                print(f"{YELLOW}Hooks non disponibles dans cette installation{NC}")
+                print(f"{YELLOW}{msg('hooks_not_available')}{NC}")
     else:
         # Non-interactive: install hooks by default
         if install_claude_hooks(project_root):
-            print(f"{GREEN}Cree: .claude/hooks.json (hooks Claude Code){NC}")
+            print(f"{GREEN}{msg('created')}: .claude/hooks.json ({msg('claude_hooks')}){NC}")
             result["hooks_installed"] = True
 
     print()
-    print(f"{GREEN}Smart Setup termine!{NC}")
-    print(f"\nFichiers crees:")
-    print(f"  - vibesrails.yaml (configuration)")
-    print(f"  - .git/hooks/pre-commit (scan automatique)")
-    print(f"  - CLAUDE.md (instructions Claude Code)")
+    print(f"{GREEN}{msg('setup_complete')}{NC}")
+    print(f"\n{msg('files_created')}:")
+    print(f"  - vibesrails.yaml ({msg('config_file')})")
+    print(f"  - .git/hooks/pre-commit ({msg('auto_scan')})")
+    print(f"  - CLAUDE.md ({msg('claude_instructions')})")
     if result["hooks_installed"]:
-        print(f"  - .claude/hooks.json (integration Claude Code)")
-    print(f"\nProchaines etapes:")
-    print(f"  1. Commitez normalement - vibesrails scanne automatiquement")
-    print(f"  2. Pour scanner tout: vibesrails --all")
+        print(f"  - .claude/hooks.json ({msg('claude_hooks')})")
+    print(f"\n{msg('next_steps')}:")
+    print(f"  1. {msg('commit_normally')}")
+    print(f"  2. {msg('scan_all')}: vibesrails --all")
 
     return result
 
