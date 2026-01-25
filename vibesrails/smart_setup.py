@@ -196,12 +196,148 @@ def generate_config(
     return "\n".join(lines)
 
 
-def smart_setup(project_root: Path | None = None, dry_run: bool = False) -> dict[str, Any]:
-    """Run smart setup analysis and optionally create config.
+def prompt_user(question: str, default: str = "y") -> bool:
+    """Prompt user for yes/no confirmation."""
+    suffix = " [Y/n] " if default.lower() == "y" else " [y/N] "
+    try:
+        response = input(question + suffix).strip().lower()
+        if not response:
+            return default.lower() == "y"
+        return response in ("y", "yes", "o", "oui")
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return False
+
+
+def prompt_extra_patterns() -> list[dict]:
+    """Ask user for additional patterns to add."""
+    extra_patterns = []
+
+    print(f"\n{YELLOW}Patterns additionnels?{NC}")
+    print("  Exemples: nom de projet, API keys specifiques, etc.")
+    print("  (Entree vide pour continuer)")
+
+    while True:
+        try:
+            pattern_input = input(f"\n  Regex a bloquer (ou Entree): ").strip()
+            if not pattern_input:
+                break
+
+            message = input(f"  Message d'erreur: ").strip()
+            if not message:
+                message = f"Pattern interdit: {pattern_input}"
+
+            pattern_id = f"custom_{len(extra_patterns) + 1}"
+            extra_patterns.append({
+                "id": pattern_id,
+                "regex": pattern_input,
+                "message": message,
+            })
+            print(f"  {GREEN}+ Ajoute: {pattern_input}{NC}")
+
+        except (EOFError, KeyboardInterrupt):
+            print()
+            break
+
+    return extra_patterns
+
+
+def generate_config_with_extras(
+    project_types: list[str],
+    has_secrets: bool,
+    env_files: list[Path],
+    existing_configs: dict[str, Path],
+    extra_patterns: list[dict],
+) -> str:
+    """Generate optimized vibesrails.yaml content with extra patterns."""
+
+    lines = [
+        "# vibesrails.yaml - Configuration generee par Smart Setup",
+        "# Modifiez selon vos besoins",
+        "",
+        'version: "1.0"',
+        "",
+    ]
+
+    # Extends section
+    extends = ["@vibesrails/security-pack"]  # Always include security
+
+    for proj_type in project_types:
+        pack = PROJECT_SIGNATURES.get(proj_type, {}).get("pack")
+        if pack and pack not in extends:
+            extends.append(pack)
+
+    if len(extends) == 1:
+        lines.append(f'extends: "{extends[0]}"')
+    else:
+        lines.append("extends:")
+        for pack in extends:
+            lines.append(f'  - "{pack}"')
+
+    lines.append("")
+
+    # Guardian section (enabled for Claude Code)
+    lines.extend([
+        "# AI Coding Safety (auto-enabled in Claude Code)",
+        "guardian:",
+        "  enabled: true",
+        "  auto_detect: true",
+        "  warnings_as_blocking: false",
+        "",
+    ])
+
+    # Project-specific patterns
+    has_blocking = has_secrets or env_files or extra_patterns
+    if has_blocking:
+        lines.extend([
+            "# Project-specific patterns",
+            "blocking:",
+        ])
+
+        if env_files:
+            lines.extend([
+                "  - id: env_file_content",
+                "    name: \"Env File Content\"",
+                '    regex: "^[A-Z_]+=.{10,}"',
+                '    scope: [".env*"]',
+                '    message: "Ne pas commiter les fichiers .env"',
+                "",
+            ])
+
+        # Add extra patterns from user
+        for pattern in extra_patterns:
+            lines.extend([
+                f"  - id: {pattern['id']}",
+                f"    name: \"Custom Pattern\"",
+                f'    regex: "{pattern["regex"]}"',
+                f'    message: "{pattern["message"]}"',
+                "",
+            ])
+
+    # Complexity settings
+    lines.extend([
+        "# Quality settings",
+        "complexity:",
+        "  max_file_lines: 300",
+        "  max_function_lines: 50",
+    ])
+
+    return "\n".join(lines)
+
+
+def smart_setup(
+    project_root: Path | None = None,
+    dry_run: bool = False,
+    interactive: bool = True,
+    force: bool = False,
+) -> dict[str, Any]:
+    """Run smart setup analysis with user confirmation.
 
     Args:
         project_root: Project directory (defaults to cwd)
         dry_run: If True, only analyze without creating files
+        interactive: If True, ask for user confirmation
+        force: If True, overwrite existing config
 
     Returns:
         Analysis results dict
@@ -223,28 +359,58 @@ def smart_setup(project_root: Path | None = None, dry_run: bool = False) -> dict
     env_files = detect_env_files(project_root)
 
     # Report findings
-    print(f"{YELLOW}Project Analysis:{NC}")
+    print(f"{YELLOW}Analyse du projet:{NC}")
 
     if project_types:
-        print(f"  Type(s): {', '.join(project_types)}")
+        print(f"  Type(s) detecte(s): {', '.join(project_types)}")
     else:
-        print("  Type: Generic Python")
+        print("  Type: Python generique")
+
+    packs_to_use = ["@vibesrails/security-pack"]
+    for proj_type in project_types:
+        pack = PROJECT_SIGNATURES.get(proj_type, {}).get("pack")
+        if pack and pack not in packs_to_use:
+            packs_to_use.append(pack)
+
+    print(f"  Packs a inclure: {', '.join(packs_to_use)}")
 
     if existing_configs:
-        print(f"  Existing configs: {', '.join(existing_configs.keys())}")
+        print(f"  Configs existants: {', '.join(existing_configs.keys())}")
 
     if has_secrets:
-        print(f"  {RED}Secret patterns detected in code{NC}")
+        print(f"  {RED}! Patterns de secrets detectes dans le code{NC}")
 
     if env_files:
-        print(f"  Env files: {', '.join(f.name for f in env_files)}")
+        print(f"  Fichiers .env: {', '.join(f.name for f in env_files)}")
 
-    print()
+    # Check if config already exists
+    config_path = project_root / "vibesrails.yaml"
+    if config_path.exists() and not force:
+        print(f"\n{YELLOW}vibesrails.yaml existe deja{NC}")
+        if interactive:
+            if not prompt_user("Ecraser la configuration existante?", default="n"):
+                print(f"{YELLOW}Setup annule{NC}")
+                return {"created": False, "reason": "exists"}
+        else:
+            print("Utilisez --force pour ecraser")
+            return {"created": False, "reason": "exists"}
+
+    # Interactive: ask for extra patterns
+    extra_patterns = []
+    if interactive and not dry_run:
+        if prompt_user("\nAjouter des patterns personnalises?", default="n"):
+            extra_patterns = prompt_extra_patterns()
 
     # Generate config
-    config_content = generate_config(
-        project_types, has_secrets, env_files, existing_configs
+    config_content = generate_config_with_extras(
+        project_types, has_secrets, env_files, existing_configs, extra_patterns
     )
+
+    # Show preview
+    print(f"\n{YELLOW}Configuration proposee:{NC}")
+    print("-" * 40)
+    print(config_content)
+    print("-" * 40)
 
     result = {
         "project_root": str(project_root),
@@ -252,33 +418,38 @@ def smart_setup(project_root: Path | None = None, dry_run: bool = False) -> dict
         "existing_configs": list(existing_configs.keys()),
         "has_secrets": has_secrets,
         "env_files": [str(f) for f in env_files],
+        "extra_patterns": extra_patterns,
         "config_content": config_content,
     }
 
     if dry_run:
-        print(f"{YELLOW}Generated config (dry run):{NC}")
-        print("-" * 40)
-        print(config_content)
-        print("-" * 40)
-    else:
-        # Create config file
-        config_path = project_root / "vibesrails.yaml"
+        print(f"\n{YELLOW}(Mode dry-run - aucun fichier cree){NC}")
+        result["created"] = False
+        return result
 
-        if config_path.exists():
-            print(f"{YELLOW}vibesrails.yaml already exists{NC}")
-            print("Use --force to overwrite")
+    # Final confirmation
+    if interactive:
+        print()
+        if not prompt_user(f"{GREEN}Creer vibesrails.yaml et installer le hook?{NC}"):
+            print(f"{YELLOW}Setup annule{NC}")
             result["created"] = False
-        else:
-            config_path.write_text(config_content)
-            print(f"{GREEN}Created vibesrails.yaml{NC}")
-            result["created"] = True
+            return result
 
-            # Also install hook
-            from .cli import install_hook
-            install_hook()
+    # Create config file
+    config_path.write_text(config_content)
+    print(f"\n{GREEN}Cree: vibesrails.yaml{NC}")
+    result["created"] = True
+
+    # Install hook
+    from .cli import install_hook
+    install_hook()
 
     print()
-    print(f"{GREEN}Smart Setup Complete{NC}")
+    print(f"{GREEN}Smart Setup termine!{NC}")
+    print(f"\nProchaines etapes:")
+    print(f"  1. Verifiez vibesrails.yaml si besoin")
+    print(f"  2. Commitez normalement - vibesrails scanne automatiquement")
+    print(f"  3. Pour scanner tout: vibesrails --all")
 
     return result
 
@@ -286,7 +457,14 @@ def smart_setup(project_root: Path | None = None, dry_run: bool = False) -> dict
 def run_smart_setup_cli(force: bool = False, dry_run: bool = False) -> bool:
     """CLI entry point for smart setup."""
     try:
-        result = smart_setup(dry_run=dry_run)
+        # Check if running in interactive terminal
+        interactive = os.isatty(0)  # stdin is a terminal
+
+        result = smart_setup(
+            dry_run=dry_run,
+            interactive=interactive,
+            force=force,
+        )
         return result.get("created", False) or dry_run
     except Exception as e:
         print(f"{RED}Error: {e}{NC}")

@@ -245,6 +245,7 @@ Examples:
     parser.add_argument("--hook", action="store_true", help="Install git pre-commit hook")
     parser.add_argument("--uninstall", action="store_true", help="Remove vibesrails from project")
     parser.add_argument("--setup", action="store_true", help="Smart auto-setup (analyzes project)")
+    parser.add_argument("--force", action="store_true", help="Force overwrite existing config")
     parser.add_argument("--validate", action="store_true", help="Validate YAML config")
     parser.add_argument("--show", action="store_true", help="Show all patterns")
     parser.add_argument("--all", action="store_true", help="Scan all Python files")
@@ -285,7 +286,7 @@ Examples:
     # Handle smart setup (auto-detects project type)
     if args.setup:
         from .smart_setup import run_smart_setup_cli
-        sys.exit(0 if run_smart_setup_cli() else 1)
+        sys.exit(0 if run_smart_setup_cli(force=args.force, dry_run=args.dry_run) else 1)
 
     # Handle init (doesn't need config)
     if args.init:
