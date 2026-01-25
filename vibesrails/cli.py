@@ -166,6 +166,7 @@ Examples:
   vibesrails --show       Show configured patterns
   vibesrails --init       Initialize vibesrails.yaml
   vibesrails --hook       Install git pre-commit hook
+  vibesrails --learn      Claude-powered pattern discovery
         """,
     )
     parser.add_argument("--version", "-v", action="version", version=f"vibesrails {__version__}")
@@ -176,7 +177,13 @@ Examples:
     parser.add_argument("--all", action="store_true", help="Scan all Python files")
     parser.add_argument("--file", "-f", help="Scan specific file")
     parser.add_argument("--config", "-c", help="Path to vibesrails.yaml")
+    parser.add_argument("--learn", action="store_true", help="Claude-powered pattern discovery")
     args = parser.parse_args()
+
+    # Handle learn mode (doesn't need config, uses Claude API)
+    if args.learn:
+        from .learn import run_learn_mode
+        sys.exit(0 if run_learn_mode() else 1)
 
     # Handle init (doesn't need config)
     if args.init:
