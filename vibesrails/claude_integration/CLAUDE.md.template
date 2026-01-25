@@ -1,0 +1,36 @@
+# vibesrails Integration
+
+## Auto-Setup
+
+Ce projet utilise vibesrails pour la sécurité du code.
+
+### Configuration automatique
+
+Quand tu travailles sur ce projet:
+
+1. **Avant de modifier du code**, vérifie que `vibesrails.yaml` existe
+2. Si non, exécute `vibesrails --setup` pour auto-configurer
+3. Le pre-commit hook scannera automatiquement chaque commit
+
+### Commandes utiles
+
+```bash
+vibesrails --setup     # Auto-configuration intelligente
+vibesrails --show      # Voir patterns actifs
+vibesrails --fix       # Auto-corriger patterns simples
+vibesrails --all       # Scanner tout le projet
+```
+
+### Règles à suivre
+
+- Ne jamais commiter de secrets (passwords, API keys, tokens)
+- Utiliser `os.environ.get()` pour les credentials
+- Si vibesrails bloque, corriger avant de commiter
+- Pour les faux positifs: `# vibesrails: ignore`
+
+### Guardian Mode
+
+vibesrails détecte automatiquement Claude Code et active le mode Guardian:
+- Vérifications plus strictes
+- Warnings traités comme bloquants
+- Logging pour analyse

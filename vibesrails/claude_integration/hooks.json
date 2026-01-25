@@ -1,0 +1,20 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/claude-code/main/schemas/hooks.json",
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "python3 -c \"import sys; from pathlib import Path; p=Path('vibesrails.yaml'); sys.exit(0 if p.exists() else 1)\" || echo '💡 vibesrails: Run `vibesrails --setup` for auto-security setup'",
+        "description": "Check if vibesrails is configured"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "type": "command",
+        "matcher": "Write|Edit",
+        "command": "python3 -c \"from pathlib import Path; print('🛡️ vibesrails: Code will be scanned on commit' if Path('vibesrails.yaml').exists() else '')\"",
+        "description": "Remind about vibesrails scanning"
+      }
+    ]
+  }
+}

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>vibesrails - Guide Complet</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #2563eb;
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #1e40af;
+            margin-top: 2em;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+        h3 {
+            color: #3730a3;
+        }
+        code {
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 0.85em;
+        }
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1em 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background: #f3f4f6;
+            font-weight: 600;
+        }
+        .box {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 1em 0;
+        }
+        .box-warning {
+            background: #fefce8;
+            border-color: #fde047;
+        }
+        .box-success {
+            background: #f0fdf4;
+            border-color: #86efac;
+        }
+        .diagram {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.8em;
+            white-space: pre;
+            overflow-x: auto;
+        }
+        .highlight {
+            background: linear-gradient(120deg, #a5f3fc 0%, #a5f3fc 100%);
+            background-repeat: no-repeat;
+            background-size: 100% 40%;
+            background-position: 0 90%;
+        }
+        .page-break {
+            page-break-after: always;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+        .badge-block { background: #fee2e2; color: #991b1b; }
+        .badge-warn { background: #fef3c7; color: #92400e; }
+        .badge-pass { background: #d1fae5; color: #065f46; }
+    </style>
+</head>
+<body>
+
+<h1>vibesrails</h1>
+<p style="font-size: 1.3em; color: #6b7280;">Le Filet de Sécurité pour le Vibe Coding</p>
+
+<div class="box box-success">
+    <strong>En résumé:</strong> Tu codes vite, vibesrails vérifie automatiquement. Zero friction.
+</div>
+
+<h2>Qu'est-ce que vibesrails?</h2>
+
+<p><strong>vibesrails</strong> est un scanner de sécurité automatique qui protège ton code sans ralentir ton flow.</p>
+
+<div class="diagram">┌─────────────────────────────────────────────────────────┐
+│                                                         │
+│   Tu codes vite    →    vibesrails vérifie    →   Safe │
+│   (vibe coding)         (automatique)              ✓   │
+│                                                         │
+└─────────────────────────────────────────────────────────┘</div>
+
+<h3>Problème résolu</h3>
+
+<table>
+    <tr>
+        <th>Sans vibesrails</th>
+        <th>Avec vibesrails</th>
+    </tr>
+    <tr>
+        <td>Secret pushé sur GitHub</td>
+        <td>Bloqué avant commit</td>
+    </tr>
+    <tr>
+        <td>SQL injection découverte en prod</td>
+        <td>Détectée immédiatement</td>
+    </tr>
+    <tr>
+        <td>AI génère du code dangereux</td>
+        <td>Guardian mode le bloque</td>
+    </tr>
+    <tr>
+        <td>Code review trouve les bugs tard</td>
+        <td>Détection instantanée</td>
+    </tr>
+</table>
+
+<h2>Installation</h2>
+
+<pre><code>pip install vibesrails</code></pre>
+
+<p><strong>C'est tout.</strong> vibesrails s'auto-configure avec Claude Code.</p>
+
+<div class="page-break"></div>
+
+<h2>Comment ça marche avec Claude Code?</h2>
+
+<p>Quand tu utilises Claude Code dans un projet, <strong>tout est automatique</strong>:</p>
+
+<div class="diagram">┌─────────────────────────────────────────────────────────┐
+│  1. Claude Code détecte le projet                       │
+│                    ↓                                    │
+│  2. vibesrails analyse la structure                     │
+│     • FastAPI? → charge fastapi-pack                    │
+│     • Django? → charge django-pack                      │
+│     • Secrets? → active security-pack                   │
+│                    ↓                                    │
+│  3. Crée vibesrails.yaml optimisé                       │
+│                    ↓                                    │
+│  4. Installe le hook pre-commit                         │
+│                    ↓                                    │
+│  5. Chaque commit est scanné automatiquement            │
+└─────────────────────────────────────────────────────────┘</div>
+
+<h3>Flow de développement</h3>
+
+<div class="diagram">   Toi                    Claude Code                 vibesrails
+    │                         │                           │
+    │ "Ajoute un login"       │                           │
+    │────────────────────────→│                           │
+    │                         │                           │
+    │                         │ Génère le code            │
+    │                         │──────────────────────────→│
+    │                         │                           │ Scan
+    │                         │                           │
+    │                         │←──────────────────────────│
+    │                         │ BLOCK: hardcoded secret   │
+    │                         │                           │
+    │                         │ Corrige automatiquement   │
+    │                         │──────────────────────────→│
+    │                         │                           │ Scan
+    │                         │←──────────────────────────│
+    │                         │ PASS ✓                    │
+    │                         │                           │
+    │←────────────────────────│                           │
+    │ "Login ajouté avec      │                           │
+    │  variables d'env"       │                           │</div>
+
+<div class="page-break"></div>
+
+<h2>Qu'est-ce qui est détecté?</h2>
+
+<h3><span class="badge badge-block">BLOCK</span> Commit refusé</h3>
+
+<table>
+    <tr>
+        <th>Pattern</th>
+        <th>Exemple</th>
+        <th>Risque</th>
+    </tr>
+    <tr>
+        <td>Secret hardcodé</td>
+        <td><code>password = "admin123"</code></td>
+        <td>Fuite de credentials</td>
+    </tr>
+    <tr>
+        <td>SQL Injection</td>
+        <td><code>f"SELECT * FROM {user}"</code></td>
+        <td>Base de données compromise</td>
+    </tr>
+    <tr>
+        <td>Shell Injection</td>
+        <td><code>shell=True</code></td>
+        <td>Exécution de code arbitraire</td>
+    </tr>
+    <tr>
+        <td>YAML dangereux</td>
+        <td><code>yaml.load()</code></td>
+        <td>Exécution de code</td>
+    </tr>
+</table>
+
+<h3><span class="badge badge-warn">WARN</span> Commit accepté, signalé</h3>
+
+<table>
+    <tr>
+        <th>Pattern</th>
+        <th>Exemple</th>
+        <th>Amélioration</th>
+    </tr>
+    <tr>
+        <td>Star import</td>
+        <td><code>from x import *</code></td>
+        <td>Importer explicitement</td>
+    </tr>
+    <tr>
+        <td>None comparison</td>
+        <td><code>x == None</code></td>
+        <td>Utiliser <code>x is None</code></td>
+    </tr>
+    <tr>
+        <td>Bare except</td>
+        <td><code>except:</code></td>
+        <td>Attraper exceptions spécifiques</td>
+    </tr>
+</table>
+
+<h2>Configuration Auto-Détectée</h2>
+
+<p>vibesrails analyse ton projet et charge les bons patterns:</p>
+
+<pre><code># vibesrails.yaml (généré automatiquement)
+
+# Détecté: FastAPI + SQLAlchemy
+extends:
+  - "@vibesrails/security-pack"
+  - "@vibesrails/fastapi-pack"
+
+# Patterns spécifiques au projet
+blocking:
+  - id: project_secret
+    regex: "ACME_API_KEY"
+    message: "Clé API projet détectée"</code></pre>
+
+<h3>Packs disponibles</h3>
+
+<table>
+    <tr>
+        <th>Pack</th>
+        <th>Contenu</th>
+    </tr>
+    <tr>
+        <td><code>@vibesrails/security-pack</code></td>
+        <td>OWASP Top 10, secrets, injections</td>
+    </tr>
+    <tr>
+        <td><code>@vibesrails/web-pack</code></td>
+        <td>XSS, CSRF, CORS</td>
+    </tr>
+    <tr>
+        <td><code>@vibesrails/fastapi-pack</code></td>
+        <td>Patterns FastAPI spécifiques</td>
+    </tr>
+    <tr>
+        <td><code>@vibesrails/django-pack</code></td>
+        <td>Patterns Django spécifiques</td>
+    </tr>
+</table>
+
+<div class="page-break"></div>
+
+<h2>Guardian Mode (Protection AI)</h2>
+
+<p>Quand Claude Code génère du code, vibesrails active le <strong>Guardian Mode</strong>:</p>
+
+<div class="box box-warning">
+    <strong>GUARDIAN MODE ACTIVE (Claude Code)</strong>
+    <ul>
+        <li>Warnings → BLOCK (plus strict)</li>
+        <li>Patterns additionnels activés</li>
+        <li>Logging des blocks pour analyse</li>
+    </ul>
+    <em>"L'AI code vite, vibesrails vérifie tout"</em>
+</div>
+
+<h2>Suppression inline</h2>
+
+<p>Si un pattern est un faux positif:</p>
+
+<pre><code># Ignorer cette ligne
+password = get_password()  # vibesrails: ignore
+
+# Ignorer un pattern spécifique
+value == None  # vibesrails: ignore [none_comparison]
+
+# Ignorer la ligne suivante
+# vibesrails: ignore-next-line
+api_key = "test_key_for_unit_tests"</code></pre>
+
+<h2>Auto-Fix</h2>
+
+<p>vibesrails peut corriger automatiquement certains patterns:</p>
+
+<pre><code>vibesrails --fix      # Corrige
+vibesrails --dry-run  # Prévisualise</code></pre>
+
+<table>
+    <tr>
+        <th>Avant</th>
+        <th>Après</th>
+    </tr>
+    <tr>
+        <td><code>x == None</code></td>
+        <td><code>x is None</code></td>
+    </tr>
+    <tr>
+        <td><code>yaml.load(f)</code></td>
+        <td><code>yaml.safe_load(f)</code></td>
+    </tr>
+    <tr>
+        <td><code>x == True</code></td>
+        <td><code>x</code></td>
+    </tr>
+</table>
+
+<div class="page-break"></div>
+
+<h2>Résumé</h2>
+
+<div class="box box-success">
+    <h3 style="margin-top: 0;">vibesrails = pip install + forget</h3>
+    <ul>
+        <li>Auto-configuration selon le projet</li>
+        <li>Scan automatique à chaque commit</li>
+        <li>Guardian mode pour Claude Code</li>
+        <li>Zero friction, zero commande manuelle</li>
+    </ul>
+    <p style="font-size: 1.2em; margin-bottom: 0;"><strong>Tu codes. vibesrails protège.</strong></p>
+</div>
+
+<h2>Commandes (rarement nécessaires)</h2>
+
+<table>
+    <tr>
+        <th>Commande</th>
+        <th>Usage</th>
+    </tr>
+    <tr>
+        <td><code>vibesrails --show</code></td>
+        <td>Voir patterns actifs</td>
+    </tr>
+    <tr>
+        <td><code>vibesrails --fix</code></td>
+        <td>Auto-corriger</td>
+    </tr>
+    <tr>
+        <td><code>vibesrails --guardian-stats</code></td>
+        <td>Stats AI</td>
+    </tr>
+    <tr>
+        <td><code>vibesrails --uninstall</code></td>
+        <td>Désinstaller</td>
+    </tr>
+</table>
+
+<hr>
+
+<p style="text-align: center; color: #6b7280;">
+    <strong>vibesrails v1.2</strong> - Scale up your vibe coding safely
+</p>
+
+</body>
+</html>
