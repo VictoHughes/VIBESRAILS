@@ -6,6 +6,11 @@
         "type": "command",
         "command": "python3 -c \"import sys; from pathlib import Path; p=Path('vibesrails.yaml'); sys.exit(0 if p.exists() else 1)\" || echo '💡 vibesrails: Run `vibesrails --setup` for auto-security setup'",
         "description": "Check if vibesrails is configured"
+      },
+      {
+        "type": "command",
+        "command": "python3 -c \"from pathlib import Path; plans=sorted(Path('docs/plans').glob('*.md'), key=lambda p: p.stat().st_mtime, reverse=True) if Path('docs/plans').exists() else []; print(f'📋 Plan actif: {plans[0].name}' if plans else '') if plans else None\"",
+        "description": "Show active plan from docs/plans/"
       }
     ],
     "PreToolUse": [

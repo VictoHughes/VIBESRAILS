@@ -49,3 +49,26 @@ Si l'utilisateur demande de scanner le code ou configurer la sécurité:
 2. Pendant le dev: les commits sont auto-scannés
 3. Si BLOCK: corriger le code, pas bypass
 4. Si faux positif: `# vibesrails: ignore` avec justification
+
+## Intégration Plans & Tâches
+
+### Plans actifs
+
+Les plans de travail sont dans `docs/plans/`. Au démarrage de session:
+1. Vérifie s'il y a un plan actif (le plus récent)
+2. Si oui, continue depuis là où tu en étais
+3. Utilise TodoWrite pour tracker les étapes du plan
+
+### Synchronisation
+
+```
+docs/plans/*.md     → Plan global (brainstorming, design)
+TodoWrite           → Tâches granulaires du plan
+vibesrails          → Sécurité à chaque commit
+```
+
+### Si tu perds le contexte
+
+1. Lis le plan actif: `docs/plans/YYYY-MM-DD-*.md`
+2. Vérifie les tâches: `TaskList`
+3. Reprends où tu en étais
