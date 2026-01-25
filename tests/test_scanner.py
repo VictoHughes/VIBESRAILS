@@ -173,3 +173,55 @@ def test_inline_suppression_noqa_syntax(sample_config, tmp_path):
         assert len(results) == 0  # Should be suppressed
     finally:
         os.chdir(original_cwd)
+
+
+# ============================================
+# Config Extends Tests
+# ============================================
+
+def test_config_extends_pack():
+    """Test that config can extend a built-in pack."""
+    from vibesrails.config import load_config_with_extends, resolve_pack_path
+
+    pack_path = resolve_pack_path("@vibesrails/security-pack")
+    assert pack_path is not None
+    assert pack_path.exists()
+
+    config = load_config_with_extends(pack_path)
+    assert "blocking" in config
+    assert len(config["blocking"]) > 0
+
+
+def test_config_extends_merge(tmp_path):
+    """Test that extends properly merges configs."""
+    from vibesrails.config import load_config_with_extends
+
+    # Create a base config
+    base_config = tmp_path / "base.yaml"
+    base_config.write_text('''
+version: "1.0"
+blocking:
+  - id: base_pattern
+    name: "Base Pattern"
+    regex: "base_bad\\\\("
+    message: "Base message"
+''')
+
+    # Create child config that extends base
+    child_config = tmp_path / "child.yaml"
+    child_config.write_text(f'''
+extends: "./base.yaml"
+version: "1.0"
+blocking:
+  - id: child_pattern
+    name: "Child Pattern"
+    regex: "child_bad\\\\("
+    message: "Child message"
+''')
+
+    config = load_config_with_extends(child_config)
+
+    # Should have both patterns
+    ids = [p["id"] for p in config.get("blocking", [])]
+    assert "base_pattern" in ids
+    assert "child_pattern" in ids

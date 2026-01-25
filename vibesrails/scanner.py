@@ -38,7 +38,7 @@ class ScanResult(NamedTuple):
 
 
 def load_config(config_path: Path | str | None = None) -> dict:
-    """Load vibesrails.yaml configuration.
+    """Load vibesrails.yaml configuration with extends support.
 
     Args:
         config_path: Path to config file. If None, searches default locations.
@@ -66,8 +66,14 @@ def load_config(config_path: Path | str | None = None) -> dict:
         print(f"{RED}ERROR: Config file too large (max 1MB){NC}")
         sys.exit(1)
 
-    with open(config_path) as f:
-        return yaml.safe_load(f)
+    # Use config loader with extends support
+    try:
+        from .config import load_config_with_extends
+        return load_config_with_extends(config_path)
+    except ImportError:
+        # Fallback to simple load if config module not available
+        with open(config_path) as f:
+            return yaml.safe_load(f)
 
 
 def is_git_repo() -> bool:

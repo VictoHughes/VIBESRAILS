@@ -46,7 +46,7 @@ where = ["."]
 include = ["vibesrails*"]
 
 [tool.setuptools.package-data]
-vibesrails = ["config/*.yaml"]
+vibesrails = ["config/*.yaml", "packs/*.yaml"]
 
 [tool.ruff]
 line-length = 100

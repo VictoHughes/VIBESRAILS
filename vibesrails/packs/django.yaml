@@ -1,0 +1,94 @@
+# @vibesrails/django-pack
+# Django-specific security and quality patterns
+# Usage: extends: "@vibesrails/django-pack"
+
+version: "1.0"
+
+blocking:
+  # Security Settings
+  - id: django_debug_true
+    name: "DEBUG = True"
+    regex: "^DEBUG\\s*=\\s*True"
+    message: "DEBUG must be False in production"
+    scope: ["**/settings.py", "**/settings/**/*.py"]
+    exclude_regex: "settings_dev|settings_local|settings_test"
+
+  - id: django_secret_key_hardcoded
+    name: "Hardcoded SECRET_KEY"
+    regex: "^SECRET_KEY\\s*=\\s*[\"'][^\"']+"
+    message: "SECRET_KEY should come from environment variable"
+    scope: ["**/settings.py", "**/settings/**/*.py"]
+
+  - id: django_allowed_hosts_all
+    name: "ALLOWED_HOSTS = ['*']"
+    regex: "ALLOWED_HOSTS\\s*=\\s*\\[[^\\]]*[\"']\\*[\"']"
+    message: "ALLOWED_HOSTS should list specific domains"
+    scope: ["**/settings.py", "**/settings/**/*.py"]
+
+  # SQL Injection
+  - id: django_raw_sql
+    name: "Raw SQL Query"
+    regex: "\\.raw\\s*\\([^)]*%|\\.extra\\s*\\("
+    message: "Raw SQL can cause injection - use ORM or parameterized queries"
+
+  - id: django_cursor_execute
+    name: "Cursor Execute"
+    regex: "cursor\\.execute\\s*\\([^)]*%|cursor\\.execute\\s*\\([^)]*f[\"']"
+    message: "Use parameterized queries with cursor.execute()"
+
+  # XSS
+  - id: django_mark_safe
+    name: "mark_safe with User Input"
+    regex: "mark_safe\\([^)]*request\\.|mark_safe\\([^)]*\\+|mark_safe\\(f[\"']"
+    message: "mark_safe with user input causes XSS"
+
+  - id: django_safe_filter
+    name: "Safe Filter Usage"
+    regex: "\\|\\s*safe\\s*\\}\\}"
+    message: "safe filter bypasses escaping - ensure input is trusted"
+
+  # Authentication
+  - id: django_login_not_required
+    name: "View Without Login Required"
+    regex: "^class\\s+\\w+View.*\\):|^def\\s+\\w+_view\\("
+    exclude_regex: "@login_required|LoginRequiredMixin|@permission_required|IsAuthenticated"
+    message: "Consider adding authentication to view"
+    scope: ["**/views.py", "**/views/**/*.py"]
+
+warning:
+  # CSRF
+  - id: django_csrf_exempt
+    name: "CSRF Exempt View"
+    regex: "@csrf_exempt"
+    message: "Review CSRF exemption carefully"
+
+  # Security Middleware
+  - id: django_missing_security_middleware
+    name: "Missing Security Middleware"
+    regex: "MIDDLEWARE\\s*=\\s*\\["
+    exclude_regex: "SecurityMiddleware"
+    message: "Add SecurityMiddleware for security headers"
+    scope: ["**/settings.py"]
+
+  # Session
+  - id: django_session_cookie_insecure
+    name: "Insecure Session Cookie"
+    regex: "SESSION_COOKIE_SECURE\\s*=\\s*False"
+    message: "SESSION_COOKIE_SECURE should be True in production"
+    scope: ["**/settings.py"]
+
+  # Logging
+  - id: django_print_debug
+    name: "Print Instead of Logger"
+    regex: "^\\s*print\\("
+    message: "Use Django logging instead of print"
+    skip_in_tests: true
+    scope: ["**/views.py", "**/views/**/*.py", "**/models.py"]
+
+  # Forms
+  - id: django_form_no_clean
+    name: "Form Without clean() Method"
+    regex: "class\\s+\\w+Form\\(.*Form\\):"
+    exclude_regex: "def\\s+clean"
+    message: "Consider adding clean() for cross-field validation"
+    scope: ["**/forms.py"]

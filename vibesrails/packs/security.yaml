@@ -1,0 +1,133 @@
+# @vibesrails/security-pack
+# Comprehensive security patterns based on OWASP Top 10
+# Usage: extends: "@vibesrails/security-pack"
+
+version: "1.0"
+
+blocking:
+  # A01:2021 - Broken Access Control
+  - id: hardcoded_secret
+    name: "Hardcoded Secret"
+    regex: "(api_key|password|secret|token|pwd|passwd|private_key|auth_token|access_token|client_secret)\\s*=\\s*[\"'][^\"']{4,}"
+    flags: "i"
+    message: "Hardcoded secret detected - use environment variables"
+
+  - id: jwt_secret_hardcoded
+    name: "Hardcoded JWT Secret"
+    regex: "(jwt_secret|jwt_key|signing_key)\\s*=\\s*[\"'][^\"']+"
+    flags: "i"
+    message: "JWT secret should be in environment variables"
+
+  # A02:2021 - Cryptographic Failures
+  - id: weak_hash_md5
+    name: "Weak Hash MD5"
+    regex: "hashlib\\.md5\\("
+    message: "MD5 is cryptographically broken - use SHA-256 or better"
+
+  - id: weak_hash_sha1
+    name: "Weak Hash SHA1"
+    regex: "hashlib\\.sha1\\("
+    message: "SHA1 is deprecated - use SHA-256 or better"
+
+  - id: weak_random
+    name: "Weak Random for Security"
+    regex: "random\\.(random|randint|choice|shuffle)\\("
+    message: "Use secrets module for security-sensitive randomness"
+    exclude_regex: "# ?not.?security|# ?test"
+
+  # A03:2021 - Injection
+  - id: sql_injection
+    name: "SQL Injection"
+    regex: "\\.(execute|executemany)\\s*\\([^)]*[\"']\\s*%|\\.(execute|executemany)\\s*\\([^)]*f[\"']"
+    message: "SQL injection risk - use parameterized queries"
+
+  - id: sql_injection_format
+    name: "SQL Injection via format()"
+    regex: "\\.format\\([^)]*\\).*(?:SELECT|INSERT|UPDATE|DELETE|FROM|WHERE)"
+    flags: "i"
+    message: "SQL injection via format() - use parameterized queries"
+
+  - id: command_injection
+    name: "Command Injection"
+    regex: "subprocess\\.[^(]+\\([^)]*shell\\s*=\\s*True"
+    message: "Command injection risk - use subprocess with list arguments"
+
+  - id: os_system
+    name: "OS System Call"
+    regex: "os\\.system\\("
+    message: "os.system is vulnerable - use subprocess with list arguments"
+
+  - id: eval_exec
+    name: "Code Execution"
+    regex: "\\b(eval|exec)\\s*\\("
+    message: "eval/exec can execute arbitrary code - avoid or sanitize strictly"
+    exclude_regex: "# ?safe|# ?trusted"
+
+  # A04:2021 - Insecure Design
+  - id: debug_true
+    name: "Debug Mode Enabled"
+    regex: "DEBUG\\s*=\\s*True"
+    message: "Debug mode should be False in production"
+    exclude_regex: "# ?dev|# ?local|settings_dev|settings_local"
+
+  # A05:2021 - Security Misconfiguration
+  - id: unsafe_yaml
+    name: "Unsafe YAML Load"
+    regex: "yaml\\.load\\s*\\("
+    exclude_regex: "Loader\\s*="
+    message: "Use yaml.safe_load() to prevent arbitrary code execution"
+
+  - id: unsafe_serialization
+    name: "Unsafe Serialization"
+    regex: "allow_pickle\\s*=\\s*True"
+    message: "Unsafe serialization can execute arbitrary code"
+
+  - id: unsafe_deserialize
+    name: "Unsafe Deserialization"
+    regex: "marshal\\.loads?\\(|shelve\\.open\\("
+    message: "Unsafe deserialization can execute arbitrary code"
+
+  # A06:2021 - Vulnerable Components
+  - id: requests_verify_false
+    name: "SSL Verification Disabled"
+    regex: "verify\\s*=\\s*False"
+    message: "SSL verification disabled - vulnerable to MITM attacks"
+
+  # A07:2021 - Identification and Authentication Failures
+  - id: password_in_url
+    name: "Password in URL"
+    regex: "(password|pwd|pass)=[^&\\s]+"
+    flags: "i"
+    message: "Password in URL will be logged - use POST body instead"
+
+  # A08:2021 - Software and Data Integrity Failures
+  - id: unsafe_tempfile
+    name: "Unsafe Temp File"
+    regex: "tempfile\\.mktemp\\("
+    message: "mktemp is insecure - use mkstemp or TemporaryFile"
+
+  # A10:2021 - Server-Side Request Forgery
+  - id: ssrf_risk
+    name: "SSRF Risk"
+    regex: "requests\\.(get|post|put|delete|patch)\\([^)]*\\+|urllib\\.request\\.urlopen\\([^)]*\\+"
+    message: "User-controlled URL may allow SSRF - validate/whitelist URLs"
+
+warning:
+  - id: assert_security
+    name: "Assert for Security"
+    regex: "assert\\s+.*(?:auth|permission|allowed|access)"
+    flags: "i"
+    message: "Don't use assert for security checks - asserts are stripped with -O"
+    skip_in_tests: true
+
+  - id: commented_password
+    name: "Commented Password"
+    regex: "#.*password.*=.*[\"'][^\"']+"
+    flags: "i"
+    message: "Remove commented passwords from code"
+
+  - id: todo_security
+    name: "Security TODO"
+    regex: "#\\s*TODO.*(?:security|auth|password|encrypt|hash)"
+    flags: "i"
+    message: "Unresolved security TODO found"
