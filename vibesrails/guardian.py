@@ -144,7 +144,9 @@ def log_guardian_block(result: ScanResult, agent_name: str | None = None):
     cwd = Path.cwd().resolve()
     log_dir_resolved = (cwd / log_dir).resolve()
 
-    if not str(log_dir_resolved).startswith(str(cwd)):
+    try:
+        log_dir_resolved.relative_to(cwd)
+    except ValueError:
         # Symlink attack detected - log dir points outside cwd
         print(f"{YELLOW}WARN: Guardian log directory is a symlink outside project{NC}")
         return
@@ -172,7 +174,9 @@ def get_guardian_stats() -> dict[str, Any]:
     cwd = Path.cwd().resolve()
     log_file = (cwd / ".vibesrails" / "guardian.log").resolve()
 
-    if not str(log_file).startswith(str(cwd)):
+    try:
+        log_file.relative_to(cwd)
+    except ValueError:
         # Symlink attack - don't read
         return {"total_blocks": 0, "by_pattern": {}, "by_agent": {}, "error": "symlink_detected"}
 

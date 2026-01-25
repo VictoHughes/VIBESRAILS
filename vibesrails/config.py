@@ -83,11 +83,25 @@ def is_allowed_remote_domain(url: str, extra_domains: set[str] | None = None) ->
 
     try:
         parsed = urlparse(url)
+
+        # Block HTTP (only HTTPS allowed)
+        if parsed.scheme != "https":
+            return False
+
         domain = parsed.netloc.lower()
+
+        # Strip userinfo (user:pass@) - prevents bypass like github.com:443@evil.com
+        if "@" in domain:
+            domain = domain.split("@")[-1]
 
         # Remove port if present
         if ":" in domain:
             domain = domain.split(":")[0]
+
+        # Block IP addresses (prevent internal network access)
+        import re
+        if re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", domain):
+            return False
 
         allowed = ALLOWED_REMOTE_DOMAINS.copy()
         if extra_domains:

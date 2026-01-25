@@ -98,6 +98,17 @@ def apply_fix_to_line(line: str, fix: Fix) -> tuple[str, bool]:
     return new_line, new_line != line
 
 
+def is_path_safe_for_fix(filepath: str) -> bool:
+    """Check if filepath is safe to modify (symlink + path traversal protection)."""
+    try:
+        cwd = Path.cwd().resolve()
+        path = Path(filepath).resolve()
+        path.relative_to(cwd)
+        return True
+    except ValueError:
+        return False
+
+
 def apply_fix_to_file(
     filepath: str,
     fix: Fix,
@@ -114,6 +125,11 @@ def apply_fix_to_file(
 
     Returns list of (line_number, old_line, new_line) tuples.
     """
+    # Symlink + path traversal protection
+    if not is_path_safe_for_fix(filepath):
+        print(f"{RED}BLOCKED: File path outside project: {filepath}{NC}")
+        return []
+
     path = Path(filepath)
     content = path.read_text()
     lines = content.split("\n")
@@ -131,8 +147,14 @@ def apply_fix_to_file(
     if changes and not dry_run:
         # Create backup before modifying
         if backup:
-            backup_path = Path(f"{filepath}.bak")
-            backup_path.write_text(content)
+            backup_path = Path(f"{filepath}.bak").resolve()
+            # Verify backup path is also safe
+            try:
+                cwd = Path.cwd().resolve()
+                backup_path.relative_to(cwd)
+                backup_path.write_text(content)
+            except ValueError:
+                print(f"{YELLOW}WARN: Backup path outside project, skipping backup{NC}")
 
         path.write_text("\n".join(new_lines))
 
