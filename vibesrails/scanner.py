@@ -99,9 +99,17 @@ def get_staged_files() -> list[str]:
 
 
 def matches_pattern(filepath: str, patterns: list[str]) -> bool:
-    """Check if filepath matches any glob pattern."""
+    """Check if filepath matches any glob pattern (supports **)."""
     from fnmatch import fnmatch
-    return any(fnmatch(filepath, p) for p in patterns)
+    path = Path(filepath)
+    for p in patterns:
+        # Use Path.match for ** patterns, fnmatch for simple patterns
+        if "**" in p:
+            if path.match(p):
+                return True
+        elif fnmatch(filepath, p) or fnmatch(path.name, p):
+            return True
+    return False
 
 
 def is_test_file(filepath: str) -> bool:
