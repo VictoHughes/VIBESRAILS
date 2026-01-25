@@ -37,9 +37,9 @@ dev = ["pytest>=7.0", "ruff>=0.1"]
 vibesrails = "vibesrails.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/stan/vibesrails"
-Documentation = "https://github.com/stan/vibesrails#readme"
-Repository = "https://github.com/stan/vibesrails"
+Homepage = "https://github.com/VictoHughes/VIBESRAILS"
+Documentation = "https://github.com/VictoHughes/VIBESRAILS#readme"
+Repository = "https://github.com/VictoHughes/VIBESRAILS"
 
 [tool.setuptools.packages.find]
 where = ["."]

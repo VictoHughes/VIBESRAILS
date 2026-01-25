@@ -19,17 +19,15 @@ vibesrails **protects your flow** by:
 ## Quick Start
 
 ```bash
-# 1. Install
-pip install pyyaml
-cp vibesrails.py ~/.local/bin/vibesrails
-chmod +x ~/.local/bin/vibesrails
+# Install from GitHub
+pip install git+https://github.com/VictoHughes/VIBESRAILS.git
 
-# 2. Initialize in your project
+# Initialize in your project
 cd your-project
 vibesrails --init
 vibesrails --hook
 
-# 3. Code freely - vibesrails runs on every commit
+# Code freely - vibesrails runs on every commit
 ```
 
 ## Usage
@@ -120,6 +118,11 @@ Update one file. Everything stays in sync.
 - **Rails** = safety guardrails that keep you on track
 
 Not restrictions. **Freedom with protection.**
+
+## Support
+
+If vibesrails helps you ship faster:
+- ⭐ **Star this repo** - it helps others discover vibesrails
 
 ## License
 
