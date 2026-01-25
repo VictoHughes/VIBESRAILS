@@ -71,4 +71,16 @@ vibesrails          → Sécurité à chaque commit
 
 1. Lis le plan actif: `docs/plans/YYYY-MM-DD-*.md`
 2. Vérifie les tâches: `TaskList`
-3. Reprends où tu en étais
+3. Lis le mémo: `.claude/current-task.md`
+4. Reprends où tu en étais
+
+### Persister l'état (anti-compaction)
+
+TodoWrite est en mémoire. Pour persister entre sessions/compactions:
+
+```bash
+# Écrire le mémo de tâche courante
+echo "Task 3/7: Implémenter login OAuth" > .claude/current-task.md
+```
+
+Ce fichier est lu au SessionStart et rappelé automatiquement.

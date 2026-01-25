@@ -9,8 +9,13 @@
       },
       {
         "type": "command",
-        "command": "python3 -c \"from pathlib import Path; plans=sorted(Path('docs/plans').glob('*.md'), key=lambda p: p.stat().st_mtime, reverse=True) if Path('docs/plans').exists() else []; print(f'📋 Plan actif: {plans[0].name}' if plans else '') if plans else None\"",
+        "command": "python3 -c \"from pathlib import Path; plans=sorted(Path('docs/plans').glob('*.md'), key=lambda p: p.stat().st_mtime, reverse=True) if Path('docs/plans').exists() else []; print(f'📋 Plan actif: {plans[0].name}') if plans else None\"",
         "description": "Show active plan from docs/plans/"
+      },
+      {
+        "type": "command",
+        "command": "python3 -c \"from pathlib import Path; p=Path('.claude/current-task.md'); print(f'📌 Tâche en cours: {p.read_text().strip()[:80]}...') if p.exists() and p.read_text().strip() else None\"",
+        "description": "Show current task memo"
       }
     ],
     "PreToolUse": [
@@ -19,6 +24,13 @@
         "matcher": "Write|Edit",
         "command": "python3 -c \"from pathlib import Path; print('🛡️ vibesrails: Code will be scanned on commit' if Path('vibesrails.yaml').exists() else '')\"",
         "description": "Remind about vibesrails scanning"
+      }
+    ],
+    "PreCompact": [
+      {
+        "type": "command",
+        "command": "echo '⚠️ Compaction imminente - le contexte va être résumé'",
+        "description": "Warn about compaction"
       }
     ]
   }
