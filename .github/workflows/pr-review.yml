@@ -1,0 +1,141 @@
+name: PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  vibesrails-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install vibesrails
+        run: pip install -e .
+
+      - name: Initialize config
+        run: vibesrails --init
+
+      - name: Get changed Python files
+        id: changed-files
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          FILES=$(git diff --name-only "origin/$BASE_REF"...HEAD -- '*.py' | tr '\n' ' ')
+          echo "files=$FILES" >> "$GITHUB_OUTPUT"
+
+      - name: Run vibesrails scan
+        id: scan
+        env:
+          CHANGED_FILES: ${{ steps.changed-files.outputs.files }}
+        run: |
+          python -c "
+          import json
+          import os
+          import sys
+          sys.path.insert(0, '.')
+          from vibesrails.scanner import scan_file, load_config
+
+          config = load_config()
+          files = os.environ.get('CHANGED_FILES', '').split()
+
+          results = []
+          for f in files:
+              if f.strip():
+                  for r in scan_file(f.strip(), config):
+                      results.append({
+                          'file': r.file,
+                          'line': r.line,
+                          'pattern_id': r.pattern_id,
+                          'message': r.message,
+                          'level': r.level
+                      })
+
+          with open('results.json', 'w') as f:
+              json.dump(results, f)
+
+          blocking = len([x for x in results if x['level'] == 'BLOCK'])
+          warnings = len([x for x in results if x['level'] == 'WARN'])
+          print(f'blocking={blocking}')
+          print(f'warnings={warnings}')
+          "
+
+          BLOCKING=$(python -c "import json; r=json.load(open('results.json')); print(len([x for x in r if x['level']=='BLOCK']))")
+          WARNINGS=$(python -c "import json; r=json.load(open('results.json')); print(len([x for x in r if x['level']=='WARN']))")
+          echo "blocking=$BLOCKING" >> "$GITHUB_OUTPUT"
+          echo "warnings=$WARNINGS" >> "$GITHUB_OUTPUT"
+
+      - name: Post review comments
+        uses: actions/github-script@v7
+        env:
+          BLOCKING_COUNT: ${{ steps.scan.outputs.blocking }}
+          WARNINGS_COUNT: ${{ steps.scan.outputs.warnings }}
+        with:
+          script: |
+            const fs = require('fs');
+            const results = JSON.parse(fs.readFileSync('results.json', 'utf8') || '[]');
+            const blocking = parseInt(process.env.BLOCKING_COUNT) || 0;
+            const warnings = parseInt(process.env.WARNINGS_COUNT) || 0;
+
+            let summary = `## vibesrails Security Scan\n\n`;
+
+            if (blocking === 0 && warnings === 0) {
+              summary += `All checks passed! No security issues found.\n`;
+            } else {
+              summary += `| Level | Count |\n|-------|-------|\n`;
+              summary += `| Blocking | ${blocking} |\n`;
+              summary += `| Warning | ${warnings} |\n\n`;
+
+              if (blocking > 0) {
+                summary += `**${blocking} blocking issue(s) must be fixed before merging.**\n\n`;
+              }
+
+              summary += `### Issues Found\n\n`;
+              for (const r of results) {
+                const icon = r.level === 'BLOCK' ? 'BLOCK' : 'WARN';
+                summary += `- **${icon}** ${r.file}:${r.line} - \`${r.pattern_id}\`: ${r.message}\n`;
+              }
+
+              summary += `\n---\n*Add \`# vibesrails: ignore\` to suppress false positives.*`;
+            }
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('vibesrails Security Scan')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: summary
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: summary
+              });
+            }
+
+            if (blocking > 0) {
+              core.setFailed(`${blocking} blocking security issue(s) found`);
+            }
