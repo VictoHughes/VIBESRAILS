@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 def main():
-    print("=== vibesrails + Claude Code installer ===")
+    print("=== VibesRails + Claude Code installer ===")
     print()
 
     # Check Python version

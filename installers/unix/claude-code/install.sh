@@ -6,7 +6,7 @@
 
 set -e
 
-echo "=== vibesrails + Claude Code installer ==="
+echo "=== VibesRails + Claude Code installer ==="
 echo ""
 
 PROJECT_PATH="${1:-.}"

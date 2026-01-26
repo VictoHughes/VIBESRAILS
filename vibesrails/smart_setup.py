@@ -29,7 +29,7 @@ LANG = _detect_language()
 # Message translations
 MESSAGES = {
     "en": {
-        "smart_setup": "vibesrails Smart Setup",
+        "smart_setup": "VibesRails Smart Setup",
         "analyzing": "Analyzing",
         "project_analysis": "Project analysis:",
         "detected_types": "Detected type(s)",
@@ -104,7 +104,7 @@ MESSAGES = {
         "arch_will_check": "Pre-commit will check: security + architecture",
     },
     "fr": {
-        "smart_setup": "vibesrails Smart Setup",
+        "smart_setup": "VibesRails Smart Setup",
         "analyzing": "Analyse",
         "project_analysis": "Analyse du projet:",
         "detected_types": "Type(s) detecte(s)",

@@ -2,7 +2,7 @@
 REM vibesrails - Source installer for Windows
 setlocal enabledelayedexpansion
 
-echo === vibesrails source installer ===
+echo === VibesRails source installer ===
 echo.
 
 REM Check Python

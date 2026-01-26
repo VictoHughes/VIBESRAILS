@@ -4,7 +4,7 @@
 
 set -e
 
-echo "=== vibesrails installer ==="
+echo "=== VibesRails installer ==="
 echo ""
 
 # Check Python

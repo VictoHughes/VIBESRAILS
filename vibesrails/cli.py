@@ -152,7 +152,7 @@ fi
                 hook_path.write_text(content)
                 print(f"{YELLOW}Updated pre-commit hook with architecture check{NC}")
             else:
-                print(f"{YELLOW}vibesrails hook already installed{NC}")
+                print(f"{YELLOW}VibesRails hook already installed{NC}")
             return True
 
         # Append to existing hook
@@ -164,7 +164,7 @@ fi
     else:
         # Create new hook with smart command detection
         hook_content = f"""#!/bin/bash
-# vibesrails pre-commit hook
+# VibesRails pre-commit hook
 # Scale up your vibe coding - safely
 
 # Find vibesrails command (PATH, local venv, or python -m)
@@ -195,7 +195,7 @@ def run_scan(config: dict, files: list[str]) -> int:
         get_ai_agent_name,
     )
 
-    print(f"{BLUE}vibesrails - Security Scan{NC}")
+    print(f"{BLUE}VibesRails - Security Scan{NC}")
     print("=" * 30)
 
     # Show guardian status if active
@@ -243,13 +243,13 @@ def run_scan(config: dict, files: list[str]) -> int:
         print(f"\n{RED}Fix blocking issues or use: git commit --no-verify{NC}")
         return 1
 
-    print(f"\n{GREEN}vibesrails: PASSED{NC}")
+    print(f"\n{GREEN}VibesRails: PASSED{NC}")
     return 0
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="vibesrails - Scale up your vibe coding safely | From KIONOS™ (free tools)",
+        description="VibesRails - Scale up your vibe coding safely | From KIONOS™ (free tools)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -264,7 +264,7 @@ Examples:
         """,
     )
     parser.add_argument("--version", "-v", action="version",
-                        version=f"vibesrails {__version__} - From KIONOS™ (free tools) - Developed by SM")
+                        version=f"VibesRails {__version__} - From KIONOS™ (free tools) - Developed by SM")
     parser.add_argument("--init", action="store_true", help="Initialize vibesrails.yaml")
     parser.add_argument("--hook", action="store_true", help="Install git pre-commit hook")
     parser.add_argument("--uninstall", action="store_true", help="Remove vibesrails from project")

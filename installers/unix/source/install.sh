@@ -4,7 +4,7 @@
 
 set -e
 
-echo "=== vibesrails installer (from source) ==="
+echo "=== VibesRails installer (from source) ==="
 echo ""
 
 # Check dependencies

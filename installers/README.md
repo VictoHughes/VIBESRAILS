@@ -1,4 +1,4 @@
-# vibesrails Installers
+# VibesRails Installers
 
 ## By Operating System
 

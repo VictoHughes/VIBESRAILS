@@ -7,7 +7,7 @@ import sys
 
 
 def main():
-    print("=== vibesrails pip installer ===")
+    print("=== VibesRails pip installer ===")
     print()
 
     # Check Python version

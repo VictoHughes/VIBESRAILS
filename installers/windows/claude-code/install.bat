@@ -2,7 +2,7 @@
 REM vibesrails - Claude Code integration installer for Windows
 setlocal enabledelayedexpansion
 
-echo === vibesrails + Claude Code installer ===
+echo === VibesRails + Claude Code installer ===
 echo.
 
 REM Check Python

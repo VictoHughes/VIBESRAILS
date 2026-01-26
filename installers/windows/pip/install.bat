@@ -1,6 +1,6 @@
 @echo off
 REM vibesrails - pip installer for Windows
-echo === vibesrails pip installer ===
+echo === VibesRails pip installer ===
 echo.
 
 REM Check Python
