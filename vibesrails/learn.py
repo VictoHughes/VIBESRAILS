@@ -15,8 +15,7 @@ try:
 except ImportError:
     HAS_ANTHROPIC = False
 
-from .scanner import get_all_python_files, RED, GREEN, YELLOW, BLUE, NC
-
+from .scanner import BLUE, GREEN, NC, RED, YELLOW, get_all_python_files
 
 LEARN_PROMPT = """You are a security and code quality expert analyzing a Python codebase.
 
@@ -114,7 +113,7 @@ def run_learn_mode() -> bool:
 
     if not HAS_ANTHROPIC:
         print(f"{RED}ERROR: anthropic package not installed{NC}")
-        print(f"Install with: pip install vibesrails[claude]")
+        print("Install with: pip install vibesrails[claude]")
         return False
 
     # Sample codebase
@@ -125,7 +124,7 @@ def run_learn_mode() -> bool:
         print(f"{RED}No Python files found to analyze{NC}")
         return False
 
-    print(f"Collected samples from codebase\n")
+    print("Collected samples from codebase\n")
 
     # Analyze with Claude
     print(f"{YELLOW}Analyzing with Claude...{NC}")

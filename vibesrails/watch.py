@@ -7,12 +7,12 @@ Monitors Python files and scans on save.
 import time
 from pathlib import Path
 
-from .scanner import scan_file, load_config, RED, GREEN, YELLOW, BLUE, NC
+from .scanner import BLUE, GREEN, NC, RED, YELLOW, load_config, scan_file
 
 # Optional watchdog import
 try:
-    from watchdog.observers import Observer
     from watchdog.events import FileSystemEventHandler
+    from watchdog.observers import Observer
     HAS_WATCHDOG = True
 except ImportError:
     HAS_WATCHDOG = False
@@ -89,14 +89,14 @@ def run_watch_mode(config_path: Path | None = None) -> bool:
 
     if not HAS_WATCHDOG:
         print(f"{RED}ERROR: watchdog package not installed{NC}")
-        print(f"Install with: pip install vibesrails[watch]")
+        print("Install with: pip install vibesrails[watch]")
         return False
 
     # Load config
     config = load_config(config_path)
 
     print(f"{GREEN}Watching for changes...{NC}")
-    print(f"Press Ctrl+C to stop\n")
+    print("Press Ctrl+C to stop\n")
 
     # Set up observer
     handler = VibesRailsHandler(config)

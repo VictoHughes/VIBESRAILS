@@ -11,8 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .scanner import RED, YELLOW, GREEN, BLUE, NC, ScanResult
-
+from .scanner import BLUE, GREEN, NC, YELLOW, ScanResult
 
 # Environment variables that indicate AI coding
 AI_ENV_MARKERS = [
@@ -239,4 +238,4 @@ def print_guardian_status(config: dict):
 
         guardian = get_guardian_config(config)
         if guardian.get("warnings_as_blocking"):
-            print(f"  - Warnings elevated to blocking")
+            print("  - Warnings elevated to blocking")

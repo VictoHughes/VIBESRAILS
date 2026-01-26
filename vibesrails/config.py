@@ -8,15 +8,13 @@ Supports:
 - Multiple extends: extends: ["./base.yaml", "@vibesrails/web-pack"]
 """
 
-import urllib.request
 import urllib.error
+import urllib.request
 from pathlib import Path
-from typing import Any
 
 import yaml
 
-from .scanner import RED, YELLOW, GREEN, NC
-
+from .scanner import NC, RED, YELLOW
 
 # Allowed domains for remote config fetch (SSRF protection)
 ALLOWED_REMOTE_DOMAINS = {
@@ -122,7 +120,7 @@ def fetch_remote_config(
     if not is_allowed_remote_domain(url, extra_domains):
         print(f"{RED}BLOCKED: Remote domain not allowed: {url}{NC}")
         print(f"  Allowed domains: {', '.join(sorted(ALLOWED_REMOTE_DOMAINS))}")
-        print(f"  Add trusted domains to config: remote_domains: [\"example.com\"]")
+        print("  Add trusted domains to config: remote_domains: [\"example.com\"]")
         return None
 
     if url in _remote_cache:

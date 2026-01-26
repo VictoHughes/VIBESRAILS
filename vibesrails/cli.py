@@ -12,13 +12,17 @@ from pathlib import Path
 
 from . import __version__
 from .scanner import (
-    scan_file,
+    BLUE,
+    GREEN,
+    NC,
+    RED,
+    YELLOW,
+    get_all_python_files,
+    get_staged_files,
     load_config,
+    scan_file,
     show_patterns,
     validate_config,
-    get_staged_files,
-    get_all_python_files,
-    RED, YELLOW, GREEN, BLUE, NC,
 )
 
 
@@ -60,10 +64,10 @@ def init_config(target: Path = Path("vibesrails.yaml")) -> bool:
 
     shutil.copy(default_config, target)
     print(f"{GREEN}Created {target}{NC}")
-    print(f"\nNext steps:")
+    print("\nNext steps:")
     print(f"  1. Edit {target} to customize patterns")
-    print(f"  2. Run: vibesrails --hook  (install git pre-commit)")
-    print(f"  3. Code freely - vibesrails runs on every commit")
+    print("  2. Run: vibesrails --hook  (install git pre-commit)")
+    print("  3. Code freely - vibesrails runs on every commit")
     return True
 
 
@@ -84,7 +88,7 @@ def uninstall() -> bool:
         if "vibesrails" in content:
             # Remove vibesrails lines from hook
             lines = content.split("\n")
-            new_lines = [l for l in lines if "vibesrails" not in l.lower()]
+            new_lines = [line for line in lines if "vibesrails" not in line.lower()]
             new_content = "\n".join(new_lines).strip()
 
             if new_content and new_content != "#!/bin/bash":
@@ -106,7 +110,7 @@ def uninstall() -> bool:
         for f in removed:
             print(f"  - {f}")
         print(f"\n{GREEN}vibesrails uninstalled from this project{NC}")
-        print(f"To uninstall the package: pip uninstall vibesrails")
+        print("To uninstall the package: pip uninstall vibesrails")
     else:
         print(f"{YELLOW}Nothing to uninstall{NC}")
 
@@ -186,11 +190,11 @@ fi
 def run_scan(config: dict, files: list[str]) -> int:
     """Run scan and return exit code."""
     from .guardian import (
-        should_apply_guardian,
         apply_guardian_rules,
-        print_guardian_status,
-        log_guardian_block,
         get_ai_agent_name,
+        log_guardian_block,
+        print_guardian_status,
+        should_apply_guardian,
     )
 
     print(f"{BLUE}VibesRails - Security Scan{NC}")
@@ -330,7 +334,7 @@ Examples:
 
     if not config_path or not config_path.exists():
         print(f"{RED}ERROR: No vibesrails.yaml found{NC}")
-        print(f"\nRun: vibesrails --init")
+        print("\nRun: vibesrails --init")
         sys.exit(1)
 
     config = load_config(config_path)

@@ -5,10 +5,10 @@ Only fixes patterns with clear, safe transformations.
 """
 
 import re
-from pathlib import Path
 from dataclasses import dataclass
+from pathlib import Path
 
-from .scanner import RED, YELLOW, GREEN, BLUE, NC
+from .scanner import BLUE, GREEN, NC, RED, YELLOW
 
 
 @dataclass

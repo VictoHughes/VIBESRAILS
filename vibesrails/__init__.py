@@ -7,13 +7,13 @@ A YAML-driven security and quality scanner for Python projects.
 __version__ = "1.1.0"
 
 from .scanner import (
-    scan_file,
-    load_config,
     ScanResult,
+    get_all_python_files,
+    get_staged_files,
+    load_config,
+    scan_file,
     show_patterns,
     validate_config,
-    get_staged_files,
-    get_all_python_files,
 )
 
 __all__ = [

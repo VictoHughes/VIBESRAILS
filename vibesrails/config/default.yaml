@@ -113,10 +113,10 @@ exceptions:
     allowed: ["hardcoded_secret", "shell_injection", "mutable_default"]
     reason: "Tests peuvent mocker patterns dangereux"
 
-# Complexity (utilisé par quality-gate.sh)
+# Complexity (enforced by scanner)
 complexity:
-  max_file_lines: 300
-  max_function_lines: 50
+  max_file_lines: 300    # WARN if file exceeds this (test files excluded)
+  max_function_lines: 50 # For future use
 
 # ═══════════════════════════════════════════════════════════════
 # 🤖 GUARDIAN - AI Coding Safety

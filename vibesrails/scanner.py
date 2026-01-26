@@ -202,11 +202,23 @@ def scan_file(filepath: str, config: dict) -> list[ScanResult]:
         print(f"{YELLOW}SKIP{NC} {filepath} (read error: {e})")
         return results
 
+    # Check file length (complexity settings)
+    complexity = config.get("complexity", {})
+    max_file_lines = complexity.get("max_file_lines", 0)
+    if max_file_lines and len(lines) > max_file_lines and not is_test_file(filepath):
+        results.append(ScanResult(
+            file=filepath,
+            line=len(lines),
+            pattern_id="file_too_long",
+            message=f"File has {len(lines)} lines (max: {max_file_lines}). Consider splitting into smaller modules.",
+            level="WARN",
+        ))
+
     # Get exceptions for this file
     exceptions = config.get("exceptions", {})
     allowed_patterns = set()
 
-    for exc_name, exc_config in exceptions.items():
+    for _, exc_config in exceptions.items():
         if matches_pattern(filepath, exc_config.get("patterns", [])):
             allowed_patterns.update(exc_config.get("allowed", []))
 
