@@ -188,7 +188,7 @@ fi
 
 
 def run_scan(config: dict, files: list[str]) -> int:
-    """Run scan and return exit code."""
+    """Run scan with Semgrep + VibesRails orchestration and return exit code."""
     from .guardian import (
         apply_guardian_rules,
         get_ai_agent_name,
@@ -196,6 +196,8 @@ def run_scan(config: dict, files: list[str]) -> int:
         print_guardian_status,
         should_apply_guardian,
     )
+    from .result_merger import ResultMerger
+    from .semgrep_adapter import SemgrepAdapter
 
     print(f"{BLUE}VibesRails - Security Scan{NC}")
     print("=" * 30)
@@ -209,7 +211,33 @@ def run_scan(config: dict, files: list[str]) -> int:
 
     print(f"Scanning {len(files)} file(s)...\n")
 
-    all_results = []
+    # Initialize Semgrep adapter
+    semgrep_config = config.get("semgrep", {"enabled": True, "preset": "auto"})
+    semgrep = SemgrepAdapter(semgrep_config)
+
+    # Ensure Semgrep is installed (auto-install if needed)
+    semgrep_available = False
+    if semgrep.enabled:
+        if not semgrep.is_installed():
+            print("📦 Installing Semgrep (enhanced scanning)...")
+            semgrep_available = semgrep.install(quiet=False)
+            if semgrep_available:
+                print(f"{GREEN}✅ Semgrep installed{NC}\n")
+            else:
+                print(f"{YELLOW}⚠️  Semgrep install failed, continuing with VibesRails only{NC}\n")
+        else:
+            semgrep_available = True
+
+    # Run Semgrep scan (if available)
+    semgrep_results = []
+    if semgrep_available and semgrep.enabled:
+        print("🔍 Running Semgrep scan...")
+        semgrep_results = semgrep.scan(files)
+        print(f"   Found {len(semgrep_results)} issue(s)")
+
+    # Run VibesRails scan
+    print("🔍 Running VibesRails scan...")
+    vibesrails_results = []
     guardian_active = should_apply_guardian(config)
     agent_name = get_ai_agent_name() if guardian_active else None
 
@@ -220,23 +248,60 @@ def run_scan(config: dict, files: list[str]) -> int:
         if guardian_active:
             results = apply_guardian_rules(results, config, filepath)
 
-        all_results.extend(results)
+        vibesrails_results.extend(results)
 
-    # Report results
-    blocking = [r for r in all_results if r.level == "BLOCK"]
-    warnings = [r for r in all_results if r.level == "WARN"]
+    print(f"   Found {len(vibesrails_results)} issue(s)\n")
 
-    for r in blocking:
-        print(f"{RED}BLOCK{NC} {r.file}:{r.line}")
-        print(f"  [{r.pattern_id}] {r.message}")
+    # Merge results
+    merger = ResultMerger()
+    unified_results, stats = merger.merge(semgrep_results, vibesrails_results)
 
-        # Log guardian blocks for statistics
-        if guardian_active:
-            log_guardian_block(r, agent_name)
+    # Display statistics
+    if semgrep_results or vibesrails_results:
+        print(f"{BLUE}📊 Scan Statistics:{NC}")
+        print(f"   Semgrep:     {stats['semgrep']} issues")
+        print(f"   VibesRails:  {stats['vibesrails']} issues")
+        if stats['duplicates'] > 0:
+            print(f"   Duplicates:  {stats['duplicates']} (merged)")
+        print(f"   Total:       {stats['total']} unique issues\n")
 
-    for r in warnings:
-        print(f"{YELLOW}WARN{NC} {r.file}:{r.line}")
-        print(f"  [{r.pattern_id}] {r.message}")
+    # Categorize and display results
+    blocking = [r for r in unified_results if r.level == "BLOCK"]
+    warnings = [r for r in unified_results if r.level == "WARN"]
+
+    # Display by category
+    categories = merger.group_by_category(unified_results)
+    for category, results in categories.items():
+        category_emoji = {
+            "security": "🔒",
+            "architecture": "🏗️",
+            "guardian": "🛡️",
+            "bugs": "🐛",
+            "general": "⚙️"
+        }.get(category, "•")
+
+        print(f"{BLUE}{category_emoji} {category.upper()}:{NC}")
+        for r in results:
+            color = RED if r.level == "BLOCK" else YELLOW
+            level_text = f"{color}{r.level}{NC}"
+            source_badge = f"[{r.source}]"
+
+            print(f"{level_text} {r.file}:{r.line} {source_badge}")
+            print(f"  [{r.rule_id}] {r.message}")
+
+            # Log guardian blocks for statistics
+            if guardian_active and r.level == "BLOCK" and r.source == "VIBESRAILS":
+                # Create fake ScanResult for compatibility
+                from .scanner import ScanResult
+                scan_result = ScanResult(
+                    file=r.file,
+                    line=r.line,
+                    pattern_id=r.rule_id,
+                    message=r.message,
+                    level=r.level
+                )
+                log_guardian_block(scan_result, agent_name)
+        print()
 
     print("=" * 30)
     print(f"BLOCKING: {len(blocking)} | WARNINGS: {len(warnings)}")

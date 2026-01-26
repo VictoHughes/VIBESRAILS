@@ -108,6 +108,33 @@ def generate_config(
         "",
     ])
 
+    # Semgrep integration (enhanced scanning)
+    semgrep_preset = "auto"  # Default
+    semgrep_additional = []
+
+    # Customize preset based on project type
+    for proj_type in project_types:
+        if proj_type in ["fastapi", "django", "flask"]:
+            semgrep_additional.append(f"p/{proj_type}")
+
+    lines.extend([
+        "# Semgrep Integration (AST-based analysis)",
+        "# Auto-installs on first run",
+        "semgrep:",
+        "  enabled: true",
+        f'  preset: "{semgrep_preset}"  # auto | strict | minimal',
+    ])
+
+    if semgrep_additional:
+        lines.append("  additional_rules:")
+        for rule in semgrep_additional:
+            lines.append(f'    - "{rule}"')
+
+    lines.extend([
+        "  exclude_rules: []  # Optional: rules to exclude",
+        "",
+    ])
+
     # Project-specific patterns
     if has_secrets or env_files:
         lines.extend([
@@ -178,6 +205,33 @@ def generate_config_with_extras(
         "  enabled: true",
         "  auto_detect: true",
         "  warnings_as_blocking: false",
+        "",
+    ])
+
+    # Semgrep integration (enhanced scanning)
+    semgrep_preset = "auto"  # Default
+    semgrep_additional = []
+
+    # Customize preset based on project type
+    for proj_type in project_types:
+        if proj_type in ["fastapi", "django", "flask"]:
+            semgrep_additional.append(f"p/{proj_type}")
+
+    lines.extend([
+        "# Semgrep Integration (AST-based analysis)",
+        "# Auto-installs on first run",
+        "semgrep:",
+        "  enabled: true",
+        f'  preset: "{semgrep_preset}"  # auto | strict | minimal',
+    ])
+
+    if semgrep_additional:
+        lines.append("  additional_rules:")
+        for rule in semgrep_additional:
+            lines.append(f'    - "{rule}"')
+
+    lines.extend([
+        "  exclude_rules: []  # Optional: rules to exclude",
         "",
     ])
 

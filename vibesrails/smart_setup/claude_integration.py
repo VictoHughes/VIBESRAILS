@@ -42,6 +42,11 @@ vibesrails scanne automatiquement chaque commit pour detecter:
 - Secrets hardcodes (API keys, passwords, tokens)
 - Injections SQL
 - Patterns dangereux
+- Violations architecturales
+
+**Powered by Semgrep + VibesRails:**
+- Semgrep: Analyse AST (precision)
+- VibesRails: Architecture + Guardian Mode (AI safety)
 
 ## Regles a suivre
 
@@ -72,6 +77,13 @@ vibesrails scanne automatiquement chaque commit pour detecter:
 vibesrails detecte automatiquement Claude Code et active le mode Guardian:
 - Verifications plus strictes pour le code genere par AI
 - Les warnings peuvent devenir des blocks
+
+## Semgrep Integration
+
+vibesrails orchestre Semgrep pour une analyse avancee:
+- Auto-installation au premier scan
+- Configuration via `vibesrails.yaml` (section `semgrep:`)
+- Deduplication intelligente des resultats
 
 ## Configuration
 
