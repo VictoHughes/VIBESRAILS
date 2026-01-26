@@ -1,0 +1,95 @@
+# vibesrails - Security scanner configuration
+# Single source of truth for security patterns
+#
+# Documentation: https://github.com/VictoHughes/VIBESRAILS
+
+version: "1.0"
+
+# ═══════════════════════════════════════════════════════════════
+# 🔒 SECURITY - Blocks commit
+# ═══════════════════════════════════════════════════════════════
+blocking:
+  - id: hardcoded_secret
+    name: "Hardcoded Secret"
+    regex: "(api_key|password|secret|token|pwd|passwd)\\s*=\\s*[\"'][^\"']{4,}"
+    flags: "i"
+    message: "Hardcoded secret detected - use environment variables"
+
+  - id: sql_injection
+    name: "SQL Injection"
+    regex: "\\.execute\\s*\\([^)]*f[\"']"
+    message: "SQL injection risk - use parameterized queries"
+
+  - id: command_injection
+    name: "Command Injection"
+    regex: "(os\\.system|subprocess\\.call|subprocess\\.run|eval)\\s*\\([^)]*f[\"']"
+    message: "Command injection risk - sanitize input or use safe alternatives"
+
+  - id: debug_mode_prod
+    name: "Debug Mode in Production"
+    regex: "DEBUG\\s*=\\s*True"
+    flags: "i"
+    message: "Debug mode enabled - set DEBUG=False in production"
+    scope: ["**/settings.py", "**/config.py"]
+
+# ═══════════════════════════════════════════════════════════════
+# ⚠️  WARNINGS - Shows warning, doesn't block
+# ═══════════════════════════════════════════════════════════════
+warning:
+  - id: star_import
+    name: "Star Import"
+    regex: "from\\s+\\S+\\s+import\\s+\\*"
+    message: "Star import makes code harder to maintain - use explicit imports"
+    skip_in_tests: true
+
+  - id: print_statement
+    name: "Print Statement"
+    regex: "^\\s*print\\("
+    message: "Consider using logging instead of print"
+    skip_in_tests: true
+
+  - id: bare_except
+    name: "Bare Except"
+    regex: "except:\\s*$"
+    message: "Bare except catches all exceptions - specify exception types"
+    skip_in_tests: true
+
+  - id: todo_comment
+    name: "TODO Comment"
+    regex: "#\\s*TODO"
+    flags: "i"
+    message: "TODO found - consider creating a task"
+    skip_in_tests: false
+
+# ═══════════════════════════════════════════════════════════════
+# ✅ EXCEPTIONS - Files where patterns are allowed
+# ═══════════════════════════════════════════════════════════════
+exceptions:
+  test_files:
+    patterns:
+      - "test_*.py"
+      - "*_test.py"
+      - "tests/**/*.py"
+    allowed:
+      - "hardcoded_secret"
+      - "sql_injection"
+      - "command_injection"
+    reason: "Tests can mock dangerous patterns for testing purposes"
+
+  config_files:
+    patterns:
+      - "**/settings.py"
+      - "**/config.py"
+    allowed:
+      - "star_import"
+    reason: "Config files may use star imports for convenience"
+
+# ═══════════════════════════════════════════════════════════════
+# 📝 NOTES
+# ═══════════════════════════════════════════════════════════════
+# - Add custom patterns in blocking/warning sections
+# - Use 'scope' to limit patterns to specific files
+# - Use 'skip_in_tests' to ignore warnings in test files
+# - Add exceptions for legitimate use cases
+# - Run: vibesrails --show to see all patterns
+# - Run: vibesrails --validate to check config
