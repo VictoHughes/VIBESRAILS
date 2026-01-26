@@ -189,6 +189,7 @@ fi
 
 def run_scan(config: dict, files: list[str]) -> int:
     """Run scan with Semgrep + VibesRails orchestration and return exit code."""
+    import time
     from .guardian import (
         apply_guardian_rules,
         get_ai_agent_name,
@@ -196,8 +197,12 @@ def run_scan(config: dict, files: list[str]) -> int:
         print_guardian_status,
         should_apply_guardian,
     )
+    from .metrics import track_scan
     from .result_merger import ResultMerger
     from .semgrep_adapter import SemgrepAdapter
+
+    # Start timing
+    start_time = time.time()
 
     print(f"{BLUE}VibesRails - Security Scan{NC}")
     print("=" * 30)
@@ -306,6 +311,25 @@ def run_scan(config: dict, files: list[str]) -> int:
     print("=" * 30)
     print(f"BLOCKING: {len(blocking)} | WARNINGS: {len(warnings)}")
 
+    # Determine exit code
+    exit_code = 1 if blocking else 0
+
+    # Track metrics
+    duration_ms = int((time.time() - start_time) * 1000)
+    track_scan(
+        duration_ms=duration_ms,
+        files_scanned=len(files),
+        semgrep_enabled=semgrep.enabled and semgrep_available,
+        semgrep_issues=len(semgrep_results),
+        vibesrails_issues=len(vibesrails_results),
+        duplicates=stats.get('duplicates', 0),
+        total_issues=len(unified_results),
+        blocking_issues=len(blocking),
+        warnings=len(warnings),
+        exit_code=exit_code,
+        guardian_active=guardian_active,
+    )
+
     if blocking:
         print(f"\n{RED}Fix blocking issues or use: git commit --no-verify{NC}")
         return 1
@@ -323,6 +347,7 @@ Examples:
   vibesrails              Scan staged files (default)
   vibesrails --all        Scan entire project
   vibesrails --show       Show configured patterns
+  vibesrails --stats      Show scan statistics and metrics
   vibesrails --init       Initialize vibesrails.yaml
   vibesrails --hook       Install git pre-commit hook
   vibesrails --learn      Claude-powered pattern discovery
@@ -345,6 +370,7 @@ Examples:
     parser.add_argument("--learn", action="store_true", help="Claude-powered pattern discovery")
     parser.add_argument("--watch", action="store_true", help="Live scanning on file save")
     parser.add_argument("--guardian-stats", action="store_true", help="Show AI coding block statistics")
+    parser.add_argument("--stats", action="store_true", help="Show scan statistics and metrics")
     parser.add_argument("--fix", action="store_true", help="Auto-fix simple patterns")
     parser.add_argument("--dry-run", action="store_true", help="Show what --fix would change")
     parser.add_argument("--no-backup", action="store_true", help="Don't create .bak files with --fix")
@@ -355,6 +381,13 @@ Examples:
     if args.guardian_stats:
         from .guardian import show_guardian_stats
         show_guardian_stats()
+        sys.exit(0)
+
+    # Handle scan statistics
+    if args.stats:
+        from .metrics import MetricsCollector
+        collector = MetricsCollector()
+        collector.show_stats()
         sys.exit(0)
 
     # Handle fixable patterns list
