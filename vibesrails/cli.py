@@ -7,7 +7,6 @@ Handles config discovery, initialization, and delegates to scanner.
 
 import argparse
 import shutil
-import subprocess
 import sys
 from pathlib import Path
 
@@ -19,7 +18,6 @@ from .scanner import (
     validate_config,
     get_staged_files,
     get_all_python_files,
-    ScanResult,
     RED, YELLOW, GREEN, BLUE, NC,
 )
 
