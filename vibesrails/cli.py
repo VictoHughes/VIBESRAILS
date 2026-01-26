@@ -255,7 +255,7 @@ def handle_learn_command():
 def run_scan(config: dict, files: list[str]) -> int:
     """Run scan with Semgrep + VibesRails orchestration and return exit code."""
     import time
-    from .guardian import (
+    from .ai_guardian import (
         apply_guardian_rules,
         get_ai_agent_name,
         log_guardian_block,
@@ -448,7 +448,7 @@ Examples:
 
     # Handle guardian stats
     if args.guardian_stats:
-        from .guardian import show_guardian_stats
+        from .ai_guardian import show_guardian_stats
         show_guardian_stats()
         sys.exit(0)
 
