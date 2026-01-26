@@ -1,5 +1,9 @@
 # vibesrails 🛤️
 
+<a href="https://buymeacoffee.com/vibesrails" target="_blank">
+  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="40">
+</a>
+
 **Scale up your vibe coding - safely.**
 
 Code fast, ship faster. vibesrails catches security issues automatically so you can focus on building.
@@ -121,8 +125,11 @@ Not restrictions. **Freedom with protection.**
 
 ## Support
 
-If vibesrails helps you ship faster:
-- ⭐ **Star this repo** - it helps others discover vibesrails
+VibesRails is free and open source. If it helps you ship safer code, consider supporting:
+
+[![Buy Me A Coffee](https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png)](https://buymeacoffee.com/vibesrails)
+
+⭐ **Star this repo** - it helps others discover vibesrails
 
 ## License
 
