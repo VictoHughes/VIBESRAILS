@@ -1348,6 +1348,7 @@ def smart_setup(
     print(f"\n{msg('next_steps')}:")
     print(f"  1. {msg('commit_normally')}")
     print(f"  2. {msg('scan_all')}: vibesrails --all")
+    print(f"\n{BLUE}A.B.H.A.M.H{NC}")
 
     return result
 

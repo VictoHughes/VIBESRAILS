@@ -244,7 +244,6 @@ def run_scan(config: dict, files: list[str]) -> int:
         return 1
 
     print(f"\n{GREEN}vibesrails: PASSED{NC}")
-    print(f"\n{BLUE}A.B.H.A.M.H{NC}")
     return 0
 
 
