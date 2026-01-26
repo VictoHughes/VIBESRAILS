@@ -24,6 +24,11 @@ from .scanner import (
     show_patterns,
     validate_config,
 )
+from .learner import (
+    PatternDetector,
+    SignatureIndexer,
+    StructureRulesGenerator,
+)
 
 
 def find_config() -> Path | None:
@@ -187,6 +192,66 @@ fi
     return True
 
 
+def handle_learn_command():
+    """Learn project structure and create pattern rules."""
+    print(f"{BLUE}🧠 Learning project structure...{NC}")
+
+    # Find project root
+    project_root = Path.cwd()
+    cache_dir = project_root / ".vibesrails"
+    cache_dir.mkdir(exist_ok=True)
+
+    # Detect patterns
+    print("  Detecting patterns...")
+    detector = PatternDetector(project_root)
+    patterns = detector.detect()
+
+    if not patterns:
+        print(f"{YELLOW}  No clear patterns detected yet.{NC}")
+        return 0
+
+    print(f"{GREEN}  Detected patterns:{NC}")
+    for pattern in patterns:
+        print(f"    - {pattern.category:12} → {pattern.location:30} "
+              f"({pattern.confidence:.0%} confidence, {pattern.examples} examples)")
+
+    # Generate rules
+    print("\n  Generating structure rules...")
+    generator = StructureRulesGenerator()
+    patterns_file = cache_dir / "learned_patterns.yaml"
+    generator.save_rules(patterns, patterns_file)
+    print(f"{GREEN}  ✓ Rules saved to .vibesrails/learned_patterns.yaml{NC}")
+
+    # Build signature index
+    print("\n  Building signature index...")
+    indexer = SignatureIndexer(project_root)
+    signatures = indexer.build_index()
+
+    # Save index to JSON
+    import json
+    index_file = cache_dir / "signature_index.json"
+    index_data = [
+        {
+            "name": sig.name,
+            "signature_type": sig.signature_type,
+            "file_path": sig.file_path,
+            "line_number": sig.line_number,
+            "parameters": sig.parameters,
+            "return_type": sig.return_type,
+            "parent_class": sig.parent_class,
+        }
+        for sig in signatures
+    ]
+    with open(index_file, "w") as f:
+        json.dump(index_data, f, indent=2)
+
+    print(f"{GREEN}  ✓ Indexed {len(signatures)} signatures{NC}")
+    print(f"\n{GREEN}✓ Learning complete!{NC}")
+    print(f"  Patterns and signatures cached in .vibesrails/")
+
+    return 0
+
+
 def run_scan(config: dict, files: list[str]) -> int:
     """Run scan with Semgrep + VibesRails orchestration and return exit code."""
     import time
@@ -339,6 +404,10 @@ def run_scan(config: dict, files: list[str]) -> int:
 
 
 def main():
+    # Handle learn command (positional argument)
+    if len(sys.argv) > 1 and sys.argv[1] == "learn":
+        sys.exit(handle_learn_command())
+
     parser = argparse.ArgumentParser(
         description="VibesRails - Scale up your vibe coding safely | From KIONOS™ (free tools)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
