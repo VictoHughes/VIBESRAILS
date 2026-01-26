@@ -249,7 +249,7 @@ def run_scan(config: dict, files: list[str]) -> int:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="vibesrails - Scale up your vibe coding safely",
+        description="vibesrails - Scale up your vibe coding safely | From KIONOS™ (free tools)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -263,7 +263,8 @@ Examples:
   vibesrails --guardian-stats  Show AI coding block statistics
         """,
     )
-    parser.add_argument("--version", "-v", action="version", version=f"vibesrails {__version__}")
+    parser.add_argument("--version", "-v", action="version",
+                        version=f"vibesrails {__version__} - From KIONOS™ (free tools) - Developed by SM")
     parser.add_argument("--init", action="store_true", help="Initialize vibesrails.yaml")
     parser.add_argument("--hook", action="store_true", help="Install git pre-commit hook")
     parser.add_argument("--uninstall", action="store_true", help="Remove vibesrails from project")
