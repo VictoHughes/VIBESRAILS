@@ -27,7 +27,7 @@ class StructureRulesGenerator:
                 "examples": pattern.examples,
                 "enforcement": self._determine_enforcement(pattern.confidence),
                 "ready_for_enforcement": pattern.confidence >= self.ENFORCEMENT_THRESHOLD,
-                "pattern": f"*_{pattern.category}*.py" if pattern.category == "test" else f"*_{pattern.category}.py"
+                "pattern": f"{pattern.category}_*.py" if pattern.category == "test" else f"*_{pattern.category}.py"
             }
             placement_rules.append(rule)
 
