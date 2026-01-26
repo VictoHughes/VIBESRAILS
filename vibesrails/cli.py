@@ -115,8 +115,12 @@ def uninstall() -> bool:
     return True
 
 
-def install_hook() -> bool:
-    """Install git pre-commit hook."""
+def install_hook(architecture_enabled: bool = False) -> bool:
+    """Install git pre-commit hook.
+
+    Args:
+        architecture_enabled: If True, also run architecture check (import-linter)
+    """
     git_dir = Path(".git")
     if not git_dir.exists():
         print(f"{RED}ERROR: Not a git repository{NC}")
@@ -127,20 +131,39 @@ def install_hook() -> bool:
 
     hook_path = hooks_dir / "pre-commit"
 
+    # Architecture check command (resilient - doesn't fail if tool missing)
+    arch_check = ""
+    if architecture_enabled:
+        arch_check = """
+# Architecture check (optional - fails silently if not installed)
+if command -v lint-imports &> /dev/null; then
+    echo "Checking architecture..."
+    lint-imports || echo "Architecture check failed (non-blocking)"
+fi
+"""
+
     # Check if hook already exists
     if hook_path.exists():
         content = hook_path.read_text()
         if "vibesrails" in content:
-            print(f"{YELLOW}vibesrails hook already installed{NC}")
+            # Update hook if architecture enabled and not present
+            if architecture_enabled and "lint-imports" not in content:
+                content = content.rstrip() + "\n" + arch_check
+                hook_path.write_text(content)
+                print(f"{YELLOW}Updated pre-commit hook with architecture check{NC}")
+            else:
+                print(f"{YELLOW}vibesrails hook already installed{NC}")
             return True
 
         # Append to existing hook
         print(f"{YELLOW}Appending to existing pre-commit hook{NC}")
         with open(hook_path, "a") as f:
             f.write("\n\n# vibesrails security check\nvibesrails\n")
+            if architecture_enabled:
+                f.write(arch_check)
     else:
         # Create new hook with smart command detection
-        hook_content = """#!/bin/bash
+        hook_content = f"""#!/bin/bash
 # vibesrails pre-commit hook
 # Scale up your vibe coding - safely
 
@@ -154,7 +177,7 @@ elif [ -f "venv/bin/vibesrails" ]; then
 else
     python3 -m vibesrails
 fi
-"""
+{arch_check}"""
         hook_path.write_text(hook_content)
         hook_path.chmod(0o755)
 

@@ -93,6 +93,15 @@ MESSAGES = {
         "forbidden_pattern": "Forbidden pattern",
         "additional_patterns": "Additional patterns?",
         "custom_patterns": "Add custom patterns?",
+        # Architecture messages
+        "arch_detected": "Architecture detected",
+        "arch_layers": "layers",
+        "arch_suggest": "Enable architecture checking (import-linter)?",
+        "arch_install_cmd": "Install command",
+        "arch_config_created": "Architecture config created",
+        "arch_simple_project": "Simple project - architecture check not needed",
+        "arch_tool_missing": "Architecture tool not installed (optional)",
+        "arch_will_check": "Pre-commit will check: security + architecture",
     },
     "fr": {
         "smart_setup": "vibesrails Smart Setup",
@@ -159,6 +168,15 @@ MESSAGES = {
         "forbidden_pattern": "Pattern interdit",
         "additional_patterns": "Patterns additionnels?",
         "custom_patterns": "Ajouter des patterns personnalises?",
+        # Architecture messages
+        "arch_detected": "Architecture detectee",
+        "arch_layers": "couches",
+        "arch_suggest": "Activer la verification d'architecture (import-linter)?",
+        "arch_install_cmd": "Commande d'installation",
+        "arch_config_created": "Config architecture creee",
+        "arch_simple_project": "Projet simple - verification architecture non necessaire",
+        "arch_tool_missing": "Outil architecture non installe (optionnel)",
+        "arch_will_check": "Pre-commit verifiera: securite + architecture",
     },
 }
 
@@ -169,6 +187,28 @@ def msg(key: str, **kwargs) -> str:
         return text.format(**kwargs)
     return text
 
+
+# Architecture tools by language
+ARCHITECTURE_TOOLS = {
+    "python": {
+        "tool": "import-linter",
+        "install": "pip install import-linter",
+        "config_file": ".importlinter",
+        "run_cmd": "lint-imports",
+    },
+    "javascript": {
+        "tool": "dependency-cruiser",
+        "install": "npm install -D dependency-cruiser",
+        "config_file": ".dependency-cruiser.js",
+        "run_cmd": "npx depcruise src",
+    },
+    "typescript": {
+        "tool": "dependency-cruiser",
+        "install": "npm install -D dependency-cruiser",
+        "config_file": ".dependency-cruiser.js",
+        "run_cmd": "npx depcruise src",
+    },
+}
 
 # Project type detection patterns
 PROJECT_SIGNATURES = {
@@ -320,6 +360,147 @@ def detect_env_files(project_root: Path) -> list[Path]:
             found.append(path)
 
     return found
+
+
+# =============================================================================
+# ARCHITECTURE CHECKING
+# =============================================================================
+
+def detect_project_language(project_root: Path) -> str:
+    """Detect primary project language."""
+    # Check for Python
+    py_files = list(project_root.rglob("*.py"))
+    py_count = len([f for f in py_files if ".venv" not in str(f) and "venv" not in str(f)])
+
+    # Check for JS/TS
+    js_files = list(project_root.rglob("*.js")) + list(project_root.rglob("*.jsx"))
+    ts_files = list(project_root.rglob("*.ts")) + list(project_root.rglob("*.tsx"))
+    js_count = len([f for f in js_files if "node_modules" not in str(f)])
+    ts_count = len([f for f in ts_files if "node_modules" not in str(f)])
+
+    if ts_count > js_count and ts_count > py_count:
+        return "typescript"
+    if js_count > py_count:
+        return "javascript"
+    return "python"
+
+
+def detect_architecture_complexity(project_root: Path) -> dict:
+    """Detect if project is complex enough to need architecture checking.
+
+    Returns dict with:
+    - needs_arch: bool
+    - reason: str
+    - directories: list of main source directories
+    - language: str
+    """
+    language = detect_project_language(project_root)
+
+    # Find source directories (potential layers)
+    src_dirs = set()
+    layer_keywords = ["domain", "api", "infra", "infrastructure", "core", "services",
+                      "models", "views", "controllers", "handlers", "adapters"]
+
+    for item in project_root.iterdir():
+        if item.is_dir() and not item.name.startswith(".") and item.name not in [
+            "venv", ".venv", "node_modules", "__pycache__", "dist", "build", "tests", "test"
+        ]:
+            src_dirs.add(item.name)
+            # Check subdirectories
+            for subdir in item.iterdir():
+                if subdir.is_dir() and subdir.name in layer_keywords:
+                    src_dirs.add(f"{item.name}/{subdir.name}")
+
+    # Detect layers
+    detected_layers = [d for d in src_dirs if any(kw in d.lower() for kw in layer_keywords)]
+
+    # Decision logic
+    needs_arch = len(detected_layers) >= 2 or len(src_dirs) >= 4
+
+    if needs_arch:
+        reason = f"Detected {len(detected_layers)} architectural layers"
+    else:
+        reason = "Simple project structure"
+
+    return {
+        "needs_arch": needs_arch,
+        "reason": reason,
+        "directories": list(src_dirs),
+        "layers": detected_layers,
+        "language": language,
+    }
+
+
+def check_architecture_tool_installed(language: str) -> bool:
+    """Check if the architecture tool for the language is installed."""
+    import shutil
+
+    tool_info = ARCHITECTURE_TOOLS.get(language)
+    if not tool_info:
+        return False
+
+    tool = tool_info["tool"]
+    if language == "python":
+        return shutil.which("lint-imports") is not None
+    elif language in ("javascript", "typescript"):
+        # Check if dependency-cruiser is in node_modules
+        return Path("node_modules/.bin/depcruise").exists()
+    return False
+
+
+def generate_importlinter_config(project_root: Path, layers: list[str]) -> str:
+    """Generate .importlinter config based on detected layers."""
+    # Find the root package name
+    root_package = None
+    for item in project_root.iterdir():
+        if item.is_dir() and (item / "__init__.py").exists():
+            root_package = item.name
+            break
+
+    if not root_package:
+        root_package = project_root.name.replace("-", "_")
+
+    lines = [
+        "[importlinter]",
+        f"root_package = {root_package}",
+        "",
+    ]
+
+    # Generate contracts based on detected layers
+    contract_num = 1
+
+    # Domain independence (if domain layer exists)
+    domain_layers = [l for l in layers if "domain" in l.lower() or "core" in l.lower()]
+    if domain_layers:
+        for layer in domain_layers:
+            layer_module = layer.replace("/", ".")
+            lines.extend([
+                f"[importlinter:contract:{contract_num}]",
+                f"name = {layer} has no external dependencies",
+                "type = independence",
+                f"modules = {root_package}.{layer_module}",
+                "",
+            ])
+            contract_num += 1
+
+    # Layer contract (if multiple layers)
+    if len(layers) >= 2:
+        # Sort layers by typical dependency order
+        layer_order = ["api", "handler", "controller", "service", "infra", "infrastructure", "adapter", "domain", "core", "model"]
+        sorted_layers = sorted(layers, key=lambda l: next((i for i, kw in enumerate(layer_order) if kw in l.lower()), 99))
+
+        lines.extend([
+            f"[importlinter:contract:{contract_num}]",
+            "name = Architectural layers",
+            "type = layers",
+            "layers =",
+        ])
+        for layer in sorted_layers:
+            layer_module = layer.replace("/", ".")
+            lines.append(f"    {root_package}.{layer_module}")
+        lines.append("")
+
+    return "\n".join(lines)
 
 
 # =============================================================================
@@ -860,6 +1041,7 @@ def generate_config_with_extras(
     env_files: list[Path],
     existing_configs: dict[str, Path],
     extra_patterns: list[dict],
+    architecture: dict | None = None,
 ) -> str:
     """Generate optimized vibesrails.yaml content with extra patterns."""
 
@@ -927,6 +1109,20 @@ def generate_config_with_extras(
                 "",
             ])
 
+    # Architecture settings (if enabled)
+    if architecture and architecture.get("enabled"):
+        tool_info = ARCHITECTURE_TOOLS.get(architecture.get("language", "python"), {})
+        lines.extend([
+            "# Architecture checking (pre-commit)",
+            "architecture:",
+            "  enabled: true",
+            f"  tool: {tool_info.get('tool', 'import-linter')}",
+            f"  config: {tool_info.get('config_file', '.importlinter')}",
+            "  # Fails silently if tool not installed",
+            f"  # Install: {tool_info.get('install', 'pip install import-linter')}",
+            "",
+        ])
+
     # Complexity settings
     lines.extend([
         "# Quality settings",
@@ -970,6 +1166,7 @@ def smart_setup(
     existing_configs = detect_existing_configs(project_root)
     has_secrets = detect_secrets_risk(project_root)
     env_files = detect_env_files(project_root)
+    arch_info = detect_architecture_complexity(project_root)
 
     # Report findings
     print(f"{YELLOW}{msg('project_analysis')}{NC}")
@@ -995,6 +1192,14 @@ def smart_setup(
 
     if env_files:
         print(f"  {msg('env_files')}: {', '.join(f.name for f in env_files)}")
+
+    # Show architecture info
+    if arch_info["needs_arch"]:
+        print(f"  {BLUE}{msg('arch_detected')}: {len(arch_info['layers'])} {msg('arch_layers')}{NC}")
+        for layer in arch_info["layers"][:5]:
+            print(f"    • {layer}")
+    else:
+        print(f"  {msg('arch_simple_project')}")
 
     # Check if config already exists
     config_path = project_root / "vibesrails.yaml"
@@ -1024,9 +1229,24 @@ def smart_setup(
             extra_patterns = prompt_extra_patterns(project_root)
         # mode 3 or other = skip
 
+    # Architecture checking (offer if complex project)
+    architecture_config = None
+    if arch_info["needs_arch"] and interactive and not dry_run:
+        print()
+        if prompt_user(f"{BLUE}{msg('arch_suggest')}{NC}", default="y"):
+            architecture_config = {
+                "enabled": True,
+                "language": arch_info["language"],
+                "layers": arch_info["layers"],
+            }
+            tool_info = ARCHITECTURE_TOOLS.get(arch_info["language"], {})
+            print(f"  {GREEN}✓ {msg('arch_will_check')}{NC}")
+            print(f"  {msg('arch_install_cmd')}: {tool_info.get('install', 'pip install import-linter')}")
+
     # Generate config
     config_content = generate_config_with_extras(
-        project_types, has_secrets, env_files, existing_configs, extra_patterns
+        project_types, has_secrets, env_files, existing_configs, extra_patterns,
+        architecture=architecture_config
     )
 
     # Show preview
@@ -1043,6 +1263,7 @@ def smart_setup(
         "env_files": [str(f) for f in env_files],
         "extra_patterns": extra_patterns,
         "config_content": config_content,
+        "architecture": architecture_config,
     }
 
     if dry_run:
@@ -1064,9 +1285,22 @@ def smart_setup(
     print(f"\n{GREEN}{msg('created')}: vibesrails.yaml{NC}")
     result["created"] = True
 
-    # Install hook
+    # Create architecture config if enabled
+    if architecture_config and architecture_config.get("enabled"):
+        lang = architecture_config.get("language", "python")
+        if lang == "python":
+            importlinter_path = project_root / ".importlinter"
+            if not importlinter_path.exists():
+                importlinter_content = generate_importlinter_config(
+                    project_root, architecture_config.get("layers", [])
+                )
+                importlinter_path.write_text(importlinter_content)
+                print(f"{GREEN}{msg('created')}: .importlinter ({msg('arch_config_created')}){NC}")
+        result["architecture_config_created"] = True
+
+    # Install hook (with architecture support)
     from .cli import install_hook
-    install_hook()
+    install_hook(architecture_enabled=architecture_config is not None)
 
     # Create or update CLAUDE.md for Claude Code integration
     claude_md_path = project_root / "CLAUDE.md"
