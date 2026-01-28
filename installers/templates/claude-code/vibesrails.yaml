@@ -85,6 +85,16 @@ exceptions:
     reason: "Config files may use star imports for convenience"
 
 # ═══════════════════════════════════════════════════════════════
+# 🤖 GUARDIAN - AI Coding Safety (Senior Mode)
+# ═══════════════════════════════════════════════════════════════
+guardian:
+  enabled: true              # Activate Guardian Mode
+  auto_detect: true          # Auto-detect AI coding sessions
+  senior_mode: "auto"        # "off" | "auto" | "always"
+                             # auto = run when AI session detected
+                             # always = run on every scan
+
+# ═══════════════════════════════════════════════════════════════
 # 📝 NOTES
 # ═══════════════════════════════════════════════════════════════
 # - Add custom patterns in blocking/warning sections
@@ -93,3 +103,4 @@ exceptions:
 # - Add exceptions for legitimate use cases
 # - Run: vibesrails --show to see all patterns
 # - Run: vibesrails --validate to check config
+# - Run: vibesrails --senior for manual Senior Mode

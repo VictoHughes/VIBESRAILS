@@ -13,6 +13,7 @@ VibesRails is a security scanner that runs automatically on every commit to catc
 - 🚀 Memory-safe streaming (handles files of any size)
 - 🤖 AI-powered pattern discovery (`vibesrails --learn`)
 - 🔧 Auto-fix capability (`vibesrails --fix`)
+- 🎓 **Senior Mode** - Architecture mapping + intelligent guards for AI sessions
 
 ## How It Works
 
@@ -109,6 +110,28 @@ blocking:
 
 ```bash
 vibesrails --validate
+```
+
+## Senior Mode (AI Coding Safety)
+
+When Guardian detects an AI coding session, **Senior Mode** runs automatically:
+
+- **ArchitectureMapper** - Generates `ARCHITECTURE.md` so Claude knows where to put code
+- **5 Guards** - Concrete checks for vibe coding issues:
+  - DiffSizeGuard (large commits)
+  - ErrorHandlingGuard (bare except)
+  - HallucinationGuard (fake imports)
+  - DependencyGuard (new deps)
+  - TestCoverageGuard (code without tests)
+
+```bash
+# Manual Senior Mode
+vibesrails --senior
+
+# Auto-enabled in vibesrails.yaml:
+guardian:
+  enabled: true
+  senior_mode: "auto"
 ```
 
 ## For Claude Code Users
