@@ -4,8 +4,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .placement_guard import Divergence
 from vibesrails.learner.signature_index import Signature
+
+from .placement_guard import Divergence
 
 
 class InteractiveDialogue:

@@ -15,6 +15,7 @@ try:
 except ImportError:
     HAS_ANTHROPIC = False
 
+from .rate_limiting import with_rate_limiting
 from .scanner import BLUE, GREEN, NC, RED, YELLOW, get_all_python_files
 
 LEARN_PROMPT = """You are a security and code quality expert analyzing a Python codebase.
@@ -91,17 +92,21 @@ def analyze_with_claude(code_samples: str) -> str:
 
     client = anthropic.Anthropic()
 
-    message = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=2000,
-        messages=[
-            {
-                "role": "user",
-                "content": LEARN_PROMPT + code_samples
-            }
-        ]
-    )
+    # Wrapper avec rate limiting + cache + retry
+    @with_rate_limiting
+    def _call_claude():
+        return client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=2000,
+            messages=[
+                {
+                    "role": "user",
+                    "content": LEARN_PROMPT + code_samples
+                }
+            ]
+        )
 
+    message = _call_claude()
     return message.content[0].text
 
 

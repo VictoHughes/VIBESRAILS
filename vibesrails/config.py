@@ -98,7 +98,11 @@ def is_allowed_remote_domain(url: str, extra_domains: set[str] | None = None) ->
 
         # Block IP addresses (prevent internal network access)
         import re
+        # Block IPv4 addresses
         if re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", domain):
+            return False
+        # Block IPv6 addresses (including bracketed format like [::1])
+        if domain.startswith("[") or re.match(r"^[a-f0-9:]+$", domain, re.IGNORECASE):
             return False
 
         allowed = ALLOWED_REMOTE_DOMAINS.copy()

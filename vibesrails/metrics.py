@@ -7,11 +7,10 @@ No telemetry - all data stays on user's machine.
 """
 
 import json
-import time
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 
 @dataclass
@@ -45,16 +44,45 @@ class MetricsCollector:
             metrics_dir = Path.cwd() / ".vibesrails" / "metrics"
 
         self.metrics_dir = metrics_dir
-        self.metrics_dir.mkdir(parents=True, exist_ok=True)
-        self.metrics_file = self.metrics_dir / "scans.jsonl"
+        self._initialized = False
+        self.metrics_file: Path | None = None
+
+    def _ensure_initialized(self) -> bool:
+        """Initialize metrics directory with symlink protection (TOCTOU-safe)."""
+        if self._initialized:
+            return self.metrics_file is not None
+
+        try:
+            # Symlink protection: verify directory is under cwd
+            cwd = Path.cwd().resolve()
+            self.metrics_dir.mkdir(parents=True, exist_ok=True)
+            metrics_dir_resolved = self.metrics_dir.resolve()
+
+            # Check for symlink attack - directory must be under cwd
+            metrics_dir_resolved.relative_to(cwd)
+
+            self.metrics_file = metrics_dir_resolved / "scans.jsonl"
+            self._initialized = True
+            return True
+        except (ValueError, OSError):
+            # Symlink attack detected or permission error
+            self._initialized = True
+            self.metrics_file = None
+            return False
 
     def record_scan(self, metrics: ScanMetrics) -> None:
         """Record a scan's metrics."""
+        if not self._ensure_initialized() or self.metrics_file is None:
+            return  # Silently skip if symlink attack detected
+
         with open(self.metrics_file, "a") as f:
             f.write(json.dumps(asdict(metrics)) + "\n")
 
     def get_all_scans(self) -> List[ScanMetrics]:
         """Load all recorded scans."""
+        if not self._ensure_initialized() or self.metrics_file is None:
+            return []
+
         if not self.metrics_file.exists():
             return []
 
@@ -110,7 +138,7 @@ class MetricsCollector:
 
     def show_stats(self) -> None:
         """Display statistics in terminal."""
-        from .scanner import BLUE, GREEN, YELLOW, NC
+        from .scanner import BLUE, NC, YELLOW
 
         stats = self.get_stats()
 

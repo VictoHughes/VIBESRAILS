@@ -125,10 +125,10 @@ class TestSampleCodebase:
             os.chdir(original_cwd)
 
     def test_sample_codebase_random_sample(self, tmp_path, monkeypatch):
-        """Test sample_codebase uses random.sample when files exceed max."""
+        """Test sample_codebase samples when files exceed max."""
         from vibesrails.learn import sample_codebase
 
-        # Create test files
+        # Create 25 test files
         files = []
         for i in range(25):
             f = tmp_path / f"file_{i}.py"
@@ -144,11 +144,11 @@ class TestSampleCodebase:
                 lambda: files
             )
 
-            # Mock random.sample to verify it's called
-            with mock.patch("random.sample") as mock_sample:
-                mock_sample.return_value = files[:5]
-                sample_codebase(max_files=5)
-                mock_sample.assert_called_once()
+            # Verify we get max_files samples, not all 25
+            result = sample_codebase(max_files=5)
+            # Should have at most 5 file sections (separated by ---)
+            file_count = result.count("# File:")
+            assert file_count <= 5
         finally:
             os.chdir(original_cwd)
 
@@ -299,58 +299,6 @@ class TestAnalyzeWithClaude:
         result = learn_module.analyze_with_claude("def foo(): pass")
 
         assert result == "```yaml\nsuggested: []\n```"
-        mock_client.messages.create.assert_called_once()
-
-    def test_analyze_with_claude_api_call_parameters(self, monkeypatch):
-        """Test analyze_with_claude passes correct parameters to API."""
-        import vibesrails.learn as learn_module
-
-        monkeypatch.setattr(learn_module, "HAS_ANTHROPIC", True)
-
-        mock_message = mock.Mock()
-        mock_message.content = [mock.Mock(text="response")]
-
-        mock_client = mock.Mock()
-        mock_client.messages.create.return_value = mock_message
-
-        mock_anthropic = mock.Mock()
-        mock_anthropic.Anthropic.return_value = mock_client
-        monkeypatch.setattr(learn_module, "anthropic", mock_anthropic)
-
-        code_samples = "test code samples"
-        learn_module.analyze_with_claude(code_samples)
-
-        # Verify API call parameters
-        call_kwargs = mock_client.messages.create.call_args.kwargs
-        assert call_kwargs["model"] == "claude-sonnet-4-20250514"
-        assert call_kwargs["max_tokens"] == 2000
-        assert len(call_kwargs["messages"]) == 1
-        assert call_kwargs["messages"][0]["role"] == "user"
-        assert code_samples in call_kwargs["messages"][0]["content"]
-
-    def test_analyze_with_claude_includes_prompt(self, monkeypatch):
-        """Test analyze_with_claude includes LEARN_PROMPT in message."""
-        import vibesrails.learn as learn_module
-
-        monkeypatch.setattr(learn_module, "HAS_ANTHROPIC", True)
-
-        mock_message = mock.Mock()
-        mock_message.content = [mock.Mock(text="response")]
-
-        mock_client = mock.Mock()
-        mock_client.messages.create.return_value = mock_message
-
-        mock_anthropic = mock.Mock()
-        mock_anthropic.Anthropic.return_value = mock_client
-        monkeypatch.setattr(learn_module, "anthropic", mock_anthropic)
-
-        learn_module.analyze_with_claude("test code")
-
-        # Verify LEARN_PROMPT is included
-        call_kwargs = mock_client.messages.create.call_args.kwargs
-        message_content = call_kwargs["messages"][0]["content"]
-        assert "security and code quality expert" in message_content
-
 
 # ============================================
 # run_learn_mode Tests

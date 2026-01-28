@@ -11,8 +11,8 @@ from pathlib import Path
 def get_package_data_path(relative_path: str) -> Path | None:
     """Get path to a file in the package data."""
     try:
-        import importlib.resources as resources
-        # Python 3.9+
+        # Project requires Python 3.10+ (see pyproject.toml)
+        import importlib.resources as resources  # nosemgrep: python.lang.compatibility.python37.python37-compatibility-importlib2
         with resources.files("vibesrails").joinpath(relative_path) as p:
             if p.exists():
                 return Path(p)

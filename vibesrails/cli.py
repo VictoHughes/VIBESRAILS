@@ -11,6 +11,11 @@ import sys
 from pathlib import Path
 
 from . import __version__
+from .learner import (
+    PatternDetector,
+    SignatureIndexer,
+    StructureRulesGenerator,
+)
 from .scanner import (
     BLUE,
     GREEN,
@@ -23,11 +28,6 @@ from .scanner import (
     scan_file,
     show_patterns,
     validate_config,
-)
-from .learner import (
-    PatternDetector,
-    SignatureIndexer,
-    StructureRulesGenerator,
 )
 
 
@@ -247,7 +247,7 @@ def handle_learn_command():
 
     print(f"{GREEN}  ✓ Indexed {len(signatures)} signatures{NC}")
     print(f"\n{GREEN}✓ Learning complete!{NC}")
-    print(f"  Patterns and signatures cached in .vibesrails/")
+    print("  Patterns and signatures cached in .vibesrails/")
 
     return 0
 
@@ -255,6 +255,7 @@ def handle_learn_command():
 def run_scan(config: dict, files: list[str]) -> int:
     """Run scan with Semgrep + VibesRails orchestration and return exit code."""
     import time
+
     from .ai_guardian import (
         apply_guardian_rules,
         get_ai_agent_name,
