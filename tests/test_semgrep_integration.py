@@ -285,13 +285,13 @@ class TestCLIOrchestration:
 
     @patch("vibesrails.guardian.should_apply_guardian", return_value=False)
     @patch("vibesrails.guardian.print_guardian_status")
-    @patch("vibesrails.cli.scan_file")
+    @patch("vibesrails.scan_runner.scan_file")
     @patch("vibesrails.semgrep_adapter.SemgrepAdapter")
     def test_run_scan_with_semgrep_available(
         self, mock_semgrep_class, mock_scan_file, mock_print_guardian, mock_should_guardian
     ):
         """Test run_scan orchestrates both scanners when Semgrep available."""
-        from vibesrails.cli import run_scan
+        from vibesrails.scan_runner import run_scan
 
         # Mock Semgrep adapter
         mock_adapter = MagicMock()
@@ -315,13 +315,13 @@ class TestCLIOrchestration:
 
     @patch("vibesrails.guardian.should_apply_guardian", return_value=False)
     @patch("vibesrails.guardian.print_guardian_status")
-    @patch("vibesrails.cli.scan_file")
+    @patch("vibesrails.scan_runner.scan_file")
     @patch("vibesrails.semgrep_adapter.SemgrepAdapter")
     def test_run_scan_graceful_degradation(
         self, mock_semgrep_class, mock_scan_file, mock_print_guardian, mock_should_guardian
     ):
         """Test run_scan works with only VibesRails when Semgrep unavailable."""
-        from vibesrails.cli import run_scan
+        from vibesrails.scan_runner import run_scan
 
         # Mock Semgrep adapter (not installed)
         mock_adapter = MagicMock()

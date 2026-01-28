@@ -62,7 +62,6 @@ class RateLimitConfig:
 
 class CircuitBreaker:
     """Circuit breaker to prevent cascading failures."""
-
     def __init__(self, config: RateLimitConfig):
         self.config = config
         self.failure_count = 0
@@ -97,29 +96,20 @@ class CircuitBreaker:
         return elapsed >= self.config.recovery_timeout
 
     def _on_success(self):
-        """Reset circuit breaker on success."""
-        if self.state == "half_open":
-            logger.info("[CIRCUIT] Reset to closed (recovery successful)")
         self.failure_count = 0
         self.state = "closed"
         self.last_failure_time = None
 
     def _on_failure(self):
-        """Handle failure."""
         self.failure_count += 1
         self.last_failure_time = datetime.now()
-
         if self.failure_count >= self.config.failure_threshold:
             self.state = "open"
-            logger.error(
-                f"[CIRCUIT] OPEN after {self.failure_count} failures. "
-                f"Cooling down for {self.config.recovery_timeout}s"
-            )
+            logger.error(f"[CIRCUIT] OPEN after {self.failure_count} failures")
 
 
 class RequestThrottler:
     """Throttle requests to respect rate limits."""
-
     def __init__(self, config: RateLimitConfig):
         self.config = config
         self.last_request_time: float = 0
@@ -156,8 +146,7 @@ class RequestThrottler:
 
 
 class ResponseCache:
-    """Cache Claude API responses to reduce redundant calls."""
-
+    """Cache API responses to reduce redundant calls."""
     def __init__(self, config: RateLimitConfig):
         self.config = config
         self._cache: dict[str, tuple[Any, float]] = {}
@@ -245,19 +234,7 @@ def get_cache() -> ResponseCache:
 
 
 def with_rate_limiting(func: Callable[..., T]) -> Callable[..., T]:
-    """Decorator to add rate limiting, retry, and caching to Claude API calls.
-
-    Usage:
-        @with_rate_limiting
-        def call_claude_api(...):
-            return client.messages.create(...)
-
-    Features:
-    - Exponential backoff retry on rate limit errors
-    - Circuit breaker to prevent cascading failures
-    - Request throttling to stay under rate limits
-    - Response caching to reduce redundant calls
-    """
+    """Decorator adding rate limiting, retry, caching to API calls."""
     @wraps(func)
     def wrapper(*args, **kwargs) -> T:
         config = get_rate_limit_config()
@@ -311,7 +288,6 @@ def with_rate_limiting(func: Callable[..., T]) -> Callable[..., T]:
         raise last_exception
 
     return wrapper
-
 
 def reset_rate_limiting():
     """Reset all rate limiting state (for testing)."""
