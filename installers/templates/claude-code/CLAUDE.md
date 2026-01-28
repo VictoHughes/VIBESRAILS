@@ -117,12 +117,15 @@ vibesrails --validate
 When Guardian detects an AI coding session, **Senior Mode** runs automatically:
 
 - **ArchitectureMapper** - Generates `ARCHITECTURE.md` so Claude knows where to put code
-- **5 Guards** - Concrete checks for vibe coding issues:
+- **8 Guards** - Concrete checks for vibe coding issues:
   - DiffSizeGuard (large commits)
   - ErrorHandlingGuard (bare except)
   - HallucinationGuard (fake imports)
   - DependencyGuard (new deps)
   - TestCoverageGuard (code without tests)
+  - LazyCodeGuard (pass, ellipsis, empty TODO)
+  - BypassGuard (noqa/nosec without justification)
+  - ResilienceGuard (network calls without timeout)
 
 ```bash
 # Manual Senior Mode

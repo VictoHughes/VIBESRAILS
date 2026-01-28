@@ -20,7 +20,7 @@ Output includes:
 
 ### 2. Guards
 
-Five concrete checks for common vibe coding issues:
+Eight concrete checks for common vibe coding issues:
 
 | Guard | Detects | Severity |
 |-------|---------|----------|
@@ -29,6 +29,9 @@ Five concrete checks for common vibe coding issues:
 | HallucinationGuard | Imports that don't exist | block |
 | DependencyGuard | New dependencies added | warn |
 | TestCoverageGuard | Code without tests | warn |
+| LazyCodeGuard | pass, ellipsis, empty TODO/FIXME | warn |
+| BypassGuard | noqa/nosec without justification | warn |
+| ResilienceGuard | Network calls without timeout | warn |
 
 ### 3. Claude Review (Targeted)
 
