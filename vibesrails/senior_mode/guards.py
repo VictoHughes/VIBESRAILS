@@ -103,6 +103,9 @@ class HallucinationGuard:
                         ))
 
             elif isinstance(node, ast.ImportFrom):
+                # Skip relative imports (from . or from .. etc.)
+                if node.level > 0:
+                    continue
                 if node.module:
                     module = node.module.split(".")[0]
                     if not self._module_exists(module):
