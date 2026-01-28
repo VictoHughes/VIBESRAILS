@@ -149,3 +149,53 @@ except:
 
         assert len(issues) == 1
         assert "test" in issues[0].message.lower()
+
+
+class TestClaudeReviewer:
+    """Tests for targeted Claude review."""
+
+    def test_should_review_sensitive_file(self):
+        """ClaudeReviewer triggers on sensitive files."""
+        from vibesrails.senior_mode.claude_reviewer import ClaudeReviewer
+
+        reviewer = ClaudeReviewer()
+
+        assert reviewer.should_review("auth/login.py", "+def login(): pass") is True
+        assert reviewer.should_review("utils/helpers.py", "+def format(): pass") is False
+
+    def test_should_review_complex_diff(self):
+        """ClaudeReviewer triggers on complex changes."""
+        from vibesrails.senior_mode.claude_reviewer import ClaudeReviewer
+
+        reviewer = ClaudeReviewer()
+        complex_diff = "\n".join([f"+    if x > {i}: return {i}" for i in range(50)])
+
+        assert reviewer.should_review("simple.py", complex_diff) is True
+
+    def test_review_returns_structured_result(self, monkeypatch):
+        """review() returns structured result."""
+        from vibesrails.senior_mode.claude_reviewer import ClaudeReviewer, ReviewResult
+
+        reviewer = ClaudeReviewer()
+        monkeypatch.setattr(
+            reviewer, "_call_claude",
+            lambda x: '{"score": 8, "issues": [], "strengths": ["clean code"]}'
+        )
+
+        result = reviewer.review("def foo(): pass", "simple.py")
+
+        assert isinstance(result, ReviewResult)
+        assert result.score == 8
+
+    def test_review_without_anthropic(self, monkeypatch):
+        """review() handles missing anthropic gracefully."""
+        from vibesrails.senior_mode import claude_reviewer
+        monkeypatch.setattr(claude_reviewer, "HAS_ANTHROPIC", False)
+
+        from vibesrails.senior_mode.claude_reviewer import ClaudeReviewer
+
+        reviewer = ClaudeReviewer()
+        result = reviewer.review("def foo(): pass", "test.py")
+
+        assert result.reviewed is False
+        assert "not installed" in result.skip_reason

@@ -9,6 +9,7 @@ from .guards import (
     SeniorGuards,
     GuardIssue,
 )
+from .claude_reviewer import ClaudeReviewer, ReviewResult
 
 __all__ = [
     "ArchitectureMapper",
@@ -19,4 +20,6 @@ __all__ = [
     "TestCoverageGuard",
     "SeniorGuards",
     "GuardIssue",
+    "ClaudeReviewer",
+    "ReviewResult",
 ]
