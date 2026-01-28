@@ -1,7 +1,7 @@
 """Senior Mode Guards - Concrete checks for vibe coding issues."""
 import ast
-import re
 import importlib.util
+import re
 from dataclasses import dataclass
 from typing import Literal
 
@@ -170,8 +170,8 @@ class TestCoverageGuard:
 
     def check(self, code_diff: str, test_diff: str) -> list[GuardIssue]:
         """Check test coverage for new code."""
-        code_added = len([l for l in code_diff.splitlines() if l.startswith("+") and not l.startswith("+++")])
-        test_added = len([l for l in test_diff.splitlines() if l.startswith("+") and not l.startswith("+++")])
+        code_added = len([line for line in code_diff.splitlines() if line.startswith("+") and not line.startswith("+++")])
+        test_added = len([line for line in test_diff.splitlines() if line.startswith("+") and not line.startswith("+++")])
 
         if code_added > 20 and test_added == 0:
             return [GuardIssue(
@@ -307,7 +307,6 @@ class ResilienceGuard:
         """Check for missing resilience patterns."""
         issues = []
         lines = code.splitlines()
-        code_lower = code.lower()
 
         # Check for network calls without timeout
         network_patterns = [

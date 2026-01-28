@@ -131,8 +131,8 @@ def fetch_remote_config(
         return _remote_cache[url]
 
     try:
-        # URL scheme validated by is_allowed_remote_domain (HTTPS only)
-        with urllib.request.urlopen(url, timeout=timeout) as response:  # nosemgrep: dynamic-urllib-use-detected
+        # URL scheme validated by is_allowed_remote_domain (HTTPS only, allowlisted domains)
+        with urllib.request.urlopen(url, timeout=timeout) as response:  # nosec B310 nosemgrep: SSRF protected
             content = response.read().decode('utf-8')
 
             # Size limit for remote configs

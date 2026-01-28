@@ -115,7 +115,8 @@ def uninstall() -> bool:
 def run_senior_mode(files: list[str]) -> int:
     """Run Senior Mode checks."""
     import subprocess
-    from .senior_mode import ArchitectureMapper, SeniorGuards, ClaudeReviewer
+
+    from .senior_mode import ArchitectureMapper, ClaudeReviewer, SeniorGuards
     from .senior_mode.report import SeniorReport
 
     project_root = Path.cwd()

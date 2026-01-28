@@ -132,6 +132,7 @@ def _run_senior_mode_checks(files: list[str]) -> None:
     """Run Senior Mode checks (architecture + guards)."""
     import subprocess
     from pathlib import Path
+
     from .senior_mode import ArchitectureMapper, SeniorGuards
     from .senior_mode.report import SeniorReport
 
