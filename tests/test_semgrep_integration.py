@@ -283,10 +283,10 @@ class TestResultMerger:
 class TestCLIOrchestration:
     """Test CLI orchestration of Semgrep + VibesRails."""
 
-    @patch("vibesrails.guardian.should_apply_guardian", return_value=False)
-    @patch("vibesrails.guardian.print_guardian_status")
+    @patch("vibesrails.scan_runner.should_apply_guardian", return_value=False)
+    @patch("vibesrails.scan_runner.print_guardian_status")
     @patch("vibesrails.scan_runner.scan_file")
-    @patch("vibesrails.semgrep_adapter.SemgrepAdapter")
+    @patch("vibesrails.scan_runner.SemgrepAdapter")
     def test_run_scan_with_semgrep_available(
         self, mock_semgrep_class, mock_scan_file, mock_print_guardian, mock_should_guardian
     ):
@@ -313,10 +313,10 @@ class TestCLIOrchestration:
         mock_scan_file.assert_called()
         assert exit_code == 0
 
-    @patch("vibesrails.guardian.should_apply_guardian", return_value=False)
-    @patch("vibesrails.guardian.print_guardian_status")
+    @patch("vibesrails.scan_runner.should_apply_guardian", return_value=False)
+    @patch("vibesrails.scan_runner.print_guardian_status")
     @patch("vibesrails.scan_runner.scan_file")
-    @patch("vibesrails.semgrep_adapter.SemgrepAdapter")
+    @patch("vibesrails.scan_runner.SemgrepAdapter")
     def test_run_scan_graceful_degradation(
         self, mock_semgrep_class, mock_scan_file, mock_print_guardian, mock_should_guardian
     ):
