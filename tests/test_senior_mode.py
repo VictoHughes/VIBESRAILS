@@ -199,3 +199,46 @@ class TestClaudeReviewer:
 
         assert result.reviewed is False
         assert "not installed" in result.skip_reason
+
+
+class TestSeniorReport:
+    """Tests for Senior Mode report."""
+
+    def test_generate_report_includes_guards(self):
+        """Report includes guard issues."""
+        from vibesrails.senior_mode.report import SeniorReport
+        from vibesrails.senior_mode.guards import GuardIssue
+
+        issues = [
+            GuardIssue(guard="TestGuard", severity="warn", message="Test warning"),
+        ]
+
+        report = SeniorReport(guard_issues=issues)
+        output = report.generate()
+
+        assert "Test warning" in output
+        assert "SENIOR MODE" in output
+
+    def test_generate_report_includes_review(self):
+        """Report includes Claude review when present."""
+        from vibesrails.senior_mode.report import SeniorReport
+        from vibesrails.senior_mode.claude_reviewer import ReviewResult
+
+        review = ReviewResult(score=8, issues=["minor issue"], strengths=["clean"])
+
+        report = SeniorReport(review_result=review)
+        output = report.generate()
+
+        assert "8" in output
+        assert "minor issue" in output
+
+    def test_has_blocking_issues(self):
+        """has_blocking_issues() returns True when blocking issues exist."""
+        from vibesrails.senior_mode.report import SeniorReport
+        from vibesrails.senior_mode.guards import GuardIssue
+
+        blocking = [GuardIssue(guard="Test", severity="block", message="Critical")]
+        warning = [GuardIssue(guard="Test", severity="warn", message="Minor")]
+
+        assert SeniorReport(guard_issues=blocking).has_blocking_issues() is True
+        assert SeniorReport(guard_issues=warning).has_blocking_issues() is False

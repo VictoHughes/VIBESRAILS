@@ -112,6 +112,71 @@ def uninstall() -> bool:
     return True
 
 
+def run_senior_mode(files: list[str]) -> int:
+    """Run Senior Mode checks."""
+    import subprocess
+    from .senior_mode import ArchitectureMapper, SeniorGuards, ClaudeReviewer
+    from .senior_mode.report import SeniorReport
+
+    project_root = Path.cwd()
+
+    # 1. Update architecture map
+    print(f"{BLUE}Updating ARCHITECTURE.md...{NC}")
+    mapper = ArchitectureMapper(project_root)
+    mapper.save()
+
+    # 2. Get diff info
+    diff_result = subprocess.run(
+        ["git", "diff", "--cached"],
+        capture_output=True, text=True
+    )
+    code_diff = diff_result.stdout
+
+    test_diff_result = subprocess.run(
+        ["git", "diff", "--cached", "--", "tests/"],
+        capture_output=True, text=True
+    )
+    test_diff = test_diff_result.stdout
+
+    # 3. Run guards
+    guards = SeniorGuards()
+
+    file_contents = []
+    for f in files:
+        try:
+            content = Path(f).read_text()
+            file_contents.append((f, content))
+        except Exception:
+            pass
+
+    issues = guards.check_all(
+        code_diff=code_diff,
+        test_diff=test_diff,
+        files=file_contents,
+    )
+
+    # 4. Claude review (if needed)
+    reviewer = ClaudeReviewer()
+    review_result = None
+
+    for filepath, content in file_contents:
+        if reviewer.should_review(filepath, code_diff):
+            print(f"{BLUE}Running Claude review on {filepath}...{NC}")
+            review_result = reviewer.review(content, filepath)
+            break
+
+    # 5. Generate report
+    report = SeniorReport(
+        guard_issues=issues,
+        review_result=review_result,
+        architecture_updated=True,
+    )
+
+    print(report.generate())
+
+    return 1 if report.has_blocking_issues() else 0
+
+
 def install_hook(architecture_enabled: bool = False) -> bool:
     """Install git pre-commit hook."""
     git_dir = Path(".git")
@@ -207,6 +272,7 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Show what --fix would change")
     parser.add_argument("--no-backup", action="store_true", help="Don't create .bak files with --fix")
     parser.add_argument("--fixable", action="store_true", help="Show auto-fixable patterns")
+    parser.add_argument("--senior", action="store_true", help="Run Senior Mode (architecture + guards + review)")
     args = parser.parse_args()
 
     # Handle guardian stats
@@ -283,6 +349,10 @@ def main():
         files = get_all_python_files()
     else:
         files = get_staged_files()
+
+    # Handle Senior Mode
+    if args.senior:
+        sys.exit(run_senior_mode(files))
 
     # Handle auto-fix
     if args.fix or args.dry_run:
