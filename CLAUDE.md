@@ -13,12 +13,17 @@ VibesRails is a YAML-driven security scanner for Python projects. It helps devel
 **Minimum coverage: 80%**
 
 ```bash
-# Run tests with coverage
-pytest tests/ --cov=vibesrails --cov-report=term-missing
+# Tests avec coverage (sécurisé avec timeout)
+pytest tests/ --cov=vibesrails --cov-report=term --timeout=60
 
-# Check coverage before commit
-pytest tests/ --cov=vibesrails --cov-fail-under=80
+# Vérification seuil avant commit
+pytest tests/ --cov=vibesrails --cov-fail-under=80 --timeout=60
 ```
+
+**Garde-fous obligatoires:**
+- Toujours `--timeout=60` (coupe les tests qui dépassent)
+- Utiliser `--cov-report=term` (PAS `term-missing` qui est très lent)
+- Config pytest dans pyproject.toml applique timeout=30 par défaut
 
 **Test file naming:**
 - `tests/test_<module>.py` for each module
@@ -67,11 +72,10 @@ smart_setup.py → can import all
 ### 4. Commit Standards
 
 **Pre-commit checklist:**
-1. [ ] Tests pass: `pytest tests/`
-2. [ ] Coverage ≥80%: `pytest --cov-fail-under=80`
-3. [ ] Lint clean: `ruff check vibesrails/`
-4. [ ] Security clean: `vibesrails --all`
-5. [ ] No secrets in code
+1. [ ] Tests + coverage: `pytest tests/ --cov=vibesrails --cov-fail-under=80 --timeout=60`
+2. [ ] Lint clean: `ruff check vibesrails/`
+3. [ ] Security clean: `vibesrails --all`
+4. [ ] No secrets in code
 
 **Commit message format:**
 ```
