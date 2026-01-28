@@ -150,6 +150,84 @@ except:
         assert len(issues) == 1
         assert "test" in issues[0].message.lower()
 
+    def test_lazy_code_guard_detects_pass(self):
+        """LazyCodeGuard detects empty pass statements."""
+        from vibesrails.senior_mode.guards import LazyCodeGuard
+
+        guard = LazyCodeGuard()
+        code = '''
+def do_something():
+    pass
+'''
+        issues = guard.check(code, "test.py")
+
+        assert len(issues) >= 1
+        assert any("pass" in i.message.lower() or "empty" in i.message.lower() for i in issues)
+
+    def test_lazy_code_guard_detects_ellipsis(self):
+        """LazyCodeGuard detects ellipsis placeholders."""
+        from vibesrails.senior_mode.guards import LazyCodeGuard
+
+        guard = LazyCodeGuard()
+        code = '''
+def todo_later():
+    ...
+'''
+        issues = guard.check(code, "test.py")
+
+        assert len(issues) >= 1
+        assert any("ellipsis" in i.message.lower() or "placeholder" in i.message.lower() for i in issues)
+
+    def test_bypass_guard_detects_noqa_without_code(self):
+        """BypassGuard detects noqa without specific code."""
+        from vibesrails.senior_mode.guards import BypassGuard
+
+        guard = BypassGuard()
+        code = 'x = 1  # noqa'
+
+        issues = guard.check(code, "test.py")
+
+        assert len(issues) >= 1
+        assert any("noqa" in i.message.lower() for i in issues)
+
+    def test_bypass_guard_allows_noqa_with_code(self):
+        """BypassGuard allows noqa with specific code."""
+        from vibesrails.senior_mode.guards import BypassGuard
+
+        guard = BypassGuard()
+        code = 'x = 1  # noqa: E501'
+
+        issues = guard.check(code, "test.py")
+
+        # Should not flag noqa with code
+        noqa_issues = [i for i in issues if "noqa" in i.message.lower()]
+        assert len(noqa_issues) == 0
+
+    def test_resilience_guard_detects_no_timeout(self):
+        """ResilienceGuard detects network calls without timeout."""
+        from vibesrails.senior_mode.guards import ResilienceGuard
+
+        guard = ResilienceGuard()
+        code = 'response = requests.get(url)'
+
+        issues = guard.check(code, "test.py")
+
+        assert len(issues) >= 1
+        assert any("timeout" in i.message.lower() for i in issues)
+
+    def test_resilience_guard_allows_timeout(self):
+        """ResilienceGuard allows network calls with timeout."""
+        from vibesrails.senior_mode.guards import ResilienceGuard
+
+        guard = ResilienceGuard()
+        code = 'response = requests.get(url, timeout=30)'
+
+        issues = guard.check(code, "test.py")
+
+        # Should not flag calls with timeout
+        timeout_issues = [i for i in issues if "timeout" in i.message.lower()]
+        assert len(timeout_issues) == 0
+
 
 class TestClaudeReviewer:
     """Tests for targeted Claude review."""
