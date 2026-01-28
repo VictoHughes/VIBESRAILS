@@ -229,6 +229,22 @@ def show_guardian_stats():
         print(f"  {agent}: {count}")
 
 
+def should_run_senior_mode(config: dict) -> bool:
+    """Check if Senior Mode should run automatically."""
+    guardian = get_guardian_config(config)
+
+    # Check explicit senior_mode setting
+    senior = guardian.get("senior_mode", "off")
+
+    if senior == "auto":
+        # Run when Guardian detects AI session
+        return should_apply_guardian(config)
+    elif senior == "always":
+        return True
+
+    return False
+
+
 def print_guardian_status(config: dict):
     """Print guardian mode status."""
     if should_apply_guardian(config):
@@ -239,3 +255,5 @@ def print_guardian_status(config: dict):
         guardian = get_guardian_config(config)
         if guardian.get("warnings_as_blocking"):
             print("  - Warnings elevated to blocking")
+        if should_run_senior_mode(config):
+            print("  - Senior Mode enabled")

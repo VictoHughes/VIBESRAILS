@@ -11,6 +11,7 @@ from .ai_guardian import (
     log_guardian_block,
     print_guardian_status,
     should_apply_guardian,
+    should_run_senior_mode,
 )
 from .metrics import track_scan
 from .result_merger import ResultMerger
@@ -118,7 +119,66 @@ def run_scan(config: dict, files: list[str]) -> int:
         return 1
 
     print(f"\n{GREEN}VibesRails: PASSED{NC}")
+
+    # Run Senior Mode if configured
+    if should_run_senior_mode(config):
+        print()
+        _run_senior_mode_checks(files)
+
     return 0
+
+
+def _run_senior_mode_checks(files: list[str]) -> None:
+    """Run Senior Mode checks (architecture + guards)."""
+    import subprocess
+    from pathlib import Path
+    from .senior_mode import ArchitectureMapper, SeniorGuards
+    from .senior_mode.report import SeniorReport
+
+    project_root = Path.cwd()
+
+    # 1. Update architecture map
+    print(f"{BLUE}[Senior Mode] Updating ARCHITECTURE.md...{NC}")
+    mapper = ArchitectureMapper(project_root)
+    mapper.save()
+
+    # 2. Get diff info
+    diff_result = subprocess.run(
+        ["git", "diff", "--cached"],
+        capture_output=True, text=True
+    )
+    code_diff = diff_result.stdout
+
+    test_diff_result = subprocess.run(
+        ["git", "diff", "--cached", "--", "tests/"],
+        capture_output=True, text=True
+    )
+    test_diff = test_diff_result.stdout
+
+    # 3. Run guards
+    guards = SeniorGuards()
+
+    file_contents = []
+    for f in files:
+        try:
+            content = Path(f).read_text()
+            file_contents.append((f, content))
+        except Exception:
+            pass
+
+    issues = guards.check_all(
+        code_diff=code_diff,
+        test_diff=test_diff,
+        files=file_contents,
+    )
+
+    # 4. Generate report (without Claude review for auto mode - too slow)
+    report = SeniorReport(
+        guard_issues=issues,
+        architecture_updated=True,
+    )
+
+    print(report.generate())
 
 
 def _display_results(merger: ResultMerger, unified_results: list, guardian_active: bool, agent_name: str | None) -> None:

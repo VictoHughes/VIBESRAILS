@@ -125,4 +125,7 @@ guardian:
   enabled: false           # Set to true to activate
   auto_detect: true        # Auto-detect AI coding sessions
   warnings_as_blocking: false  # Escalate warnings to blocking in AI mode
+  senior_mode: "off"       # "off" | "auto" | "always"
+                           # auto = run when AI session detected
+                           # always = run on every scan
   # stricter_patterns: []  # Additional patterns for AI mode
