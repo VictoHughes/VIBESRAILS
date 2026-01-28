@@ -99,4 +99,46 @@ senior_mode:
 
 ## Integration with Guardian Mode
 
-Senior Mode works automatically with Guardian Mode. When Guardian detects an AI coding session, it can trigger Senior Mode checks automatically.
+Senior Mode runs automatically when Guardian detects AI coding sessions.
+
+### Activation
+
+Add to `vibesrails.yaml`:
+
+```yaml
+guardian:
+  enabled: true
+  senior_mode: "auto"   # off | auto | always
+```
+
+| Mode | Behavior |
+|------|----------|
+| `off` | Senior Mode manual only (`--senior`) |
+| `auto` | Runs when AI session detected (Claude Code, Cursor, etc.) |
+| `always` | Runs on every scan |
+
+### How Guardian Detects AI Sessions
+
+Guardian checks for:
+- Environment variables: `CLAUDE_CODE`, `CURSOR_SESSION`, `COPILOT_AGENT`, etc.
+- Terminal program: `claude-code`
+- Manual override: `VIBESRAILS_AGENT_MODE=1`
+
+### Example Output with Guardian + Senior Mode
+
+```
+GUARDIAN MODE ACTIVE (Claude Code)
+  - Warnings elevated to blocking
+  - Senior Mode enabled
+
+VibesRails - Security Scan
+==============================
+...
+VibesRails: PASSED
+
+[Senior Mode] Updating ARCHITECTURE.md...
+============================================================
+                  SENIOR MODE REPORT
+============================================================
+...
+```
