@@ -242,3 +242,60 @@ class TestSeniorReport:
 
         assert SeniorReport(guard_issues=blocking).has_blocking_issues() is True
         assert SeniorReport(guard_issues=warning).has_blocking_issues() is False
+
+
+class TestSeniorModeIntegration:
+    """Integration tests for complete Senior Mode flow."""
+
+    def test_full_flow(self, tmp_path):
+        """Test complete Senior Mode flow."""
+        from vibesrails.senior_mode import ArchitectureMapper, SeniorGuards
+        from vibesrails.senior_mode.report import SeniorReport
+
+        # Setup project
+        (tmp_path / "main.py").write_text("def main(): pass")
+        (tmp_path / "auth.py").write_text('''
+def login(user, password):
+    try:
+        check(user)
+    except:
+        pass
+''')
+
+        # 1. Generate architecture
+        mapper = ArchitectureMapper(tmp_path)
+        arch = mapper.generate_map()
+        assert "main.py" in arch
+
+        # 2. Run guards
+        guards = SeniorGuards()
+        code = (tmp_path / "auth.py").read_text()
+        issues = guards.check_all(
+            code_diff="+def login(): pass",
+            files=[("auth.py", code)]
+        )
+
+        # Should detect bare except
+        assert any("except" in str(i.message).lower() for i in issues)
+
+        # 3. Generate report
+        report = SeniorReport(guard_issues=issues)
+        output = report.generate()
+        assert "SENIOR MODE" in output
+
+    def test_all_components_importable(self):
+        """All Senior Mode components can be imported."""
+        from vibesrails.senior_mode import (
+            ArchitectureMapper,
+            SeniorGuards,
+            ClaudeReviewer,
+            ReviewResult,
+            GuardIssue,
+        )
+        from vibesrails.senior_mode.report import SeniorReport
+
+        # All classes exist
+        assert ArchitectureMapper is not None
+        assert SeniorGuards is not None
+        assert ClaudeReviewer is not None
+        assert SeniorReport is not None
