@@ -32,6 +32,10 @@ echo -e "${GREEN}[OK] Python $PYTHON_VERSION${NC}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WHEEL_FILE="$SCRIPT_DIR/vibesrails-2.0.0-py3-none-any.whl"
 TEMPLATES_DIR="$SCRIPT_DIR/claude-code"
+# Fallback to templates dir if claude-code subdir not found
+if [ ! -d "$TEMPLATES_DIR" ]; then
+    TEMPLATES_DIR="$(cd "$SCRIPT_DIR/../templates/claude-code" 2>/dev/null && pwd)" || TEMPLATES_DIR=""
+fi
 
 # Check wheel exists
 if [ ! -f "$WHEEL_FILE" ]; then
