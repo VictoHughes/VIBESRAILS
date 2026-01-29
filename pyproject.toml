@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vibesrails"
-version = "1.3.0"
+version = "2.0.0"
 description = "VibesRails - Scale up your vibe coding safely. Semgrep-enhanced YAML-driven security scanner. From KIONOS™ (free tools)."
 readme = "README.md"
 license = {text = "MIT"}
@@ -17,7 +17,7 @@ maintainers = [
 ]
 keywords = ["security", "linting", "code-quality", "claude", "ai"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
@@ -34,7 +34,10 @@ dependencies = [
 [project.optional-dependencies]
 watch = ["watchdog>=3.0"]
 claude = ["anthropic>=0.18"]
-all = ["watchdog>=3.0", "anthropic>=0.18"]
+audit = ["pip-audit>=2.6"]
+typing = ["mypy>=1.0"]
+deadcode = ["vulture>=2.7"]
+all = ["watchdog>=3.0", "anthropic>=0.18", "pip-audit>=2.6", "mypy>=1.0", "vulture>=2.7"]
 dev = ["pytest>=7.0", "pytest-timeout>=2.0", "pytest-cov>=4.0", "ruff>=0.1"]
 
 [project.scripts]

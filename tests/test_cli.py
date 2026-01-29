@@ -294,7 +294,7 @@ class TestInitConfig:
 
             # Mock get_default_config_path to return non-existent path
             fake_path = tmp_path / "nonexistent" / "default.yaml"
-            with patch("vibesrails.cli.get_default_config_path", return_value=fake_path):
+            with patch("vibesrails.cli_setup.get_default_config_path", return_value=fake_path):
                 result = init_config(target)
 
             assert result is False

@@ -1,0 +1,197 @@
+"""Git Workflow Guard — Detects poor git practices."""
+
+import re
+import subprocess
+from pathlib import Path
+
+from .dependency_audit import V2GuardIssue
+
+GUARD_NAME = "git-workflow"
+
+VALID_BRANCH_PREFIXES = (
+    "feature/",
+    "fix/",
+    "chore/",
+    "docs/",
+    "refactor/",
+)
+
+CONVENTIONAL_RE = re.compile(
+    r"^(feat|fix|refactor|test|docs|chore|style|perf|ci|build)"
+    r"(\([a-zA-Z0-9_\-]+\))?:\s.+"
+)
+
+MAX_UNRELATED_DIRS = 3
+
+
+def _run_git(
+    args: list[str],
+    cwd: Path,
+) -> tuple[bool, str]:
+    """Run a git command, return (success, stdout)."""
+    try:
+        result = subprocess.run(
+            ["git", *args],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        return result.returncode == 0, result.stdout.strip()
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return False, ""
+
+
+class GitWorkflowGuard:
+    """Detects poor git workflow practices."""
+
+    def __init__(self, project_root: Path) -> None:
+        self.root = project_root
+
+    def _is_git_repo(self) -> bool:
+        """Check if project_root is inside a git repository."""
+        ok, _ = _run_git(["rev-parse", "--git-dir"], self.root)
+        return ok
+
+    def check_branch(self) -> list[V2GuardIssue]:
+        """Check branch name conventions."""
+        issues: list[V2GuardIssue] = []
+        ok, branch = _run_git(
+            ["rev-parse", "--abbrev-ref", "HEAD"], self.root
+        )
+        if not ok:
+            return issues
+
+        if branch in ("main", "master"):
+            issues.append(V2GuardIssue(
+                guard=GUARD_NAME,
+                severity="warn",
+                message=(
+                    f"Working directly on '{branch}'. "
+                    "Use a feature branch instead."
+                ),
+            ))
+        elif not branch.startswith(VALID_BRANCH_PREFIXES):
+            issues.append(V2GuardIssue(
+                guard=GUARD_NAME,
+                severity="info",
+                message=(
+                    f"Branch '{branch}' doesn't follow naming "
+                    "convention (feature/, fix/, chore/, "
+                    "docs/, refactor/)."
+                ),
+            ))
+
+        return issues
+
+    def check_commit_message(
+        self, message: str
+    ) -> list[V2GuardIssue]:
+        """Validate a commit message against conventional commits."""
+        issues: list[V2GuardIssue] = []
+        if not message or not message.strip():
+            issues.append(V2GuardIssue(
+                guard=GUARD_NAME,
+                severity="block",
+                message="Empty commit message.",
+            ))
+            return issues
+
+        first_line = message.strip().splitlines()[0]
+        if not CONVENTIONAL_RE.match(first_line):
+            issues.append(V2GuardIssue(
+                guard=GUARD_NAME,
+                severity="warn",
+                message=(
+                    "Commit message doesn't follow conventional "
+                    "commits: type(scope): description"
+                ),
+            ))
+
+        return issues
+
+    def check_staged_files(self) -> list[V2GuardIssue]:
+        """Check for messy workflow and unfocused commits."""
+        issues: list[V2GuardIssue] = []
+
+        # Check mixed staged + unstaged changes
+        _, staged = _run_git(
+            ["diff", "--cached", "--name-only"], self.root
+        )
+        _, unstaged = _run_git(
+            ["diff", "--name-only"], self.root
+        )
+
+        if staged and unstaged:
+            issues.append(V2GuardIssue(
+                guard=GUARD_NAME,
+                severity="warn",
+                message=(
+                    "Mixed staged and unstaged changes. "
+                    "Consider committing or stashing first."
+                ),
+            ))
+
+        # Check unfocused commit (staged files span many dirs)
+        if staged:
+            dirs = {
+                str(Path(f).parts[0])
+                for f in staged.splitlines()
+                if f.strip()
+            }
+            if len(dirs) > MAX_UNRELATED_DIRS:
+                issues.append(V2GuardIssue(
+                    guard=GUARD_NAME,
+                    severity="warn",
+                    message=(
+                        f"Staged files touch {len(dirs)} "
+                        f"top-level directories (>{MAX_UNRELATED_DIRS}). "
+                        "Consider smaller, focused commits."
+                    ),
+                ))
+
+        return issues
+
+    def check_force_push(self) -> list[V2GuardIssue]:
+        """Check recent reflog for force-push indicators."""
+        issues: list[V2GuardIssue] = []
+        ok, log = _run_git(
+            ["reflog", "--all", "-n", "20", "--format=%gs"],
+            self.root,
+        )
+        if not ok:
+            return issues
+
+        for entry in log.splitlines():
+            if "force" in entry.lower() or "push --force" in entry.lower():
+                issues.append(V2GuardIssue(
+                    guard=GUARD_NAME,
+                    severity="warn",
+                    message=(
+                        "Force push detected in recent history. "
+                        "Avoid rewriting shared history."
+                    ),
+                ))
+                break
+
+        return issues
+
+    def scan(self, project_root: Path) -> list[V2GuardIssue]:
+        """Run all git workflow checks."""
+        self.root = project_root
+        if not self._is_git_repo():
+            return []
+
+        issues: list[V2GuardIssue] = []
+        issues.extend(self.check_branch())
+        issues.extend(self.check_staged_files())
+        issues.extend(self.check_force_push())
+
+        # Check last commit message
+        ok, msg = _run_git(
+            ["log", "-1", "--format=%s"], self.root
+        )
+        if ok and msg:
+            issues.extend(self.check_commit_message(msg))
+
+        return issues
