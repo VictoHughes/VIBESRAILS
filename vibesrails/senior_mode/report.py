@@ -1,7 +1,8 @@
 """Senior Mode report generation."""
 from dataclasses import dataclass, field
-from .guards import GuardIssue
+
 from .claude_reviewer import ReviewResult
+from .guards import GuardIssue
 
 
 @dataclass

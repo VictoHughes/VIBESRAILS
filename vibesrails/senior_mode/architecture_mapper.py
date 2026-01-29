@@ -1,7 +1,7 @@
 """Architecture mapping for Claude context."""
 import ast
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 
 class ArchitectureMapper:

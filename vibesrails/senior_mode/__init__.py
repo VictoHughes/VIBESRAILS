@@ -1,15 +1,15 @@
 """Senior Mode - Architecture mapping and intelligent guards for AI sessions."""
 from .architecture_mapper import ArchitectureMapper
+from .claude_reviewer import ClaudeReviewer, ReviewResult
 from .guards import (
+    DependencyGuard,
     DiffSizeGuard,
     ErrorHandlingGuard,
-    HallucinationGuard,
-    DependencyGuard,
-    TestCoverageGuard,
-    SeniorGuards,
     GuardIssue,
+    HallucinationGuard,
+    SeniorGuards,
+    TestCoverageGuard,
 )
-from .claude_reviewer import ClaudeReviewer, ReviewResult
 
 __all__ = [
     "ArchitectureMapper",
