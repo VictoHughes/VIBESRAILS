@@ -597,7 +597,7 @@ class TestConfigGen:
         arch_config = {
             "enabled": True,
             "language": "python",
-            "layers": ["domain", "api"],
+            "layers": ["backend/domain", "backend/infrastructure", "backend/api"],
         }
 
         result = generate_config_with_extras(
@@ -610,7 +610,8 @@ class TestConfigGen:
         )
 
         assert "architecture:" in result
-        assert "enabled: true" in result
+        assert "dip_domain_infra" in result
+        assert "DIP Violation" in result
         assert "import-linter" in result
 
     def test_generate_config_with_extras_no_blocking_when_empty(self):
@@ -1407,11 +1408,12 @@ class TestIntegration:
             env_files=env_files,
             existing_configs=configs,
             extra_patterns=[],
-            architecture={"enabled": True, "language": "python", "layers": ["domain", "api"]},
+            architecture={"enabled": True, "language": "python", "layers": ["backend/domain", "backend/infrastructure", "backend/api"]},
         )
 
         assert "@vibesrails/fastapi-pack" in config
         assert "architecture:" in config
+        assert "dip_domain_infra" in config
         assert "blocking:" in config
 
     def test_imports_from_package(self):

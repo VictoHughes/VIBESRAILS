@@ -264,17 +264,62 @@ def generate_config_with_extras(
                 "",
             ])
 
-    # Architecture settings (if enabled)
+    # Architecture DIP rules (if enabled and layers detected)
     if architecture and architecture.get("enabled"):
+        layers = [layer.lower() for layer in architecture.get("layers", [])]
+        has_domain = any("domain" in layer or "core" in layer for layer in layers)
+        has_infra = any("infra" in layer for layer in layers)
+        has_app = any("application" in layer or "service" in layer for layer in layers)
+
+        if has_domain and (has_infra or has_app):
+            # Find the root package prefix (e.g. "backend" from "backend/domain")
+            domain_layer = next((layer for layer in architecture.get("layers", []) if "domain" in layer.lower() or "core" in layer.lower()), None)
+            root_prefix = domain_layer.split("/")[0] if domain_layer and "/" in domain_layer else ""
+
+            lines.extend([
+                "# Architecture - DIP (Dependency Inversion Principle)",
+                "architecture:",
+            ])
+
+            if has_infra and root_prefix:
+                infra_layer = next((layer for layer in architecture.get("layers", []) if "infra" in layer.lower()), "")
+                infra_module = infra_layer.replace("/", ".")
+                domain_scope = domain_layer.replace("/", "/") + "/**/*.py"
+                lines.extend([
+                    f"  - id: dip_domain_infra",
+                    f'    name: "DIP Violation (Domain → Infrastructure)"',
+                    f'    regex: "from {infra_module.replace(".", "\\\\.")}"',
+                    f'    scope: ["{domain_scope}"]',
+                    f'    message: "Domain must not import Infrastructure (Dependency Inversion Principle)"',
+                    f'    level: "BLOCK"',
+                    "",
+                ])
+
+            if has_app and root_prefix:
+                app_layer = next((layer for layer in architecture.get("layers", []) if "application" in layer.lower() or "service" in layer.lower()), "")
+                app_module = app_layer.replace("/", ".")
+                domain_scope = domain_layer.replace("/", "/") + "/**/*.py"
+                lines.extend([
+                    f"  - id: dip_domain_application",
+                    f'    name: "DIP Violation (Domain → Application)"',
+                    f'    regex: "from {app_module.replace(".", "\\\\.")}"',
+                    f'    scope: ["{domain_scope}"]',
+                    f'    message: "Domain must not import Application (Dependency Inversion Principle)"',
+                    f'    level: "BLOCK"',
+                    "",
+                ])
+
+            if not (has_infra or has_app) or not root_prefix:
+                lines.append("")
+
+        # Also configure import-linter tool if available
         tool_info = ARCHITECTURE_TOOLS.get(architecture.get("language", "python"), {})
         lines.extend([
-            "# Architecture checking (pre-commit)",
-            "architecture:",
-            "  enabled: true",
-            f"  tool: {tool_info.get('tool', 'import-linter')}",
-            f"  config: {tool_info.get('config_file', '.importlinter')}",
-            "  # Fails silently if tool not installed",
-            f"  # Install: {tool_info.get('install', 'pip install import-linter')}",
+            "# Architecture tool (optional, for deeper checks)",
+            "# architecture_tool:",
+            f"#   tool: {tool_info.get('tool', 'import-linter')}",
+            f"#   config: {tool_info.get('config_file', '.importlinter')}",
+            f"#   Install: {tool_info.get('install', 'pip install import-linter')}",
             "",
         ])
 
