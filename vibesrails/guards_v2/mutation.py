@@ -293,8 +293,7 @@ class MutationGuard:
             for r in weak:
                 lines.append(
                     f"  {r.file} has {r.score:.0%} "
-                    f"mutation score — tests don't "
-                    f"verify its logic"
+                    f"mutation score — tests don't verify its logic"
                 )
 
         return "\n".join(lines)
