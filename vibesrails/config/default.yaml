@@ -88,10 +88,17 @@ bugs:
 # ═══════════════════════════════════════════════════════════════
 architecture:
   - id: dip_domain_infra
-    name: "DIP Violation"
+    name: "DIP Violation (Domain → Infrastructure)"
     regex: "from backend\\.infrastructure"
     scope: ["backend/domain/**/*.py"]
-    message: "Domain ne doit pas importer Infrastructure"
+    message: "Domain ne doit pas importer Infrastructure (Dependency Inversion Principle)"
+    level: "BLOCK"
+
+  - id: dip_domain_application
+    name: "DIP Violation (Domain → Application)"
+    regex: "from backend\\.application"
+    scope: ["backend/domain/**/*.py"]
+    message: "Domain ne doit pas importer Application (Dependency Inversion Principle)"
     level: "BLOCK"
 
 # ═══════════════════════════════════════════════════════════════
@@ -122,7 +129,7 @@ complexity:
 # 🤖 GUARDIAN - AI Coding Safety
 # ═══════════════════════════════════════════════════════════════
 guardian:
-  enabled: false           # Set to true to activate
+  enabled: true            # Activate Guardian Mode
   auto_detect: true        # Auto-detect AI coding sessions
   warnings_as_blocking: false  # Escalate warnings to blocking in AI mode
   senior_mode: "off"       # "off" | "auto" | "always"

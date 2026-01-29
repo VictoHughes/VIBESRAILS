@@ -1,9 +1,14 @@
-# vibesrails - Security scanner configuration
-# Single source of truth for security patterns
+# vibesrails - Scale up your vibe coding safely
+# Single source of truth for security & quality patterns
 #
 # Documentation: https://github.com/VictoHughes/VIBESRAILS
 
 version: "1.0"
+
+# KIONOS Safety Formula
+kionos:
+  formula: "C(q,x̂) = αS + βV + γR"
+  threshold: 0.7
 
 # ═══════════════════════════════════════════════════════════════
 # 🔒 SECURITY - Blocks commit
@@ -25,6 +30,22 @@ blocking:
     regex: "(os\\.system|subprocess\\.call|subprocess\\.run|eval)\\s*\\([^)]*f[\"']"
     message: "Command injection risk - sanitize input or use safe alternatives"
 
+  - id: shell_injection
+    name: "Shell Injection"
+    regex: "shell\\s*=\\s*True"
+    message: "shell=True is dangerous - use subprocess with list args"
+
+  - id: unsafe_yaml
+    name: "Unsafe YAML"
+    regex: "yaml\\.load\\s*\\("
+    exclude_regex: "Loader\\s*="
+    message: "Use yaml.safe_load() instead"
+
+  - id: unsafe_numpy
+    name: "Unsafe NumPy"
+    regex: "allow_pickle\\s*=\\s*True"
+    message: "Allows arbitrary code execution"
+
   - id: debug_mode_prod
     name: "Debug Mode in Production"
     regex: "DEBUG\\s*=\\s*True"
@@ -40,6 +61,12 @@ warning:
     name: "Star Import"
     regex: "from\\s+\\S+\\s+import\\s+\\*"
     message: "Star import makes code harder to maintain - use explicit imports"
+    skip_in_tests: true
+
+  - id: none_comparison
+    name: "None Comparison"
+    regex: "==\\s*None"
+    message: "Use 'is None' instead"
     skip_in_tests: true
 
   - id: print_statement
@@ -62,6 +89,51 @@ warning:
     skip_in_tests: false
 
 # ═══════════════════════════════════════════════════════════════
+# 🐛 BUGS - Silent bug patterns
+# ═══════════════════════════════════════════════════════════════
+bugs:
+  - id: mutable_default
+    name: "Mutable Default (B006)"
+    regex: "def \\w+\\([^)]*=\\s*\\[\\]|def \\w+\\([^)]*=\\s*\\{\\}"
+    message: "Mutable default shared between calls"
+    level: "BLOCK"
+
+  - id: assert_in_prod
+    name: "Assert in Production"
+    regex: "^\\s*assert\\s+(?!.*#.*test)"
+    message: "assert is stripped with python -O"
+    level: "WARN"
+    skip_in_tests: true
+
+# ═══════════════════════════════════════════════════════════════
+# 🏗️ ARCHITECTURE - DIP & import restrictions
+# ═══════════════════════════════════════════════════════════════
+architecture:
+  - id: dip_domain_infra
+    name: "DIP Violation (Domain → Infrastructure)"
+    regex: "from backend\\.infrastructure"
+    scope: ["backend/domain/**/*.py"]
+    message: "Domain must not import Infrastructure (Dependency Inversion Principle)"
+    level: "BLOCK"
+
+  - id: dip_domain_application
+    name: "DIP Violation (Domain → Application)"
+    regex: "from backend\\.application"
+    scope: ["backend/domain/**/*.py"]
+    message: "Domain must not import Application (Dependency Inversion Principle)"
+    level: "BLOCK"
+
+# ═══════════════════════════════════════════════════════════════
+# 🔧 MAINTAINABILITY
+# ═══════════════════════════════════════════════════════════════
+maintainability:
+  - id: print_debug
+    name: "Print Debug"
+    regex: "^\\s*print\\(.*debug|^\\s*print\\(f?[\"']\\s*(DEBUG|TODO|FIXME)"
+    message: "Leftover debug print - use logging"
+    level: "WARN"
+
+# ═══════════════════════════════════════════════════════════════
 # ✅ EXCEPTIONS - Files where patterns are allowed
 # ═══════════════════════════════════════════════════════════════
 exceptions:
@@ -74,6 +146,8 @@ exceptions:
       - "hardcoded_secret"
       - "sql_injection"
       - "command_injection"
+      - "shell_injection"
+      - "mutable_default"
     reason: "Tests can mock dangerous patterns for testing purposes"
 
   config_files:
@@ -84,12 +158,18 @@ exceptions:
       - "star_import"
     reason: "Config files may use star imports for convenience"
 
+# Complexity (enforced by scanner)
+complexity:
+  max_file_lines: 300    # WARN if file exceeds this (test files excluded)
+  max_function_lines: 50 # For future use
+
 # ═══════════════════════════════════════════════════════════════
 # 🤖 GUARDIAN - AI Coding Safety (Senior Mode)
 # ═══════════════════════════════════════════════════════════════
 guardian:
   enabled: true              # Activate Guardian Mode
   auto_detect: true          # Auto-detect AI coding sessions
+  warnings_as_blocking: false  # Escalate warnings to blocking in AI mode
   senior_mode: "auto"        # "off" | "auto" | "always"
                              # auto = run when AI session detected
                              # always = run on every scan
@@ -101,6 +181,7 @@ guardian:
 # - Use 'scope' to limit patterns to specific files
 # - Use 'skip_in_tests' to ignore warnings in test files
 # - Add exceptions for legitimate use cases
+# - Architecture rules enforce DIP (domain cannot import infra/app)
 # - Run: vibesrails --show to see all patterns
 # - Run: vibesrails --validate to check config
 # - Run: vibesrails --senior for manual Senior Mode
