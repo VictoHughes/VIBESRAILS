@@ -1,239 +1,132 @@
-# VibesRails Installers
+# VibesRails - Installation Guide
 
-Professional security scanner with AI-powered pattern discovery and auto-fix capabilities.
+> Security scanner + Claude Code integration bundle
 
-## What VibesRails Does
+## What Gets Installed
 
-**Core Functionality:**
-- 🔍 **Pattern-based scanning** - Regex + Semgrep dual-engine detection
-- 🤖 **AI-powered learning** - Claude discovers patterns from your codebase
-- 🔧 **Auto-fix** - Automated fixes for simple patterns
-- 📊 **Metrics & Stats** - Track scan history and AI coding blocks
-- 👁️ **Live watch mode** - Real-time scanning on file save
-- 🎯 **YAML-driven** - Single source of truth for all patterns
+VibesRails installs **two things**:
 
-**Memory-Safe Architecture:**
-- Streaming line-by-line file processing (handles files of any size)
-- Timeout protection (60s default)
-- Performance logging (track time/memory/files scanned)
+| Component | What it does |
+|-----------|-------------|
+| **vibesrails** (pip) | Security scanner - scans code for secrets, injection, quality issues |
+| **Claude Code config** (files) | Hooks, instructions, patterns - makes Claude Code security-aware |
 
-## Installation Methods
+### Files copied to your project
 
-### By Operating System
-
-| OS | Folder | Scripts |
-|----|--------|---------|
-| **Linux/macOS** | [unix/](./unix/) | `.sh` |
-| **Windows** | [windows/](./windows/) | `.bat` |
-| **Any** | [cross-platform/](./cross-platform/) | `.py` |
-
-### By Installation Type
-
-| Type | Description | Use Case |
-|------|-------------|----------|
-| **pip** | Standard installation | Production use |
-| **source** | Development / latest | Contributing or testing |
-| **claude-code** | Full integration | Claude Code + auto-setup |
-
-## Quick Start
-
-### Unix/Mac
-```bash
-# Standard installation
-./unix/pip/install.sh
-
-# Development from source
-./unix/source/install.sh
-
-# Claude Code integration
-./unix/claude-code/install.sh
+```
+your-project/
+├── vibesrails.yaml       # Security patterns (blocking + warnings)
+├── CLAUDE.md             # Instructions for Claude Code sessions
+├── .claude/
+│   └── hooks.json        # Session automation (plans, tasks, scan reminders)
+└── .git/hooks/
+    └── pre-commit        # Auto-scan on every commit
 ```
 
-### Windows
-```cmd
-REM Standard installation
-windows\pip\install.bat
+## Quick Install
 
-REM Development from source
-windows\source\install.bat
+### Option 1: `vibesrails --setup` (recommended)
 
-REM Claude Code integration
-windows\claude-code\install.bat
-```
-
-### Cross-Platform (Python)
 ```bash
-# Standard installation
-python cross-platform/pip/install.py
-
-# Development from source
-python cross-platform/source/install.py
-
-# Claude Code integration
-python cross-platform/claude-code/install.py
-```
-
-## After Installation
-
-### 1. Initialize Your Project
-```bash
+pip install vibesrails
 cd your-project
 vibesrails --setup
 ```
 
-The `--setup` command intelligently:
-- Detects your project type
-- Creates `vibesrails.yaml` with relevant patterns
-- Installs git pre-commit hook
-- Suggests Claude Code skill integration
+This single command creates **all 4 files** automatically:
+- Detects your project type (Django, FastAPI, Flask, etc.)
+- Generates `vibesrails.yaml` with relevant patterns
+- Creates `CLAUDE.md` with instructions for Claude Code
+- Installs `.claude/hooks.json` for session automation
+- Sets up `.git/hooks/pre-commit` for auto-scanning
 
-### 2. Scan Your Code
+### Option 2: Installer script
+
+**Mac/Linux:**
 ```bash
-vibesrails              # Scan staged files (default)
-vibesrails --all        # Scan entire project
-vibesrails --file path  # Scan specific file
+cd your-project
+/path/to/vibesrails/installers/unix/claude-code/install.sh .
 ```
 
-### 3. Explore Features
+**Any OS (Python):**
 ```bash
-vibesrails --show       # Show all configured patterns
-vibesrails --stats      # View scan statistics
+cd your-project
+python /path/to/vibesrails/installers/cross-platform/claude-code/install.py .
+```
+
+### Option 3: Drag & Drop
+
+1. `pip install vibesrails`
+2. Copy these 3 files from `installers/templates/claude-code/` to your project root:
+   - `vibesrails.yaml`
+   - `CLAUDE.md`
+   - `.claude/hooks.json` (create `.claude/` folder first)
+3. Run `vibesrails --hook` in your project
+
+## What Claude Code Does After Install
+
+The hooks in `.claude/hooks.json` give Claude Code these behaviors:
+
+| Hook | Trigger | Effect |
+|------|---------|--------|
+| **SessionStart** | Opening Claude Code | Shows active plan + current task |
+| **PreCompact** | Before context compaction | Auto-saves task state |
+| **PostToolUse** (Write) | First file edit | Reminds about security scanning |
+| **PostToolUse** (Bash) | After commands | Detects new commits |
+
+## Verify Installation
+
+```bash
+# Check scanner works
+vibesrails --all
+
+# Check files exist
+ls vibesrails.yaml CLAUDE.md .claude/hooks.json
+
+# Test the git hook (should block)
+echo "api_key = 'secret123'" > test_check.py
+git add test_check.py
+git commit -m "test"     # Should be blocked!
+rm test_check.py
+git reset HEAD test_check.py 2>/dev/null
+```
+
+## After Install
+
+```bash
+vibesrails --all        # Scan entire project
+vibesrails --show       # View configured patterns
 vibesrails --watch      # Live scanning on file save
 vibesrails --learn      # AI-powered pattern discovery
+vibesrails --stats      # View scan statistics
+vibesrails --fix        # Auto-fix simple issues
 ```
 
-## Available Commands
+## Customization
 
-### Scanning
-- `vibesrails` - Scan staged files (git commit workflow)
-- `vibesrails --all` - Scan all Python files in project
-- `vibesrails --file FILE` - Scan specific file
-- `vibesrails --watch` - Live scanning mode (watches file changes)
+- **Add security patterns**: Edit `vibesrails.yaml`
+- **Change Claude behavior**: Edit `.claude/hooks.json`
+- **Add project instructions**: Edit `CLAUDE.md`
 
-### Configuration
-- `vibesrails --init` - Create fresh `vibesrails.yaml`
-- `vibesrails --setup` - Smart auto-setup (recommended)
-- `vibesrails --validate` - Validate YAML config
-- `vibesrails --show` - Display all patterns
-- `vibesrails --config PATH` - Use custom config file
-
-### Git Integration
-- `vibesrails --hook` - Install git pre-commit hook
-- `vibesrails --uninstall` - Remove from project (keeps config)
-
-### AI Features
-- `vibesrails --learn` - Claude-powered pattern discovery
-- `vibesrails --guardian-stats` - Show AI coding block statistics
-
-### Auto-Fix
-- `vibesrails --fix` - Automatically fix simple patterns
-- `vibesrails --dry-run` - Preview what `--fix` would change
-- `vibesrails --fixable` - List auto-fixable patterns
-- `vibesrails --no-backup` - Skip `.bak` files (use with caution)
-
-### Metrics
-- `vibesrails --stats` - View detailed scan statistics
-- Tracks: scans per day, patterns hit, file coverage, trends
-
-## Architecture
+## Installer Directory Structure
 
 ```
-vibesrails.yaml         ← Single source of truth
-       ├── Regex patterns (fast, lightweight)
-       └── Semgrep rules (deep semantic analysis)
-
-Scanner (streaming line-by-line)
-       ├── Memory-safe for any file size
-       ├── Dual-engine: regex + semgrep
-       └── Performance logging
-
-Git Hook (pre-commit)
-       └── Runs automatically on commit
-
-Claude Code Skill
-       └── Guides AI coding practices
+installers/
+├── README.md                          # This file
+├── unix/claude-code/install.sh        # Mac/Linux script
+├── cross-platform/claude-code/install.py  # Python script (any OS)
+├── templates/claude-code/             # Source templates
+│   ├── vibesrails.yaml
+│   ├── CLAUDE.md
+│   └── .claude/hooks.json
+└── complete-package/claude-code/      # Ready-to-copy bundle + README
 ```
-
-## System Requirements
-
-- **Python**: 3.10+ (required)
-- **pip**: Latest version recommended
-- **git**: Required for `--hook` and source installation
-- **semgrep**: Auto-installed as dependency
-
-**Supported Platforms:**
-- Linux (tested on Ubuntu 20.04+)
-- macOS (tested on 11.0+)
-- Windows (tested on Windows 10+)
-
-## Performance
-
-**Streaming Architecture:**
-- 233KB file scanned in 0.02s with 20.4MB memory (constant)
-- No file size limits (line-by-line processing)
-- Timeout protection (60s default)
-
-**Typical Scan Times:**
-- Small project (<100 files): <1 second
-- Medium project (100-1000 files): 1-5 seconds
-- Large project (1000+ files): 5-30 seconds
-
-## Troubleshooting
-
-### Command not found
-```bash
-# Try module invocation
-python -m vibesrails --version
-
-# Or reinstall
-pip install --user --force-reinstall vibesrails
-```
-
-### Permission denied
-```bash
-pip install --user vibesrails
-```
-
-### Semgrep not working
-```bash
-# Check semgrep installation
-semgrep --version
-
-# Reinstall if needed
-pip install --upgrade semgrep
-```
-
-### Git hook not triggering
-```bash
-# Check hook is installed
-cat .git/hooks/pre-commit
-
-# Reinstall hook
-vibesrails --hook --force
-```
-
-## What Makes VibesRails Professional
-
-1. **Dual-Engine Detection** - Regex (fast) + Semgrep (semantic)
-2. **Memory-Safe Streaming** - Handles files of any size
-3. **AI-Powered Learning** - Discovers patterns from your code
-4. **Auto-Fix Capability** - Fixes simple issues automatically
-5. **Comprehensive Metrics** - Track scans, blocks, trends
-6. **Live Watch Mode** - Real-time feedback on file save
-7. **YAML-Driven Config** - Single source of truth
-8. **Git Integration** - Pre-commit hook automation
-9. **Claude Code Ready** - Native skill integration
 
 ## Support
 
-- **Documentation**: [docs/](../docs/)
-- **GitHub Issues**: https://github.com/VictoHughes/VIBESRAILS/issues
-- **Buy Me a Coffee**: https://buymeacoffee.com/vibesrails
-
-## License
-
-MIT - Use it, fork it, improve it.
+- **GitHub**: https://github.com/VictoHughes/VIBESRAILS
+- **Issues**: https://github.com/VictoHughes/VIBESRAILS/issues
 
 ---
 
-**Ship fast. Ship safe. 🚀**
+**Ship fast. Ship safe.**

@@ -1,183 +1,97 @@
-# Project Security Configuration
+# vibesrails Integration
 
-This project uses **VibesRails** for automatic security scanning.
+## Auto-Setup
 
-## What is VibesRails?
+Ce projet utilise vibesrails pour la sécurité du code.
 
-VibesRails is a security scanner that runs automatically on every commit to catch common security issues before they reach production.
+### Configuration automatique
 
-**Key Features:**
-- 🔒 Detects hardcoded secrets, SQL injection, command injection
-- ⚠️ Warns about code quality issues (star imports, bare excepts, TODOs)
-- 🎯 YAML-driven configuration (`vibesrails.yaml`)
-- 🚀 Memory-safe streaming (handles files of any size)
-- 🤖 AI-powered pattern discovery (`vibesrails --learn`)
-- 🔧 Auto-fix capability (`vibesrails --fix`)
-- 🎓 **Senior Mode** - Architecture mapping + intelligent guards for AI sessions
+Quand tu travailles sur ce projet:
 
-## How It Works
+1. **Avant de modifier du code**, vérifie que `vibesrails.yaml` existe
+2. Si non, exécute `vibesrails --setup` pour auto-configurer
+3. Le pre-commit hook scannera automatiquement chaque commit
 
-```
-You code → git commit → vibesrails scans → Safe code ships
-                              ↓
-                     Issue found? Quick fix, continue.
-```
-
-**Pre-commit hook:** Automatically scans staged files before each commit.
-
-**Claude Code integration:** Hooks inform you about active plans and task status.
-
-## Configuration
-
-All security patterns are defined in **`vibesrails.yaml`** (single source of truth).
-
-### Pattern Types
-
-**Blocking patterns** (🔒) - Prevent commits:
-- Hardcoded secrets (API keys, passwords)
-- SQL injection risks
-- Command injection risks
-- Debug mode in production files
-
-**Warning patterns** (⚠️) - Show warnings:
-- Star imports (except in config files)
-- Print statements (use logging instead)
-- Bare except clauses
-- TODO comments
-
-### Exceptions
-
-Test files (`test_*.py`) can use patterns that would normally be blocked:
-- Hardcoded secrets (for mocking)
-- SQL injection patterns (for testing)
-- Command injection patterns (for testing)
-
-## Commands
+### Commandes utiles
 
 ```bash
-# Scan staged files (pre-commit workflow)
-vibesrails
-
-# Scan entire project
-vibesrails --all
-
-# View configured patterns
-vibesrails --show
-
-# AI-powered pattern discovery
-vibesrails --learn
-
-# Auto-fix simple issues
-vibesrails --fix --dry-run  # Preview first
-vibesrails --fix            # Apply fixes
-
-# Live scanning on file save
-vibesrails --watch
-
-# View scan statistics
-vibesrails --stats
+vibesrails --setup     # Auto-configuration intelligente
+vibesrails --show      # Voir patterns actifs
+vibesrails --fix       # Auto-corriger patterns simples
+vibesrails --all       # Scanner tout le projet
+vibesrails --watch     # Mode surveillance continue
 ```
 
-## Bypassing Scans
+### Règles à suivre
 
-**Only when necessary:**
+- Ne jamais commiter de secrets (passwords, API keys, tokens)
+- Utiliser `os.environ.get()` pour les credentials
+- Si vibesrails bloque, corriger avant de commiter
+- Pour les faux positifs: `# vibesrails: ignore`
+
+### Guardian Mode
+
+vibesrails détecte automatiquement Claude Code et active le mode Guardian:
+- Vérifications plus strictes
+- Warnings traités comme bloquants
+- Logging pour analyse
+
+#### Statistiques Guardian
 
 ```bash
-# Bypass pre-commit hook (use sparingly!)
-git commit --no-verify
+vibesrails --guardian-stats   # Voir les stats de blocks
 ```
 
-## Customizing Patterns
-
-Edit `vibesrails.yaml` to:
-- Add custom security patterns
-- Adjust warning thresholds
-- Add file/pattern exceptions
-- Scope patterns to specific files
-
-**Example: Add custom pattern**
-
-```yaml
-blocking:
-  - id: custom_pattern
-    name: "Custom Security Check"
-    regex: "your_regex_here"
-    message: "Helpful message for developers"
-    scope: ["specific/path/*.py"]  # Optional
+Les logs sont stockés dans `.vibesrails/guardian.log` (format JSONL):
+```json
+{"timestamp": "...", "agent": "claude", "file": "...", "pattern_id": "...", "level": "BLOCK"}
 ```
 
-**Validate changes:**
+## Skills disponibles
+
+Si l'utilisateur demande de scanner le code ou configurer la sécurité:
+
+- `/vibesrails-setup` - Configurer vibesrails pour ce projet
+- `/vibesrails-scan` - Scanner le code pour les problèmes de sécurité
+
+### Workflow recommandé
+
+1. Au début d'un projet: `vibesrails --setup`
+2. Pendant le dev: les commits sont auto-scannés
+3. Si BLOCK: corriger le code, pas bypass
+4. Si faux positif: `# vibesrails: ignore` avec justification
+
+## Intégration Plans & Tâches
+
+### Plans actifs
+
+Les plans de travail sont dans `docs/plans/`. Au démarrage de session:
+1. Vérifie s'il y a un plan actif (le plus récent)
+2. Si oui, continue depuis là où tu en étais
+3. Utilise TodoWrite pour tracker les étapes du plan
+
+### Synchronisation
+
+```
+docs/plans/*.md     → Plan global (brainstorming, design)
+TodoWrite           → Tâches granulaires du plan
+vibesrails          → Sécurité à chaque commit
+```
+
+### Si tu perds le contexte
+
+1. Lis le plan actif: `docs/plans/YYYY-MM-DD-*.md`
+2. Vérifie les tâches: `TaskList`
+3. Lis le mémo: `.claude/current-task.md`
+4. Reprends où tu en étais
+
+### Persister l'état (anti-compaction)
+
+TodoWrite est en mémoire. Pour persister entre sessions/compactions:
 
 ```bash
-vibesrails --validate
+# Écrire le mémo de tâche courante
+echo "Task 3/7: Implémenter login OAuth" > .claude/current-task.md
 ```
 
-## Senior Mode (AI Coding Safety)
-
-When Guardian detects an AI coding session, **Senior Mode** runs automatically:
-
-- **ArchitectureMapper** - Generates `ARCHITECTURE.md` so Claude knows where to put code
-- **8 Guards** - Concrete checks for vibe coding issues:
-  - DiffSizeGuard (large commits)
-  - ErrorHandlingGuard (bare except)
-  - HallucinationGuard (fake imports)
-  - DependencyGuard (new deps)
-  - TestCoverageGuard (code without tests)
-  - LazyCodeGuard (pass, ellipsis, empty TODO)
-  - BypassGuard (noqa/nosec without justification)
-  - ResilienceGuard (network calls without timeout)
-
-```bash
-# Manual Senior Mode
-vibesrails --senior
-
-# Auto-enabled in vibesrails.yaml:
-guardian:
-  enabled: true
-  senior_mode: "auto"
-```
-
-## For Claude Code Users
-
-**Hooks are configured in `.claude/hooks.json`:**
-
-- **SessionStart** - Shows active plan and current task
-- **PreCompact** - Auto-saves task state before context compaction
-- **PostToolUse** - Detects new commits and reminds about security scanning
-
-## Troubleshooting
-
-**Scan failing?**
-
-```bash
-# Check what patterns are blocking
-vibesrails --all
-
-# Validate configuration
-vibesrails --validate
-
-# See detailed patterns
-vibesrails --show
-```
-
-**False positive?**
-
-Add an exception in `vibesrails.yaml`:
-
-```yaml
-exceptions:
-  my_special_case:
-    patterns: ["path/to/file.py"]
-    allowed: ["pattern_id"]
-    reason: "Explanation why this is safe"
-```
-
-## Support
-
-- **Documentation**: https://github.com/VictoHughes/VIBESRAILS
-- **Issues**: https://github.com/VictoHughes/VIBESRAILS/issues
-- **Support**: https://buymeacoffee.com/vibesrails
-
----
-
-**Ship fast. Ship safe. 🚀**
+Ce fichier est lu au SessionStart et rappelé automatiquement.
