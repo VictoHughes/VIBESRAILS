@@ -1,7 +1,10 @@
 # vibesrails - Scale up your vibe coding safely
 # Single source of truth for security & quality patterns
 #
-# Documentation: https://github.com/VictoHughes/VIBESRAILS
+# Usage:
+#   vibesrails --show     # voir patterns
+#   vibesrails --all      # scanner tout
+#   vibesrails            # scanner staged (pre-commit)
 
 version: "1.0"
 
@@ -11,97 +14,97 @@ kionos:
   threshold: 0.7
 
 # ═══════════════════════════════════════════════════════════════
-# 🔒 SECURITY - Blocks commit
+# 🔒 SECURITY - Bloque le commit
 # ═══════════════════════════════════════════════════════════════
 blocking:
   - id: hardcoded_secret
     name: "Hardcoded Secret"
     regex: "(api_key|password|secret|token|pwd|passwd)\\s*=\\s*[\"'][^\"']{4,}"
     flags: "i"
-    message: "Hardcoded secret detected - use environment variables"
+    message: "Secret hardcode - utiliser variables d'environnement"
 
   - id: sql_injection
     name: "SQL Injection"
     regex: "\\.execute\\s*\\([^)]*f[\"']"
-    message: "SQL injection risk - use parameterized queries"
+    message: "SQL injection - utiliser requetes parametrees"
 
   - id: command_injection
     name: "Command Injection"
     regex: "(os\\.system|subprocess\\.call|subprocess\\.run|eval)\\s*\\([^)]*f[\"']"
-    message: "Command injection risk - sanitize input or use safe alternatives"
+    message: "Command injection - sanitizer les inputs ou utiliser des alternatives safe"
 
   - id: shell_injection
     name: "Shell Injection"
     regex: "shell\\s*=\\s*True"
-    message: "shell=True is dangerous - use subprocess with list args"
+    message: "shell=True dangereux - utiliser subprocess avec liste"
 
   - id: unsafe_yaml
     name: "Unsafe YAML"
     regex: "yaml\\.load\\s*\\("
     exclude_regex: "Loader\\s*="
-    message: "Use yaml.safe_load() instead"
+    message: "Utiliser yaml.safe_load()"
 
   - id: unsafe_numpy
     name: "Unsafe NumPy"
     regex: "allow_pickle\\s*=\\s*True"
-    message: "Allows arbitrary code execution"
+    message: "Permet execution de code arbitraire"
 
   - id: debug_mode_prod
     name: "Debug Mode in Production"
     regex: "DEBUG\\s*=\\s*True"
     flags: "i"
-    message: "Debug mode enabled - set DEBUG=False in production"
+    message: "Debug mode active - mettre DEBUG=False en production"
     scope: ["**/settings.py", "**/config.py"]
 
 # ═══════════════════════════════════════════════════════════════
-# ⚠️  WARNINGS - Shows warning, doesn't block
+# ⚠️ WARNINGS - Signale mais autorise
 # ═══════════════════════════════════════════════════════════════
 warning:
   - id: star_import
     name: "Star Import"
     regex: "from\\s+\\S+\\s+import\\s+\\*"
-    message: "Star import makes code harder to maintain - use explicit imports"
+    message: "Eviter star imports"
     skip_in_tests: true
 
   - id: none_comparison
     name: "None Comparison"
     regex: "==\\s*None"
-    message: "Use 'is None' instead"
+    message: "Utiliser 'is None'"
     skip_in_tests: true
 
   - id: print_statement
     name: "Print Statement"
     regex: "^\\s*print\\("
-    message: "Consider using logging instead of print"
+    message: "Utiliser logging au lieu de print"
     skip_in_tests: true
 
   - id: bare_except
     name: "Bare Except"
     regex: "except:\\s*$"
-    message: "Bare except catches all exceptions - specify exception types"
+    message: "Attraper exceptions specifiques"
     skip_in_tests: true
 
   - id: todo_comment
     name: "TODO Comment"
     regex: "#\\s*TODO"
     flags: "i"
-    message: "TODO found - consider creating a task"
+    message: "TODO trouve - creer une tache"
     skip_in_tests: false
 
 # ═══════════════════════════════════════════════════════════════
-# 🐛 BUGS - Silent bug patterns
+# 🐛 BUGS - Patterns causant des bugs silencieux
 # ═══════════════════════════════════════════════════════════════
 bugs:
   - id: mutable_default
     name: "Mutable Default (B006)"
     regex: "def \\w+\\([^)]*=\\s*\\[\\]|def \\w+\\([^)]*=\\s*\\{\\}"
-    message: "Mutable default shared between calls"
+    message: "Mutable default partage entre appels"
     level: "BLOCK"
 
   - id: assert_in_prod
     name: "Assert in Production"
     regex: "^\\s*assert\\s+(?!.*#.*test)"
-    message: "assert is stripped with python -O"
+    message: "assert ignore avec python -O"
     level: "WARN"
     skip_in_tests: true
 
@@ -113,28 +116,28 @@ architecture:
     name: "DIP Violation (Domain → Infrastructure)"
     regex: "from backend\\.infrastructure"
     scope: ["backend/domain/**/*.py"]
-    message: "Domain must not import Infrastructure (Dependency Inversion Principle)"
+    message: "Domain ne doit pas importer Infrastructure (Dependency Inversion Principle)"
     level: "BLOCK"
 
   - id: dip_domain_application
     name: "DIP Violation (Domain → Application)"
     regex: "from backend\\.application"
     scope: ["backend/domain/**/*.py"]
-    message: "Domain must not import Application (Dependency Inversion Principle)"
+    message: "Domain ne doit pas importer Application (Dependency Inversion Principle)"
     level: "BLOCK"
 
 # ═══════════════════════════════════════════════════════════════
-# 🔧 MAINTAINABILITY
+# 🔧 MAINTENABILITE
 # ═══════════════════════════════════════════════════════════════
 maintainability:
   - id: print_debug
     name: "Print Debug"
     regex: "^\\s*print\\(.*debug|^\\s*print\\(f?[\"']\\s*(DEBUG|TODO|FIXME)"
-    message: "Leftover debug print - use logging"
+    message: "Print oublie - utiliser logging"
     level: "WARN"
 
 # ═══════════════════════════════════════════════════════════════
-# ✅ EXCEPTIONS - Files where patterns are allowed
+# ✅ EXCEPTIONS
 # ═══════════════════════════════════════════════════════════════
 exceptions:
   test_files:
@@ -148,7 +151,7 @@ exceptions:
       - "command_injection"
       - "shell_injection"
       - "mutable_default"
-    reason: "Tests can mock dangerous patterns for testing purposes"
+    reason: "Tests peuvent mocker patterns dangereux"
 
   config_files:
     patterns:
@@ -156,7 +159,7 @@ exceptions:
       - "**/config.py"
     allowed:
       - "star_import"
-    reason: "Config files may use star imports for convenience"
+    reason: "Config files may use star imports"
 
 # Complexity (enforced by scanner)
 complexity:
@@ -164,24 +167,10 @@ complexity:
   max_function_lines: 50 # For future use
 
 # ═══════════════════════════════════════════════════════════════
-# 🤖 GUARDIAN - AI Coding Safety (Senior Mode)
+# 🤖 GUARDIAN - AI Coding Safety
 # ═══════════════════════════════════════════════════════════════
 guardian:
-  enabled: true              # Activate Guardian Mode
-  auto_detect: true          # Auto-detect AI coding sessions
-  warnings_as_blocking: false  # Escalate warnings to blocking in AI mode
-  senior_mode: "auto"        # "off" | "auto" | "always"
-                             # auto = run when AI session detected
-                             # always = run on every scan
-
-# ═══════════════════════════════════════════════════════════════
-# 📝 NOTES
-# ═══════════════════════════════════════════════════════════════
-# - Add custom patterns in blocking/warning sections
-# - Use 'scope' to limit patterns to specific files
-# - Use 'skip_in_tests' to ignore warnings in test files
-# - Add exceptions for legitimate use cases
-# - Architecture rules enforce DIP (domain cannot import infra/app)
-# - Run: vibesrails --show to see all patterns
-# - Run: vibesrails --validate to check config
-# - Run: vibesrails --senior for manual Senior Mode
+  enabled: true
+  auto_detect: true
+  warnings_as_blocking: false
+  senior_mode: "auto"  # Run Senior Mode when AI session detected

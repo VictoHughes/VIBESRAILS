@@ -1,15 +1,18 @@
 @echo off
-REM vibesrails - Claude Code integration installer for Windows
+REM VibesRails v2.0 - Claude Code integration installer for Windows
 setlocal enabledelayedexpansion
 
-echo === VibesRails + Claude Code installer ===
+echo ================================================
+echo   VibesRails v2.0 + Claude Code Installer
+echo   15 guards + Senior Mode + AI integration
+echo ================================================
 echo.
 
 REM Check Python
 python --version >nul 2>&1
 if errorlevel 1 (
     echo ERROR: Python is not installed or not in PATH
-    echo Download from: https://python.org
+    echo Download Python 3.10+ from: https://python.org
     exit /b 1
 )
 
@@ -25,17 +28,17 @@ if not exist "%PROJECT_PATH%" (
     exit /b 1
 )
 
-REM Step 1: Install vibesrails if not present
+REM Step 1: Install vibesrails v2 if not present
 vibesrails --version >nul 2>&1
 if errorlevel 1 (
-    echo Installing vibesrails...
-    pip install vibesrails
+    echo [1/4] Installing vibesrails v2.0...
+    pip install "vibesrails[all]>=2.0.0"
     if errorlevel 1 (
         echo ERROR: vibesrails installation failed
         exit /b 1
     )
 ) else (
-    echo vibesrails already installed
+    echo [1/4] vibesrails already installed
 )
 
 echo.
@@ -44,7 +47,7 @@ echo.
 
 REM Step 2: Change to project directory
 cd /d "%PROJECT_PATH%"
-echo Setting up project: %PROJECT_PATH%
+echo [2/4] Setting up project: %PROJECT_PATH%
 echo.
 
 REM Check if git repo
@@ -54,11 +57,19 @@ if not exist ".git" (
 )
 
 REM Step 3: Run smart setup
-echo Running vibesrails --setup...
+echo [3/4] Running vibesrails --setup...
 vibesrails --setup --force
 
 echo.
-echo === Installation complete ===
+
+REM Step 4: Install git hook
+echo [4/4] Installing git pre-commit hook...
+vibesrails --hook 2>nul
+echo.
+
+echo ================================================
+echo   Installation complete!
+echo ================================================
 echo.
 echo Files created:
 if exist "vibesrails.yaml" echo   vibesrails.yaml
@@ -67,11 +78,23 @@ if exist ".claude\hooks.json" echo   .claude\hooks.json
 if exist ".git\hooks\pre-commit" echo   .git\hooks\pre-commit
 
 echo.
+echo v2.0 Features available:
+echo   - 15 security ^& quality guards
+echo   - Senior Mode with architecture mapping
+echo   - AI coding safety (hallucination, bypass, lazy code detection)
+echo   - Performance, complexity ^& dependency audits
+echo   - Community pattern packs
+echo.
 echo Claude Code will now:
 echo   - Scan code on every commit
+echo   - Run Senior Mode during AI sessions
 echo   - Show active plan on session start
 echo   - Auto-save state before compaction
 echo.
-echo Try: vibesrails --all
+echo CLI Commands:
+echo   vibesrails --all          Full project scan
+echo   vibesrails --senior       Senior Mode analysis
+echo   vibesrails --audit        Dependency audit
+echo   vibesrails --upgrade      Upgrade advisor
 echo.
 pause

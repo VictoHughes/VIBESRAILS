@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-vibesrails - Claude Code integration installer (cross-platform)
+VibesRails v2.0 - Claude Code integration installer (cross-platform)
 
-Installs vibesrails AND sets up Claude Code integration:
+Installs vibesrails v2.0 AND sets up Claude Code integration:
   - vibesrails.yaml   (security patterns)
   - CLAUDE.md         (Claude Code instructions)
   - .claude/hooks.json (session automation)
@@ -17,7 +17,8 @@ from pathlib import Path
 
 def banner():
     print("+" + "=" * 48 + "+")
-    print("|  VibesRails + Claude Code Installer             |")
+    print("|  VibesRails v2.0 + Claude Code Installer        |")
+    print("|  15 guards + Senior Mode + AI integration       |")
     print("+" + "=" * 48 + "+")
     print()
 
@@ -62,10 +63,10 @@ def main():
     templates_dir = find_templates_dir()
     if not templates_dir.exists():
         print(f"ERROR: Templates not found at: {templates_dir}")
-        print("Make sure the installers/ directory structure is intact.")
+        print("Make sure the installers-v2/ directory structure is intact.")
         sys.exit(1)
 
-    # Step 1: Install vibesrails
+    # Step 1: Install vibesrails v2
     print("[1/4] Checking vibesrails...")
     try:
         result = subprocess.run(
@@ -78,9 +79,9 @@ def main():
         else:
             raise FileNotFoundError
     except FileNotFoundError:
-        print("      Installing vibesrails...")
+        print("      Installing vibesrails v2.0...")
         result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", "vibesrails"],
+            [sys.executable, "-m", "pip", "install", "vibesrails[all]>=2.0.0"],
             capture_output=False,
         )
         if result.returncode != 0:
@@ -144,13 +145,25 @@ def main():
         if p.exists():
             print(f"    {check}")
     print()
+    print("  v2.0 Features available:")
+    print("    - 15 security & quality guards")
+    print("    - Senior Mode with architecture mapping")
+    print("    - AI coding safety (hallucination, bypass, lazy code detection)")
+    print("    - Performance, complexity & dependency audits")
+    print("    - Community pattern packs")
+    print()
     print("  Claude Code will now:")
     print("    - Scan code on every commit")
+    print("    - Run Senior Mode during AI sessions")
     print("    - Show active plan on session start")
     print("    - Auto-save state before compaction")
-    print("    - Remind about scanning on first edit")
     print()
-    print("  Next: vibesrails --all")
+    print("  CLI Commands:")
+    print("    vibesrails --all          Full project scan")
+    print("    vibesrails --senior       Senior Mode analysis")
+    print("    vibesrails --audit        Dependency audit")
+    print("    vibesrails --upgrade      Upgrade advisor")
+    print("    vibesrails --watch        Live scanning")
     print()
 
 

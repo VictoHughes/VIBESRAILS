@@ -1,12 +1,13 @@
 @echo off
-REM VibesRails - Complete Installation Script (Windows)
-REM Install VibesRails + setup your project with templates
+REM VibesRails v2.0 - Complete Installation Script (Windows)
+REM Install VibesRails v2.0 + setup your project with templates
 
 setlocal enabledelayedexpansion
 
-echo ================================
-echo VibesRails Complete Installer
-echo ================================
+echo ================================================
+echo   VibesRails v2.0 Complete Installer
+echo   15 guards + Senior Mode + AI integration
+echo ================================================
 echo.
 
 REM Check Python version
@@ -21,7 +22,7 @@ echo [OK] Python %PYTHON_VERSION%
 
 REM Get script directory
 set "SCRIPT_DIR=%~dp0"
-set "WHEEL_FILE=%SCRIPT_DIR%vibesrails-1.3.0-py3-none-any.whl"
+set "WHEEL_FILE=%SCRIPT_DIR%vibesrails-2.0.0-py3-none-any.whl"
 set "TEMPLATES_DIR=%SCRIPT_DIR%claude-code"
 
 REM Check wheel exists
@@ -52,9 +53,9 @@ if not exist "%PROJECT_DIR%" (
 echo [OK] Target project: %PROJECT_DIR%
 echo.
 
-REM Step 1: Install VibesRails
-echo [1/3] Installing VibesRails...
-python -m pip install "%WHEEL_FILE%" --force-reinstall --no-deps
+REM Step 1: Install VibesRails v2
+echo [1/3] Installing VibesRails v2.0...
+python -m pip install "%WHEEL_FILE%[all]" --force-reinstall
 python -m pip install pyyaml semgrep
 
 REM Verify
@@ -79,47 +80,62 @@ if not exist "%PROJECT_DIR%\.git" (
     git init
 )
 
-copy /Y "%TEMPLATES_DIR%\vibesrails.yaml" "%PROJECT_DIR%\" >nul
-echo   [OK] vibesrails.yaml
+if exist "%TEMPLATES_DIR%" (
+    copy /Y "%TEMPLATES_DIR%\vibesrails.yaml" "%PROJECT_DIR%\" >nul 2>&1
+    if not errorlevel 1 echo   [OK] vibesrails.yaml
 
-copy /Y "%TEMPLATES_DIR%\CLAUDE.md" "%PROJECT_DIR%\" >nul
-echo   [OK] CLAUDE.md
+    copy /Y "%TEMPLATES_DIR%\CLAUDE.md" "%PROJECT_DIR%\" >nul 2>&1
+    if not errorlevel 1 echo   [OK] CLAUDE.md
 
-if not exist "%PROJECT_DIR%\.claude" mkdir "%PROJECT_DIR%\.claude"
-copy /Y "%TEMPLATES_DIR%\.claude\hooks.json" "%PROJECT_DIR%\.claude\" >nul
-echo   [OK] .claude\hooks.json
+    if not exist "%PROJECT_DIR%\.claude" mkdir "%PROJECT_DIR%\.claude"
+    copy /Y "%TEMPLATES_DIR%\.claude\hooks.json" "%PROJECT_DIR%\.claude\" >nul 2>&1
+    if not errorlevel 1 echo   [OK] .claude\hooks.json
+) else (
+    echo Templates not found, running vibesrails --setup...
+    cd /d "%PROJECT_DIR%"
+    vibesrails --setup --force 2>nul
+)
 
 echo.
 
 REM Step 3: Install git hook
 echo [3/3] Installing git pre-commit hook...
 cd /d "%PROJECT_DIR%"
-vibesrails --hook
+vibesrails --hook 2>nul
 
 echo.
-echo ================================
-echo Installation Complete! 🚀
-echo ================================
+echo ================================================
+echo   Installation Complete!
+echo ================================================
 echo.
 
 echo Files installed:
-echo   • vibesrails.yaml - Security patterns
-echo   • CLAUDE.md - Claude Code instructions
-echo   • .claude\hooks.json - Automation hooks
-echo   • .git\hooks\pre-commit - Git hook
+if exist "%PROJECT_DIR%\vibesrails.yaml" echo   - vibesrails.yaml
+if exist "%PROJECT_DIR%\CLAUDE.md" echo   - CLAUDE.md
+if exist "%PROJECT_DIR%\.claude\hooks.json" echo   - .claude\hooks.json
+if exist "%PROJECT_DIR%\.git\hooks\pre-commit" echo   - .git\hooks\pre-commit
 echo.
 
-echo Test the installation:
-echo   cd %PROJECT_DIR%
-echo   vibesrails --all
+echo v2.0 Features:
+echo   - 15 security ^& quality guards
+echo   - Senior Mode with architecture mapping
+echo   - AI coding safety (hallucination, bypass, lazy code)
+echo   - Performance, complexity ^& dependency audits
+echo   - Type safety ^& API design guards
+echo   - Community pattern packs
 echo.
 
-echo Try these commands:
-echo   vibesrails --show       # Show configured patterns
-echo   vibesrails --watch      # Live scanning mode
-echo   vibesrails --learn      # AI pattern discovery
-echo   vibesrails --stats      # View scan statistics
+echo CLI Commands:
+echo   vibesrails --all          Scan entire project
+echo   vibesrails --senior       Run Senior Mode analysis
+echo   vibesrails --show         Show configured patterns
+echo   vibesrails --watch        Live scanning mode
+echo   vibesrails --learn        AI pattern discovery
+echo   vibesrails --fix          Auto-fix issues
+echo   vibesrails --audit        Dependency audit
+echo   vibesrails --upgrade      Upgrade advisor
+echo   vibesrails --stats        View scan statistics
 echo.
 
-echo Happy safe coding! 🛤️
+echo Happy safe coding!
 pause

@@ -1,15 +1,18 @@
 @echo off
-REM vibesrails - Source installer for Windows
+REM VibesRails v2.0 - Source installer for Windows
 setlocal enabledelayedexpansion
 
-echo === VibesRails source installer ===
+echo ================================================
+echo   VibesRails v2.0 Installer (source)
+echo   YAML-driven security + code quality scanner
+echo ================================================
 echo.
 
 REM Check Python
 python --version >nul 2>&1
 if errorlevel 1 (
     echo ERROR: Python is not installed or not in PATH
-    echo Download from: https://python.org
+    echo Download Python 3.10+ from: https://python.org
     exit /b 1
 )
 
@@ -28,6 +31,7 @@ if exist "%INSTALL_PATH%" (
     echo Updating existing installation at %INSTALL_PATH%...
     cd /d "%INSTALL_PATH%"
     git pull
+    git checkout v2.0 2>nul || git checkout main
 ) else (
     echo Cloning to %INSTALL_PATH%...
     git clone https://github.com/VictoHughes/VIBESRAILS.git "%INSTALL_PATH%"
@@ -35,11 +39,13 @@ if exist "%INSTALL_PATH%" (
         echo ERROR: Clone failed
         exit /b 1
     )
+    cd /d "%INSTALL_PATH%"
+    git checkout v2.0 2>nul || git checkout main
 )
 
 echo.
-echo Installing in development mode...
-pip install -e "%INSTALL_PATH%"
+echo Installing vibesrails v2.0 from source with all extras...
+pip install -e ".[all]"
 
 if errorlevel 1 (
     echo.
@@ -54,7 +60,15 @@ if errorlevel 1 (
 )
 
 echo.
-echo === Installation complete ===
+echo ================================================
+echo   Installation complete!
+echo ================================================
+echo.
+echo v2.0 Features:
+echo   - 15 security ^& quality guards
+echo   - Senior Mode (AI coding safety)
+echo   - Architecture mapping
+echo   - Community pattern packs
 echo.
 echo Next steps:
 echo   cd your-project

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-vibesrails - Source installer (cross-platform)
+VibesRails v2.0 - Source installer (cross-platform)
 """
 import os
 import subprocess
@@ -9,7 +9,10 @@ from pathlib import Path
 
 
 def main():
-    print("=== VibesRails source installer ===")
+    print("+" + "=" * 48 + "+")
+    print("|  VibesRails v2.0 Installer (source)             |")
+    print("|  YAML-driven security + code quality scanner    |")
+    print("+" + "=" * 48 + "+")
     print()
 
     # Check Python version
@@ -42,6 +45,12 @@ def main():
         )
         if result.returncode != 0:
             print("WARNING: git pull failed, continuing with existing code")
+        # Try to checkout v2 branch
+        subprocess.run(
+            ["git", "checkout", "v2.0"],
+            cwd=install_path,
+            capture_output=True,
+        )
     else:
         print(f"Cloning to {install_path}...")
         result = subprocess.run(
@@ -52,13 +61,18 @@ def main():
             print()
             print("ERROR: Clone failed")
             sys.exit(1)
+        subprocess.run(
+            ["git", "checkout", "v2.0"],
+            cwd=install_path,
+            capture_output=True,
+        )
 
     print()
 
-    # Install in development mode
-    print("Installing in development mode...")
+    # Install in development mode with all extras
+    print("Installing vibesrails v2.0 from source with all extras...")
     result = subprocess.run(
-        [sys.executable, "-m", "pip", "install", "-e", str(install_path)],
+        [sys.executable, "-m", "pip", "install", "-e", f"{install_path}[all]"],
         capture_output=False,
     )
 
@@ -80,7 +94,17 @@ def main():
         print("vibesrails installed (run: python -m vibesrails --version)")
 
     print()
-    print("=== Installation complete ===")
+    print("=" * 50)
+    print("  Installation complete!")
+    print("=" * 50)
+    print()
+    print(f"Installed at: {install_path}")
+    print()
+    print("v2.0 Features:")
+    print("  - 15 security & quality guards")
+    print("  - Senior Mode (AI coding safety)")
+    print("  - Architecture mapping")
+    print("  - Community pattern packs")
     print()
     print("Next steps:")
     print("  cd your-project")
