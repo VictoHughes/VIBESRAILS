@@ -30,8 +30,17 @@ vibesrails.yaml
 htmlcov/
 .pytest_cache/
 
+# Local state (machine-specific)
+.vibesrails/metrics/
+.vibesrails/learned_patterns.yaml
+.vibesrails/signature_index.json
+.claude/.last_commit_hash
+.claude/.write_reminded
+
 # Generated
 ARCHITECTURE.md
+*.html
+*.pdf
 
 # OS
 .DS_Store
