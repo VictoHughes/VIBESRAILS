@@ -72,11 +72,13 @@ settings = {}
 if os.path.exists(path):
     with open(path) as f:
         settings = json.load(f)
-hook_entry = {'type': 'command', 'command': 'python3 ~/.claude/hooks/ptuh.py'}
+hook_cmd = 'python3 ~/.claude/hooks/ptuh.py'
+matcher_entry = {'matcher': 'Edit|Write|Bash', 'hooks': [{'type': 'command', 'command': hook_cmd}]}
 hooks = settings.setdefault('hooks', {})
 ptu = hooks.setdefault('PreToolUse', [])
-if not any(h.get('command', '') == hook_entry['command'] for h in ptu):
-    ptu.append(hook_entry)
+exists = any(any(h.get('command', '') == hook_cmd for h in m.get('hooks', [])) for m in ptu)
+if not exists:
+    ptu.append(matcher_entry)
 with open(path, 'w') as f:
     json.dump(settings, f, indent=2)
 "

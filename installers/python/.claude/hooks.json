@@ -1,87 +1,90 @@
 {
-  "$schema": "https://raw.githubusercontent.com/anthropics/claude-code/main/schemas/hooks.json",
   "hooks": {
     "SessionStart": [
       {
-        "type": "command",
-        "command": "python3 -c \"import sys; from pathlib import Path; p=Path('vibesrails.yaml'); sys.exit(0 if p.exists() else 1)\" || echo '💡 vibesrails: Run `vibesrails --setup` for auto-security setup'",
-        "description": "Check if vibesrails is configured"
-      },
-      {
-        "type": "command",
-        "command": "python3 -c \"from pathlib import Path; plans=sorted(Path('docs/plans').glob('*.md'), key=lambda p: p.stat().st_mtime, reverse=True) if Path('docs/plans').exists() else []; print(f'📋 Plan actif: {plans[0].name}') if plans else None\"",
-        "description": "Show active plan from docs/plans/"
-      },
-      {
-        "type": "command",
-        "command": "python3 -c \"from pathlib import Path; p=Path('.claude/current-task.md'); print(f'📌 Tâche en cours: {p.read_text().strip()[:80]}...') if p.exists() and p.read_text().strip() else None\"",
-        "description": "Show current task memo"
-      },
-      {
-        "type": "command",
-        "command": "rm -f .claude/.write_reminded 2>/dev/null; mkdir -p .claude; git rev-parse HEAD 2>/dev/null > .claude/.last_commit_hash || true",
-        "description": "Reset session flags and store current commit hash"
-      },
-      {
-        "type": "prompt",
-        "prompt": "Si .claude/current-task.md existe et contient des tâches, utilise TaskCreate pour recréer la TaskList à partir de son contenu. Cela restaure l'état après compaction/restart.",
-        "description": "Restore TaskList from saved state"
-      },
-      {
-        "type": "command",
-        "command": "python3 -c \"from vibesrails.hooks.queue_processor import format_pending_summary; from pathlib import Path; s=format_pending_summary(Path('.claude/queue.jsonl')); print(s) if s else None\"",
-        "description": "Check for tasks from other sessions"
-      },
-      {
-        "type": "command",
-        "command": "python3 -c \"from vibesrails.hooks.inbox import check_inbox; from pathlib import Path; c=check_inbox(Path('.claude/inbox.md')); print(f'Inbox instructions:\\n{c}') if c else None\"",
-        "description": "Check mobile inbox for async instructions"
-      },
-      {
-        "type": "prompt",
-        "prompt": "Si le message precedent contient 'Inbox instructions:', traite les instructions puis efface l'inbox avec: python3 -c \"from vibesrails.hooks.inbox import clear_inbox; from pathlib import Path; clear_inbox(Path('.claude/inbox.md'))\"",
-        "description": "Process and clear inbox instructions"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"import sys; from pathlib import Path; p=Path('vibesrails.yaml'); sys.exit(0 if p.exists() else 1)\" || echo 'vibesrails: Run vibesrails --setup for auto-security setup'"
+          },
+          {
+            "type": "command",
+            "command": "python3 -c \"from pathlib import Path; plans=sorted(Path('docs/plans').glob('*.md'), key=lambda p: p.stat().st_mtime, reverse=True) if Path('docs/plans').exists() else []; print(f'Plan actif: {plans[0].name}') if plans else None\""
+          },
+          {
+            "type": "command",
+            "command": "python3 -c \"from pathlib import Path; p=Path('.claude/current-task.md'); print(f'Tache en cours: {p.read_text().strip()[:80]}...') if p.exists() and p.read_text().strip() else None\""
+          },
+          {
+            "type": "command",
+            "command": "rm -f .claude/.write_reminded 2>/dev/null; mkdir -p .claude; git rev-parse HEAD 2>/dev/null > .claude/.last_commit_hash || true"
+          },
+          {
+            "type": "prompt",
+            "prompt": "Si .claude/current-task.md existe et contient des taches, utilise TaskCreate pour recreer la TaskList a partir de son contenu. Cela restaure l'etat apres compaction/restart."
+          },
+          {
+            "type": "command",
+            "command": "python3 -c \"from vibesrails.hooks.queue_processor import format_pending_summary; from pathlib import Path; s=format_pending_summary(Path('.claude/queue.jsonl')); print(s) if s else None\""
+          },
+          {
+            "type": "command",
+            "command": "python3 -c \"from vibesrails.hooks.inbox import check_inbox; from pathlib import Path; c=check_inbox(Path('.claude/inbox.md')); print(f'Inbox instructions:\\n{c}') if c else None\""
+          },
+          {
+            "type": "prompt",
+            "prompt": "Si le message precedent contient 'Inbox instructions:', traite les instructions puis efface l'inbox avec: python3 -c \"from vibesrails.hooks.inbox import clear_inbox; from pathlib import Path; clear_inbox(Path('.claude/inbox.md'))\""
+          }
+        ]
       }
     ],
     "PreToolUse": [
       {
-        "type": "command",
         "matcher": "Write|Edit|Bash",
-        "command": "python3 -m vibesrails.hooks.pre_tool_use",
-        "description": "vibesrails: scan code and commands (blocks secrets, injections)"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -m vibesrails.hooks.pre_tool_use"
+          }
+        ]
       }
     ],
     "PreCompact": [
       {
-        "type": "prompt",
-        "prompt": "AVANT COMPACTION: Sauvegarde automatique de l'état. Écris un résumé de la tâche en cours dans .claude/current-task.md avec: 1) Le plan actif (docs/plans/*.md), 2) L'étape actuelle, 3) Les prochaines actions, 4) Liste des tâches TaskList avec leur status. Format: markdown court.",
-        "description": "Auto-save task state before compaction"
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "AVANT COMPACTION: Sauvegarde automatique de l'etat. Ecris un resume de la tache en cours dans .claude/current-task.md avec: 1) Le plan actif (docs/plans/*.md), 2) L'etape actuelle, 3) Les prochaines actions, 4) Liste des taches TaskList avec leur status. Format: markdown court."
+          }
+        ]
       }
     ],
     "PostToolUse": [
       {
-        "type": "command",
         "matcher": "Write|Edit",
-        "command": "python3 -c \"from pathlib import Path; d=Path('.claude'); d.mkdir(exist_ok=True); f=d/'.write_reminded'; showed=(print('🛡️ vibesrails: Code will be scanned on commit') or True) if not f.exists() and Path('vibesrails.yaml').exists() else False; f.touch() if showed else None\"",
-        "description": "Remind about scanning (first Write only)"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"from pathlib import Path; d=Path('.claude'); d.mkdir(exist_ok=True); f=d/'.write_reminded'; showed=(print('vibesrails: Code will be scanned on commit') or True) if not f.exists() and Path('vibesrails.yaml').exists() else False; f.touch() if showed else None\""
+          },
+          {
+            "type": "command",
+            "command": "python3 -m vibesrails.hooks.post_tool_use"
+          }
+        ]
       },
       {
-        "type": "command",
         "matcher": "Bash",
-        "command": "python3 -c \"from pathlib import Path; import subprocess; d=Path('.claude'); d.mkdir(exist_ok=True); f=d/'.last_commit_hash'; old=f.read_text().strip() if f.exists() else ''; new=subprocess.run(['git','rev-parse','HEAD'],capture_output=True,text=True).stdout.strip() if Path('.git').exists() else ''; changed=old and new and old!=new; f.write_text(new) if new else None; print('✅ Nouveau commit détecté!') if changed else None\"",
-        "description": "Detect new commits by comparing hashes"
-      },
-      {
-        "type": "prompt",
-        "matcher": "Bash",
-        "prompt": "Si le message précédent indique '✅ Nouveau commit détecté!', mets à jour TaskList (marque la tâche completed) et .claude/current-task.md.",
-        "description": "Update tasks after detected commit"
-      },
-      {
-        "type": "command",
-        "matcher": "Write|Edit",
-        "command": "python3 -m vibesrails.hooks.post_tool_use",
-        "description": "vibesrails: full scan after write (warn-only)"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"from pathlib import Path; import subprocess; d=Path('.claude'); d.mkdir(exist_ok=True); f=d/'.last_commit_hash'; old=f.read_text().strip() if f.exists() else ''; new=subprocess.run(['git','rev-parse','HEAD'],capture_output=True,text=True).stdout.strip() if Path('.git').exists() else ''; changed=old and new and old!=new; f.write_text(new) if new else None; print('Nouveau commit detecte!') if changed else None\""
+          },
+          {
+            "type": "prompt",
+            "prompt": "Si le message precedent indique 'Nouveau commit detecte!', mets a jour TaskList (marque la tache completed) et .claude/current-task.md."
+          }
+        ]
       }
     ]
   }

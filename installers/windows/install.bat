@@ -61,7 +61,7 @@ if not exist "%USERPROFILE%\.claude\hooks" mkdir "%USERPROFILE%\.claude\hooks"
 copy /Y "%SCRIPT_DIR%ptuh.py" "%USERPROFILE%\.claude\hooks\ptuh.py"
 echo   -^> ~/.claude/hooks/ptuh.py
 
-python3 -c "import json,os;p=os.path.join(os.path.expanduser('~'),'.claude','settings.json');s=json.load(open(p)) if os.path.exists(p) else {};h=s.setdefault('hooks',{});t=h.setdefault('PreToolUse',[]);e={'type':'command','command':'python3 ~/.claude/hooks/ptuh.py'};t.append(e) if not any(x.get('command','')==e['command'] for x in t) else None;open(p,'w').write(json.dumps(s,indent=2))"
+python3 -c "import json,os;p=os.path.join(os.path.expanduser('~'),'.claude','settings.json');s=json.load(open(p)) if os.path.exists(p) else {};h=s.setdefault('hooks',{});t=h.setdefault('PreToolUse',[]);c='python3 ~/.claude/hooks/ptuh.py';m={'matcher':'Edit|Write|Bash','hooks':[{'type':'command','command':c}]};t.append(m) if not any(any(x.get('command','')==c for x in e.get('hooks',[])) for e in t) else None;open(p,'w').write(json.dumps(s,indent=2))"
 echo   -^> ~/.claude/settings.json (hook registered)
 
 echo.
