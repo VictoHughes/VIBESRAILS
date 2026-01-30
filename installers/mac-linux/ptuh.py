@@ -12,7 +12,22 @@ It blocks modifications to:
 """
 
 import json
+import re
 import sys
+
+# Secret patterns — block commands and file content containing secrets
+SECRET_PATTERNS = [
+    (r"AKIA[0-9A-Z]{16}", "AWS Access Key"),
+    (r"(?:sk-|sk-proj-)[a-zA-Z0-9]{20,}", "OpenAI/API Secret Key"),
+    (r"ghp_[a-zA-Z0-9]{36}", "GitHub Personal Access Token"),
+    (r"gho_[a-zA-Z0-9]{36}", "GitHub OAuth Token"),
+    (r"glpat-[a-zA-Z0-9\-_]{20,}", "GitLab Personal Access Token"),
+    (r"xox[bps]-[a-zA-Z0-9\-]{10,}", "Slack Token"),
+    (r"Bearer\s+[a-zA-Z0-9\-_.]{20,}", "Bearer Token in command"),
+    (r"(?:password|passwd|pwd)\s*=\s*['\"][^'\"]{8,}['\"]", "Hardcoded password"),
+    (r"(?:api_key|apikey|secret_key|secret)\s*=\s*['\"][^'\"]{8,}['\"]", "Hardcoded API key"),
+]
+_SECRET_REGEXES = [(re.compile(p), label) for p, label in SECRET_PATTERNS]
 
 PROTECTED_PATHS = [
     ".git/hooks",
@@ -73,8 +88,26 @@ def check_file_path(tool_input):
             sys.exit(1)
 
 
+def check_secrets(text, context):
+    """Check if text contains secrets (API keys, tokens, passwords)."""
+    for regex, label in _SECRET_REGEXES:
+        match = regex.search(text)
+        if match:
+            # Mask the secret for display
+            found = match.group(0)
+            masked = found[:8] + "..." + found[-4:] if len(found) > 16 else found[:6] + "..."
+            print(
+                f"BLOCKED: Secret detected in {context}.\n"
+                f"Type: {label}\n"
+                f"Found: {masked}\n"
+                f"Never pass secrets in commands or file content.\n"
+                f"Use environment variables instead: os.environ.get('KEY')"
+            )
+            sys.exit(1)
+
+
 def check_bash_command(tool_input):
-    """Check if a bash command targets protected resources."""
+    """Check if a bash command targets protected resources or contains secrets."""
     command = tool_input.get("command", "")
     for blocked in BLOCKED_COMMANDS:
         if blocked in command:
@@ -84,6 +117,8 @@ def check_bash_command(tool_input):
                 f"This protection cannot be disabled by Claude Code."
             )
             sys.exit(1)
+    # Scan command for secrets
+    check_secrets(command, "bash command")
 
 
 def main():
@@ -93,6 +128,10 @@ def main():
 
     if tool_name in ("Edit", "Write"):
         check_file_path(tool_input)
+        # Scan content for secrets
+        content = tool_input.get("content", "") or tool_input.get("new_string", "")
+        if content:
+            check_secrets(content, f"file content ({tool_input.get('file_path', '?')})")
     elif tool_name == "Bash":
         check_bash_command(tool_input)
 
