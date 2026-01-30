@@ -45,12 +45,15 @@ def main() -> None:
         hook.write_text(
             '#!/usr/bin/env bash\n'
             '# vibesrails pre-commit hook\n'
+            '\n'
             'if command -v vibesrails &>/dev/null; then\n'
             '    vibesrails\n'
-            '    if [ $? -ne 0 ]; then\n'
-            '        echo "vibesrails: issues found. Fix before committing."\n'
-            '        exit 1\n'
-            '    fi\n'
+            'elif [ -f ".venv/bin/vibesrails" ]; then\n'
+            '    .venv/bin/vibesrails\n'
+            'elif [ -f "venv/bin/vibesrails" ]; then\n'
+            '    venv/bin/vibesrails\n'
+            'else\n'
+            '    python3 -m vibesrails\n'
             'fi\n'
         )
         hook.chmod(0o755)

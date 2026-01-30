@@ -46,12 +46,15 @@ if [ -d "$TARGET/.git" ]; then
     cat > "$HOOK" << 'HOOKEOF'
 #!/usr/bin/env bash
 # vibesrails pre-commit hook
+
 if command -v vibesrails &>/dev/null; then
     vibesrails
-    if [ $? -ne 0 ]; then
-        echo "vibesrails: issues found. Fix before committing."
-        exit 1
-    fi
+elif [ -f ".venv/bin/vibesrails" ]; then
+    .venv/bin/vibesrails
+elif [ -f "venv/bin/vibesrails" ]; then
+    venv/bin/vibesrails
+else
+    python3 -m vibesrails
 fi
 HOOKEOF
     chmod +x "$HOOK"

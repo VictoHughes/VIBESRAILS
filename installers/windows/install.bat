@@ -38,12 +38,15 @@ if exist "%TARGET%\.git" (
     (
         echo #!/usr/bin/env bash
         echo # vibesrails pre-commit hook
+        echo.
         echo if command -v vibesrails ^&^>/dev/null; then
         echo     vibesrails
-        echo     if [ $? -ne 0 ]; then
-        echo         echo "vibesrails: issues found. Fix before committing."
-        echo         exit 1
-        echo     fi
+        echo elif [ -f ".venv/bin/vibesrails" ]; then
+        echo     .venv/bin/vibesrails
+        echo elif [ -f "venv/bin/vibesrails" ]; then
+        echo     venv/bin/vibesrails
+        echo else
+        echo     python3 -m vibesrails
         echo fi
     ) > "%TARGET%\.git\hooks\pre-commit"
     echo   -^> .git\hooks\pre-commit
