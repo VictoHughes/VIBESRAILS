@@ -20,27 +20,47 @@ PROTECTED_PATHS = [
     ".github/workflows",
     "site-packages/vibesrails",
     ".claude/settings.json",
-    ".claude/hooks/protect_vibesrails",
+    ".claude/hooks/",
+    ".claude/hooks/ptuh.py",
 ]
 
-# Also block dangerous bash commands
+# Block dangerous bash commands
 BLOCKED_COMMANDS = [
+    # Git hooks tampering
     "rm .git/hooks",
     "rm -f .git/hooks",
     "rm -rf .git/hooks",
     "> .git/hooks",
     "chmod 6",
     "chmod 7",
-    "pip install -e",
+    # Skip pre-commit
+    "git commit " + "-n ",
+    "git commit " + "--no-verify",
     "--no" + "-verify",
-    "git " + "commit -n ",
-    "git commit " + "--no" + "-verify",
+    # Destructive git commands
+    "git push " + "--force",
+    "git push " + "-f ",
+    "git push origin " + "--force",
+    "git push origin " + "-f ",
+    "git reset " + "--hard",
+    "git checkout .",
+    "git checkout -- .",
+    "git restore .",
+    "git restore --staged .",
+    "git clean " + "-f",
+    "git branch " + "-D ",
+    # Vibesrails tampering
+    "pip install " + "-e",
     "uninstall vibesrails",
     "pip uninstall vibesrails",
+    # Hook self-protection
+    "rm ~/.claude/hooks",
+    "rm -rf ~/.claude/hooks",
+    "rm ~/.claude/hooks",
 ]
 
 
-def check_file_path(tool_input: dict) -> None:
+def check_file_path(tool_input):
     """Check if a file path is protected."""
     file_path = tool_input.get("file_path", "")
     for protected in PROTECTED_PATHS:
@@ -53,7 +73,7 @@ def check_file_path(tool_input: dict) -> None:
             sys.exit(1)
 
 
-def check_bash_command(tool_input: dict) -> None:
+def check_bash_command(tool_input):
     """Check if a bash command targets protected resources."""
     command = tool_input.get("command", "")
     for blocked in BLOCKED_COMMANDS:
@@ -66,8 +86,7 @@ def check_bash_command(tool_input: dict) -> None:
             sys.exit(1)
 
 
-def main() -> None:
-    """CLI entry point."""
+def main():
     data = json.loads(sys.stdin.read())
     tool_name = data.get("tool_name", "")
     tool_input = data.get("tool_input", {})
