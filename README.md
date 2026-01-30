@@ -131,10 +131,56 @@ VibesRails is free and open source. If it helps you ship safer code, consider su
 
 ⭐ **Star this repo** - it helps others discover vibesrails
 
+## Protect vibesrails from AI bypass
+
+AI coding tools (Claude Code, Copilot, etc.) can modify or disable local security tools. vibesrails includes a **self-protection hook** that prevents AI from:
+
+- Deleting or modifying the pre-commit hook
+- Changing `vibesrails.yaml` config
+- Altering CI workflows
+- Using `--no-verify` to skip checks
+- Uninstalling vibesrails
+
+### Setup (one time, applies to all Claude Code sessions)
+
+```bash
+# 1. Copy the protection hook
+mkdir -p ~/.claude/hooks
+cp installers/claude-code/hooks/ptuh.py ~/.claude/hooks/ptuh.py
+
+# 2. Add to Claude Code settings (~/.claude/settings.json)
+# Add this inside the top-level object:
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|Bash",
+        "command": "python3 ~/.claude/hooks/ptuh.py"
+      }
+    ]
+  }
+}
+```
+
+### Why this matters
+
+Without this protection, an AI tool can:
+1. Remove the pre-commit hook (`rm .git/hooks/pre-commit`)
+2. Use `git commit --no-verify` to skip all checks
+3. Modify the config to disable guards
+4. Edit CI workflows to remove checks
+
+The protection hook runs **before** any file modification — the AI cannot disable it because the hook blocks modifications to itself.
+
+**For full protection, also enable:**
+- GitHub Actions CI (included in `.github/workflows/ci.yml`)
+- Branch protection rules (Settings > Branches on GitHub)
+- CODEOWNERS file (requires review for security files)
+
 ## License
 
 MIT - Use it, fork it, improve it.
 
 ---
 
-**Ship fast. Ship safe. 🚀**
+**Ship fast. Ship safe.**

@@ -45,8 +45,8 @@ def _run_git(
 class GitWorkflowGuard:
     """Detects poor git workflow practices."""
 
-    def __init__(self, project_root: Path) -> None:
-        self.root = project_root
+    def __init__(self, project_root: Path | None = None) -> None:
+        self.root = project_root or Path(".")
 
     def _is_git_repo(self) -> bool:
         """Check if project_root is inside a git repository."""
