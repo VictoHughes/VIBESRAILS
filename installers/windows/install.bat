@@ -55,7 +55,7 @@ REM 4. Install AI self-protection hook
 echo.
 echo [4/4] Installing AI self-protection hook...
 if not exist "%USERPROFILE%\.claude\hooks" mkdir "%USERPROFILE%\.claude\hooks"
-copy /Y "%SCRIPT_DIR%..\claude-code\hooks\ptuh.py" "%USERPROFILE%\.claude\hooks\ptuh.py"
+copy /Y "%SCRIPT_DIR%ptuh.py" "%USERPROFILE%\.claude\hooks\ptuh.py"
 echo   -^> ~/.claude/hooks/ptuh.py
 
 python3 -c "import json,os;p=os.path.join(os.path.expanduser('~'),'.claude','settings.json');s=json.load(open(p)) if os.path.exists(p) else {};h=s.setdefault('hooks',{});t=h.setdefault('PreToolUse',[]);e={'type':'command','command':'python3 ~/.claude/hooks/ptuh.py'};t.append(e) if not any(x.get('command','')==e['command'] for x in t) else None;open(p,'w').write(json.dumps(s,indent=2))"
