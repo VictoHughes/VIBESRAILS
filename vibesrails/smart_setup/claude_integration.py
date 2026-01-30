@@ -58,8 +58,8 @@ vibesrails scanne automatiquement chaque commit pour detecter:
 
 1. **Ne jamais hardcoder de secrets**
    ```python
-   # MAUVAIS - vibesrails va bloquer
-   api_key = "your-key-here"  # vibesrails: ignore (example only)
+   # MAUVAIS (vibesrails bloque ce pattern)
+   # Assigner un secret directement dans le code
 
    # BON
    import os
