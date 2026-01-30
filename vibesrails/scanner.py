@@ -14,6 +14,7 @@ Usage:
     ./scripts/vibesrails.py --show       # Show all patterns
 """
 
+import logging
 import re
 import subprocess
 import sys
@@ -21,6 +22,8 @@ from pathlib import Path
 from typing import NamedTuple
 
 import yaml
+
+logger = logging.getLogger(__name__)
 
 # Colors for terminal output
 RED = "\033[0;31m"
@@ -208,16 +211,65 @@ def _should_skip_pattern(
     return bool(scope and not matches_pattern(filepath, scope))
 
 
+def _is_comment_line(line: str) -> bool:
+    """Check if a line is a Python comment (not executable code)."""
+    return line.lstrip().startswith("#")
+
+
+# Patterns that only matter in executable code, not comments
+_CODE_ONLY_PATTERNS = {
+    "hardcoded_secret", "sql_injection", "command_injection",
+    "shell_injection", "unsafe_yaml", "unsafe_numpy", "debug_mode_prod",
+    "mutable_default",
+}
+
+
 def _match_line(
     line: str, prev_line: str | None, pattern: dict, flags: int,
 ) -> bool:
     """Check if a line matches a pattern (with exclusion and suppression)."""
+    # Skip commented lines for code-only patterns (secrets, injections, etc.)
+    if pattern["id"] in _CODE_ONLY_PATTERNS and _is_comment_line(line):
+        return False
     if not safe_regex_search(pattern["regex"], line, flags):
         return False
     exclude_regex = pattern.get("exclude_regex")
     if exclude_regex and safe_regex_search(exclude_regex, line):
         return False
     return not is_line_suppressed(line, pattern["id"], prev_line)
+
+
+def _find_non_code_lines(lines: list[str]) -> set[int]:
+    """Find line numbers that are inside markdown code blocks or docstrings.
+
+    These lines contain examples/documentation, not executable code.
+    Returns a set of 1-based line numbers to skip for code-only patterns.
+    """
+    skip = set()
+    in_docstring = False
+    in_markdown_block = False
+
+    for i, line in enumerate(lines, 1):
+        stripped = line.strip()
+
+        # Track triple-quote docstrings containing markdown code blocks
+        if '"""' in stripped or "'''" in stripped:
+            # Count quotes to detect open/close
+            for quote in ('"""', "'''"):
+                count = stripped.count(quote)
+                if count == 1:
+                    in_docstring = not in_docstring
+                # count >= 2 means open+close on same line, no state change
+
+        # Track markdown code blocks inside docstrings/strings
+        if in_docstring and stripped.startswith("```"):
+            in_markdown_block = not in_markdown_block
+            continue
+
+        if in_docstring and in_markdown_block:
+            skip.add(i)
+
+    return skip
 
 
 def _scan_patterns(
@@ -230,6 +282,7 @@ def _scan_patterns(
     """Scan lines against a list of patterns and return results."""
     results = []
     is_test = is_test_file(filepath)
+    non_code_lines = _find_non_code_lines(lines)
 
     for pattern in patterns:
         if _should_skip_pattern(pattern, level, is_test, allowed_patterns, filepath):
@@ -238,6 +291,9 @@ def _scan_patterns(
         flags = re.IGNORECASE if pattern.get("flags") == "i" else 0
 
         for i, line in enumerate(lines, 1):
+            # Skip example code inside markdown blocks for code-only patterns
+            if pattern["id"] in _CODE_ONLY_PATTERNS and i in non_code_lines:
+                continue
             prev_line = lines[i - 2] if i > 1 else None
             if _match_line(line, prev_line, pattern, flags):
                 results.append(ScanResult(
@@ -290,11 +346,21 @@ def scan_file(filepath: str, config: dict) -> list[ScanResult]:
     return results
 
 
+def _show_section_patterns(patterns: list[dict]) -> None:
+    """Display patterns for a pro-coding section."""
+    for p in patterns:
+        level = p.get("level", "WARN")
+        color = RED if level == "BLOCK" else YELLOW
+        scope = f" [scope: {p['scope']}]" if p.get("scope") else ""
+        skip = " (skip tests)" if p.get("skip_in_tests") else ""
+        print(f"  {color}[{level}]{NC} [{p['id']}] {p['name']}{scope}{skip}")
+        print(f"    {p['message']}")
+
+
 def show_patterns(config: dict) -> None:
     """Display all configured patterns."""
     print(f"\n{BLUE}=== vibesrails patterns ==={NC}\n")
 
-    # Security patterns
     print(f"{RED}🔒 SECURITY (BLOCKING):{NC}")
     for p in config.get("blocking", []):
         print(f"  [{p['id']}] {p['name']}")
@@ -306,7 +372,6 @@ def show_patterns(config: dict) -> None:
         print(f"  [{p['id']}] {p['name']}{skip}")
         print(f"    {p['message']}")
 
-    # Pro coding sections
     for section, emoji, title in [
         ("bugs", "🐛", "BUGS SILENCIEUX"),
         ("architecture", "🏗️", "ARCHITECTURE"),
@@ -315,13 +380,7 @@ def show_patterns(config: dict) -> None:
         patterns = config.get(section, [])
         if patterns:
             print(f"\n{BLUE}{emoji} {title}:{NC}")
-            for p in patterns:
-                level = p.get("level", "WARN")
-                color = RED if level == "BLOCK" else YELLOW
-                scope = f" [scope: {p['scope']}]" if p.get("scope") else ""
-                skip = " (skip tests)" if p.get("skip_in_tests") else ""
-                print(f"  {color}[{level}]{NC} [{p['id']}] {p['name']}{scope}{skip}")
-                print(f"    {p['message']}")
+            _show_section_patterns(patterns)
 
     print(f"\n{GREEN}✅ EXCEPTIONS:{NC}")
     for name, exc in config.get("exceptions", {}).items():
@@ -377,7 +436,38 @@ def get_all_python_files() -> list[str]:
     return files
 
 
-def main():
+def _determine_files(args) -> list[str]:
+    """Determine which files to scan based on CLI args."""
+    if args.file:
+        return [args.file] if Path(args.file).exists() else []
+    if args.all:
+        return get_all_python_files()
+    return get_staged_files()
+
+
+def _report_results(all_results: list[ScanResult]) -> int:
+    """Print scan results and return exit code."""
+    blocking = [r for r in all_results if r.level == "BLOCK"]
+    warnings = [r for r in all_results if r.level == "WARN"]
+
+    for r in blocking:
+        print(f"{RED}BLOCK{NC} {r.file}:{r.line}")
+        print(f"  [{r.pattern_id}] {r.message}")
+    for r in warnings:
+        print(f"{YELLOW}WARN{NC} {r.file}:{r.line}")
+        print(f"  [{r.pattern_id}] {r.message}")
+
+    print("=" * 30)
+    print(f"BLOCKING: {len(blocking)} | WARNINGS: {len(warnings)}")
+
+    if blocking:
+        print(f"\n{RED}Fix blocking issues before committing.{NC}")
+        return 1
+    print(f"\n{GREEN}vibesrails: PASSED{NC}")
+    return 0
+
+
+def main() -> None:
     """CLI entry point."""
     import argparse
 
@@ -392,54 +482,24 @@ def main():
 
     if args.validate:
         sys.exit(0 if validate_config(config) else 1)
-
     if args.show:
         show_patterns(config)
         sys.exit(0)
 
-    # Determine files to scan
-    if args.file:
-        files = [args.file] if Path(args.file).exists() else []
-    elif args.all:
-        files = get_all_python_files()
-    else:
-        files = get_staged_files()
-
+    files = _determine_files(args)
     print(f"{BLUE}vibesrails - Security Scan{NC}")
     print("=" * 30)
 
     if not files:
         print(f"{GREEN}No Python files to scan{NC}")
         sys.exit(0)
-
     print(f"Scanning {len(files)} file(s)...\n")
 
     all_results = []
     for filepath in files:
-        results = scan_file(filepath, config)
-        all_results.extend(results)
+        all_results.extend(scan_file(filepath, config))
 
-    # Report results
-    blocking = [r for r in all_results if r.level == "BLOCK"]
-    warnings = [r for r in all_results if r.level == "WARN"]
-
-    for r in blocking:
-        print(f"{RED}BLOCK{NC} {r.file}:{r.line}")
-        print(f"  [{r.pattern_id}] {r.message}")
-
-    for r in warnings:
-        print(f"{YELLOW}WARN{NC} {r.file}:{r.line}")
-        print(f"  [{r.pattern_id}] {r.message}")
-
-    print("=" * 30)
-    print(f"BLOCKING: {len(blocking)} | WARNINGS: {len(warnings)}")
-
-    if blocking:
-        print(f"\n{RED}Fix blocking issues before committing.{NC}")
-        sys.exit(1)
-
-    print(f"\n{GREEN}vibesrails: PASSED{NC}")
-    sys.exit(0)
+    sys.exit(_report_results(all_results))
 
 
 if __name__ == "__main__":
