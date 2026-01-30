@@ -14,6 +14,27 @@ def _all_layer_dirs() -> set[str]:
     return _impl()
 
 
+def _check_reexport_file(tree: ast.Module) -> tuple[bool, int, int]:
+    """Check if a module is a re-export module. Returns (is_reexport, imports, total)."""
+    stmts = tree.body
+    if len(stmts) < 1:
+        return False, 0, 0
+    imports = 0
+    has_all = False
+    for node in stmts:
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            imports += 1
+        elif isinstance(node, ast.Assign):
+            if any(isinstance(t, ast.Name) and t.id == "__all__" for t in node.targets):
+                has_all = True
+    total = len([
+        s for s in stmts
+        if not (isinstance(s, ast.Expr) and isinstance(s.value, ast.Constant))
+    ])
+    is_reexport = total >= 2 and imports > 0 and (imports / total) >= 0.8 and has_all
+    return is_reexport, imports, total
+
+
 def detect_reexport_modules(
     guard: object, project_root: Path,
 ) -> list[V2GuardIssue]:
@@ -23,46 +44,18 @@ def detect_reexport_modules(
         tree = guard._parse_file(py_file)  # type: ignore[attr-defined]
         if tree is None:
             continue
-        stmts = tree.body
-        if len(stmts) < 1:
-            continue
-        imports = 0
-        has_all = False
-        for node in stmts:
-            if isinstance(
-                node, (ast.Import, ast.ImportFrom)
-            ):
-                imports += 1
-            elif isinstance(node, ast.Assign):
-                for target in node.targets:
-                    if (
-                        isinstance(target, ast.Name)
-                        and target.id == "__all__"
-                    ):
-                        has_all = True
-            elif isinstance(node, ast.Expr):
-                if isinstance(node.value, ast.Constant):
-                    continue  # docstring
-        total = len([
-            s for s in stmts
-            if not (
-                isinstance(s, ast.Expr)
-                and isinstance(s.value, ast.Constant)
-            )
-        ])
-        if total >= 2 and imports > 0:
-            ratio = imports / total
-            if ratio >= 0.8 and has_all:
-                issues.append(V2GuardIssue(
-                    guard=GUARD,
-                    severity="warn",
-                    message=(
-                        "Re-export module detected: "
-                        f"{imports}/{total} statements "
-                        "are imports with __all__"
-                    ),
-                    file=str(py_file),
-                ))
+        is_reexport, imports, total = _check_reexport_file(tree)
+        if is_reexport:
+            issues.append(V2GuardIssue(
+                guard=GUARD,
+                severity="warn",
+                message=(
+                    "Re-export module detected: "
+                    f"{imports}/{total} statements "
+                    "are imports with __all__"
+                ),
+                file=str(py_file),
+            ))
     return issues
 
 
@@ -171,6 +164,35 @@ def detect_function_level_imports(
     return issues
 
 
+def _is_type_checking_block(node: ast.If) -> bool:
+    """Check if an If node is a TYPE_CHECKING guard."""
+    test = node.test
+    if isinstance(test, ast.Name) and test.id == "TYPE_CHECKING":
+        return True
+    if isinstance(test, ast.Attribute) and test.attr == "TYPE_CHECKING":
+        return True
+    return False
+
+
+def _collect_layer_imports(node: ast.AST, layer_dirs: set[str], py_file: Path) -> list[V2GuardIssue]:
+    """Collect issues for layer imports inside a node."""
+    issues: list[V2GuardIssue] = []
+    for child in ast.walk(node):
+        if not isinstance(child, ast.ImportFrom):
+            continue
+        mod = child.module or ""
+        top = mod.split(".")[0]
+        if top in layer_dirs:
+            issues.append(V2GuardIssue(
+                guard=GUARD,
+                severity="warn",
+                message=f"TYPE_CHECKING import of '{mod}'",
+                file=str(py_file),
+                line=child.lineno,
+            ))
+    return issues
+
+
 def detect_type_checking_bypass(
     guard: object, project_root: Path,
 ) -> list[V2GuardIssue]:
@@ -182,35 +204,6 @@ def detect_type_checking_bypass(
         if tree is None:
             continue
         for node in ast.walk(tree):
-            if not isinstance(node, ast.If):
-                continue
-            test = node.test
-            is_tc = False
-            if (
-                isinstance(test, ast.Name)
-                and test.id == "TYPE_CHECKING"
-            ):
-                is_tc = True
-            elif (
-                isinstance(test, ast.Attribute)
-                and test.attr == "TYPE_CHECKING"
-            ):
-                is_tc = True
-            if not is_tc:
-                continue
-            for child in ast.walk(node):
-                if isinstance(child, ast.ImportFrom):
-                    mod = child.module or ""
-                    top = mod.split(".")[0]
-                    if top in layer_dirs:
-                        issues.append(V2GuardIssue(
-                            guard=GUARD,
-                            severity="warn",
-                            message=(
-                                "TYPE_CHECKING import "
-                                f"of '{mod}'"
-                            ),
-                            file=str(py_file),
-                            line=child.lineno,
-                        ))
+            if isinstance(node, ast.If) and _is_type_checking_block(node):
+                issues.extend(_collect_layer_imports(node, layer_dirs, py_file))
     return issues

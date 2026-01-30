@@ -18,6 +18,8 @@ except ImportError:
     HAS_WATCHDOG = False
     # Dummy base class when watchdog not installed
     class FileSystemEventHandler:
+        """Fallback base class when watchdog is not installed."""
+
         pass
     Observer = None
 
@@ -30,6 +32,7 @@ class VibesRailsHandler(FileSystemEventHandler):
         self.last_scan = {}  # Debounce repeated events
 
     def on_modified(self, event):
+        """Handle file modification events."""
         if event.is_directory:
             return
 

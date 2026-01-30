@@ -86,6 +86,32 @@ class APIDesignGuard:
         lines = content.splitlines()
 
         # Check CORS wildcard
+        issues.extend(self._check_cors(fname, lines))
+
+        # AST-based checks on route handlers
+        try:
+            tree = ast.parse(content)
+        except SyntaxError:
+            return issues
+
+        route_funcs = self._find_route_functions(tree, lines)
+        for func_node, route_path in route_funcs:
+            issues.extend(
+                self._check_route_handler(
+                    func_node, route_path, fname, content
+                )
+            )
+
+        # Mixed naming conventions
+        issues.extend(self._check_mixed_naming(fname, lines))
+        return issues
+
+    @staticmethod
+    def _check_cors(
+        fname: str, lines: list[str]
+    ) -> list[V2GuardIssue]:
+        """Check for CORS wildcard origins."""
+        issues: list[V2GuardIssue] = []
         for lineno, line in enumerate(lines, 1):
             if CORS_WILDCARD_RE.search(line):
                 issues.append(V2GuardIssue(
@@ -98,82 +124,47 @@ class APIDesignGuard:
                     file=fname,
                     line=lineno,
                 ))
+        return issues
 
-        # AST-based checks on route handlers
-        try:
-            tree = ast.parse(content)
-        except SyntaxError:
-            return issues
+    @staticmethod
+    def _check_route_handler(
+        func_node: ast.FunctionDef,
+        route_path: str,
+        fname: str,
+        content: str,
+    ) -> list[V2GuardIssue]:
+        """Check a single route handler for issues."""
+        issues: list[V2GuardIssue] = []
+        lineno = func_node.lineno
 
-        route_funcs = self._find_route_functions(
-            tree, lines
-        )
+        if not _has_type_hints(func_node):
+            issues.append(V2GuardIssue(
+                guard=GUARD_NAME, severity="warn",
+                message=f"Route handler '{func_node.name}' lacks type hints for input validation",
+                file=fname, line=lineno,
+            ))
 
-        for func_node, route_path in route_funcs:
-            lineno = func_node.lineno
+        if not _has_error_handling(func_node):
+            issues.append(V2GuardIssue(
+                guard=GUARD_NAME, severity="warn",
+                message=f"Route handler '{func_node.name}' has no error handling (try/except or raise)",
+                file=fname, line=lineno,
+            ))
 
-            # 1. No input validation
-            if not _has_type_hints(func_node):
-                issues.append(V2GuardIssue(
-                    guard=GUARD_NAME,
-                    severity="warn",
-                    message=(
-                        f"Route handler '{func_node.name}' "
-                        "lacks type hints for input validation"
-                    ),
-                    file=fname,
-                    line=lineno,
-                ))
+        if route_path and not VERSIONED_ROUTE_RE.search(route_path):
+            issues.append(V2GuardIssue(
+                guard=GUARD_NAME, severity="info",
+                message=f"Route '{route_path}' has no API version prefix (/v1/, /v2/)",
+                file=fname, line=lineno,
+            ))
 
-            # 2. No error handling
-            if not _has_error_handling(func_node):
-                issues.append(V2GuardIssue(
-                    guard=GUARD_NAME,
-                    severity="warn",
-                    message=(
-                        f"Route handler '{func_node.name}' "
-                        "has no error handling "
-                        "(try/except or raise)"
-                    ),
-                    file=fname,
-                    line=lineno,
-                ))
-
-            # 4. No API versioning
-            if route_path and not VERSIONED_ROUTE_RE.search(
-                route_path
-            ):
-                issues.append(V2GuardIssue(
-                    guard=GUARD_NAME,
-                    severity="info",
-                    message=(
-                        f"Route '{route_path}' has no API "
-                        "version prefix (/v1/, /v2/)"
-                    ),
-                    file=fname,
-                    line=lineno,
-                ))
-
-            # 6. No explicit status code
-            func_src = ast.get_source_segment(
-                content, func_node
-            )
-            if func_src and not STATUS_CODE_RE.search(func_src):
-                issues.append(V2GuardIssue(
-                    guard=GUARD_NAME,
-                    severity="info",
-                    message=(
-                        f"Route handler '{func_node.name}' "
-                        "returns no explicit status code"
-                    ),
-                    file=fname,
-                    line=lineno,
-                ))
-
-        # 5. Mixed naming conventions
-        issues.extend(
-            self._check_mixed_naming(fname, lines)
-        )
+        func_src = ast.get_source_segment(content, func_node)
+        if func_src and not STATUS_CODE_RE.search(func_src):
+            issues.append(V2GuardIssue(
+                guard=GUARD_NAME, severity="info",
+                message=f"Route handler '{func_node.name}' returns no explicit status code",
+                file=fname, line=lineno,
+            ))
 
         return issues
 

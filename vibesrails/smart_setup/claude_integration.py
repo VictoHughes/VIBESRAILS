@@ -5,7 +5,10 @@ Functions for CLAUDE.md generation and hooks installation.
 """
 
 import json
+import logging
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 def get_package_data_path(relative_path: str) -> Path | None:
@@ -20,7 +23,7 @@ def get_package_data_path(relative_path: str) -> Path | None:
         if resource_path.exists():
             return resource_path
     except Exception:
-        pass
+        logger.debug("Could not load package data via importlib.resources")
 
     # Fallback: relative to this file
     pkg_path = Path(__file__).parent.parent / relative_path
@@ -56,7 +59,7 @@ vibesrails scanne automatiquement chaque commit pour detecter:
 1. **Ne jamais hardcoder de secrets**
    ```python
    # MAUVAIS - vibesrails va bloquer
-   api_key = "sk-1234567890"  # vibesrails: ignore (example)
+   api_key = "your-key-here"  # vibesrails: ignore (example only)
 
    # BON
    import os

@@ -24,22 +24,15 @@ GUARD_NAME = "complexity"
 class ComplexityGuard:
     """Analyzes Python code complexity using AST."""
 
+    _BRANCH_TYPES = (ast.If, ast.IfExp, ast.For, ast.While, ast.ExceptHandler, ast.With)
+
     def _cyclomatic_complexity(self, node: ast.FunctionDef) -> int:
         """Count cyclomatic complexity: 1 + branches."""
         count = 1
         for child in ast.walk(node):
-            if isinstance(child, (ast.If, ast.IfExp)):
-                count += 1
-            elif isinstance(child, ast.For):
-                count += 1
-            elif isinstance(child, ast.While):
-                count += 1
-            elif isinstance(child, ast.ExceptHandler):
-                count += 1
-            elif isinstance(child, ast.With):
+            if isinstance(child, self._BRANCH_TYPES):
                 count += 1
             elif isinstance(child, ast.BoolOp):
-                # Each and/or adds len(values) - 1
                 count += len(child.values) - 1
         return count
 

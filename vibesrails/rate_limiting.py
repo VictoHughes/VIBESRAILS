@@ -237,6 +237,7 @@ def with_rate_limiting(func: Callable[..., T]) -> Callable[..., T]:
     """Decorator adding rate limiting, retry, caching to API calls."""
     @wraps(func)
     def wrapper(*args, **kwargs) -> T:
+        """Decorated function wrapper."""
         config = get_rate_limit_config()
         circuit_breaker = get_circuit_breaker()
         throttler = get_throttler()

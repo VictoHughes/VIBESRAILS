@@ -1,6 +1,6 @@
 """Tests for TypeSafetyGuard — real files, real AST parsing.
 
-Only mypy subprocess is mocked (as instructed).
+Only subprocess (mypy) is mocked as external.
 """
 
 from pathlib import Path
@@ -24,8 +24,9 @@ def _write(tmp_path: Path, name: str, content: str) -> Path:
 
 
 def _scan(guard, tmp_path):
-    """Scan with mypy disabled."""
-    with patch.object(guard, "_run_mypy", return_value=[]):
+    """Scan with mypy subprocess disabled (external tool not available)."""
+    with patch("subprocess.run",
+               side_effect=FileNotFoundError):
         return guard.scan(tmp_path)
 
 
@@ -167,7 +168,8 @@ class TestExclusion:
         _write(src, "app.py", "def run(x):\n    pass\n")
         _write(src, "__init__.py", "")
         _write(src, "test_skip.py", "def test_it():\n    pass\n")
-        with patch.object(guard, "_run_mypy", return_value=[]):
+        with patch("subprocess.run",
+                   side_effect=FileNotFoundError):
             issues = guard.scan(tmp_path)
         files = {i.file for i in issues}
         assert str(src / "app.py") in files

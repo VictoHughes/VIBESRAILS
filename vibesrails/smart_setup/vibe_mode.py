@@ -57,6 +57,42 @@ VIBE_PROTECTIONS = {
 # =============================================================================
 
 
+def _mask_secret(secret: str) -> str:
+    """Mask a secret string for safe display."""
+    if len(secret) > 8:
+        return secret[:4] + "..." + secret[-4:]
+    return secret[:2] + "***"
+
+
+def _should_skip_line(line: str) -> bool:
+    """Check if a line should be skipped during scanning."""
+    return (
+        line.strip().startswith("#")
+        or len(line) > 500
+        or "vibesrails: ignore" in line
+    )
+
+
+def _scan_line(line: str, rel_path: str, line_num: int, found: dict) -> None:
+    """Scan a single line against all patterns, appending matches to found."""
+    for category, config in VIBE_PROTECTIONS.items():
+        for pattern_info in config["patterns"]:
+            try:
+                match = re.search(pattern_info["regex"], line)
+            except re.error:
+                continue
+            if match:
+                found[category].append({
+                    "file": rel_path,
+                    "line": line_num,
+                    "preview": _mask_secret(match.group(0)),
+                    "pattern_id": pattern_info["id"],
+                })
+
+
+_SKIP_DIRS = {".venv", "venv", "__pycache__", ".git", "node_modules"}
+
+
 def scan_for_secrets(project_root: Path) -> dict[str, list[dict]]:
     """Scan project and find actual secrets, grouped by category.
 
@@ -69,46 +105,18 @@ def scan_for_secrets(project_root: Path) -> dict[str, list[dict]]:
     found = {category: [] for category in VIBE_PROTECTIONS}
 
     for py_file in project_root.rglob("*.py"):
-        # Skip virtual environments and cache
-        if any(part in py_file.parts for part in [".venv", "venv", "__pycache__", ".git", "node_modules"]):
+        if any(part in py_file.parts for part in _SKIP_DIRS):
             continue
-
         try:
             content = py_file.read_text(errors="ignore")
-            rel_path = py_file.relative_to(project_root)
-
+            rel_path = str(py_file.relative_to(project_root))
             for line_num, line in enumerate(content.split("\n"), 1):
-                # Skip comments and very long lines
-                if line.strip().startswith("#") or len(line) > 500:
+                if _should_skip_line(line):
                     continue
-                # Skip lines with vibesrails: ignore
-                if "vibesrails: ignore" in line:
-                    continue
-
-                for category, config in VIBE_PROTECTIONS.items():
-                    for pattern_info in config["patterns"]:
-                        try:
-                            match = re.search(pattern_info["regex"], line)
-                            if match:
-                                # Mask the secret for preview
-                                secret = match.group(0)
-                                if len(secret) > 8:
-                                    masked = secret[:4] + "..." + secret[-4:]
-                                else:
-                                    masked = secret[:2] + "***"
-
-                                found[category].append({
-                                    "file": str(rel_path),
-                                    "line": line_num,
-                                    "preview": masked,
-                                    "pattern_id": pattern_info["id"],
-                                })
-                        except re.error:
-                            continue
+                _scan_line(line, rel_path, line_num, found)
         except Exception:
             continue
 
-    # Remove empty categories
     return {k: v for k, v in found.items() if v}
 
 
@@ -205,21 +213,9 @@ def prompt_user(question: str, default: str = "y") -> bool:
         return False
 
 
-def prompt_vibe_protections(project_root: Path) -> list[dict]:
-    """Vibe-coder-friendly protection setup - no regex knowledge needed.
-
-    1. Shows found secrets and offers to block them
-    2. Offers predefined protection categories
-    3. Accepts natural language for custom patterns
-    """
-    selected_patterns = []
-    project_name = project_root.name
-
-    print(f"\n{BLUE}{msg('protection_mode')}{NC}")
-
-    # Step 1: Scan for existing secrets
-    print(f"\n{YELLOW}{msg('analyzing_project')}{NC}")
-    found_secrets = scan_for_secrets(project_root)
+def _prompt_secret_protections(found_secrets: dict) -> list[dict]:
+    """Show found secrets and prompt user to enable protections for them."""
+    selected = []
 
     if found_secrets:
         total = sum(len(v) for v in found_secrets.values())
@@ -228,7 +224,7 @@ def prompt_vibe_protections(project_root: Path) -> list[dict]:
         for category, secrets in found_secrets.items():
             cat_name = VIBE_PROTECTIONS[category]["name"]
             print(f"\n  {YELLOW}{cat_name}:{NC}")
-            for secret in secrets[:3]:  # Show max 3 per category
+            for secret in secrets[:3]:
                 print(f"    • {secret['file']}:{secret['line']} → {secret['preview']}")
             if len(secrets) > 3:
                 remaining = len(secrets) - 3
@@ -239,12 +235,17 @@ def prompt_vibe_protections(project_root: Path) -> list[dict]:
         print()
         if prompt_user(f"{GREEN}{msg('enable_protection')}{NC}", default="y"):
             for category in found_secrets.keys():
-                selected_patterns.extend(VIBE_PROTECTIONS[category]["patterns"])
+                selected.extend(VIBE_PROTECTIONS[category]["patterns"])
             print(f"  {GREEN}✓ {msg('protections_enabled')}{NC}")
     else:
         print(f"  {GREEN}✓ {msg('no_secrets_found')}{NC}")
 
-    # Step 2: Offer additional protections
+    return selected
+
+
+def _prompt_additional_categories(found_secrets: dict) -> list[dict]:
+    """Offer additional protection categories not already found."""
+    selected = []
     print(f"\n{YELLOW}{msg('additional_protections')}{NC}")
 
     available_categories = [cat for cat in VIBE_PROTECTIONS if cat not in found_secrets]
@@ -264,12 +265,17 @@ def prompt_vibe_protections(project_root: Path) -> list[dict]:
                 for idx in indices:
                     if 1 <= idx <= len(available_categories):
                         category = available_categories[idx - 1]
-                        selected_patterns.extend(VIBE_PROTECTIONS[category]["patterns"])
+                        selected.extend(VIBE_PROTECTIONS[category]["patterns"])
                         print(f"  {GREEN}✓ {VIBE_PROTECTIONS[category]['name']}{NC}")
             except ValueError:
                 pass
 
-    # Step 3: Natural language custom patterns
+    return selected
+
+
+def _prompt_custom_patterns(project_name: str) -> list[dict]:
+    """Prompt for natural language custom patterns."""
+    selected = []
     print(f"\n{YELLOW}{msg('custom_protection')}{NC}")
     examples = "'mycompany.com', 'project name', '@company.com'" if LANG == "en" else "'mycompany.com', 'le nom du projet', '@entreprise.fr'"
     print(f"  {msg('examples')}: {examples}")
@@ -286,7 +292,7 @@ def prompt_vibe_protections(project_root: Path) -> list[dict]:
             if pattern:
                 print(f"  {BLUE}→ {msg('will_block')}: {pattern['regex']}{NC}")
                 if prompt_user(f"  {msg('confirm')}", default="y"):
-                    selected_patterns.append(pattern)
+                    selected.append(pattern)
                     print(f"  {GREEN}✓ {msg('added')}{NC}")
             else:
                 print(f"  {YELLOW}{msg('not_understood')}{NC}")
@@ -296,5 +302,22 @@ def prompt_vibe_protections(project_root: Path) -> list[dict]:
         except (EOFError, KeyboardInterrupt):
             print()
             break
+
+    return selected
+
+
+def prompt_vibe_protections(project_root: Path) -> list[dict]:
+    """Vibe-coder-friendly protection setup - no regex knowledge needed."""
+    selected_patterns = []
+    project_name = project_root.name
+
+    print(f"\n{BLUE}{msg('protection_mode')}{NC}")
+
+    print(f"\n{YELLOW}{msg('analyzing_project')}{NC}")
+    found_secrets = scan_for_secrets(project_root)
+
+    selected_patterns.extend(_prompt_secret_protections(found_secrets))
+    selected_patterns.extend(_prompt_additional_categories(found_secrets))
+    selected_patterns.extend(_prompt_custom_patterns(project_name))
 
     return selected_patterns

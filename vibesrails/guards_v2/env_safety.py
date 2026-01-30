@@ -199,6 +199,9 @@ class EnvSafetyGuard:
             parts = pyfile.relative_to(project_root).parts
             if any(p.startswith(".") or p == "venv" for p in parts):
                 continue
+            # Skip test files — they contain intentional secret fixtures
+            if parts[0] == "tests" or pyfile.name.startswith("test_"):
+                continue
             try:
                 content = pyfile.read_text(errors="ignore")
             except OSError:

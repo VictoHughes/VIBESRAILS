@@ -1,4 +1,4 @@
-"""Tests for DeadCodeGuard — real files, real filesystem, no mocking except vulture."""
+"""Tests for DeadCodeGuard — real files, real filesystem, no mocking except subprocess."""
 
 import textwrap
 from pathlib import Path
@@ -266,7 +266,7 @@ def test_vulture_parses_output(guard):
     mock_result = MagicMock()
     mock_result.returncode = 1
     mock_result.stdout = "app.py:10: unused variable 'x' (60% confidence)"
-    with patch("vibesrails.guards_v2.dead_code.subprocess.run",
+    with patch("subprocess.run",
                return_value=mock_result):
         issues = guard._run_vulture(Path("."))
     assert len(issues) == 1
@@ -275,7 +275,7 @@ def test_vulture_parses_output(guard):
 
 def test_vulture_not_installed(guard):
     """Missing vulture returns empty list."""
-    with patch("vibesrails.guards_v2.dead_code.subprocess.run",
+    with patch("subprocess.run",
                side_effect=FileNotFoundError):
         issues = guard._run_vulture(Path("."))
     assert issues == []
@@ -292,7 +292,8 @@ def test_scan_walks_directory(guard, tmp_path: Path):
             return 1
             x = 2
     """))
-    with patch.object(guard, "_run_vulture", return_value=[]):
+    with patch("subprocess.run",
+               side_effect=FileNotFoundError):
         issues = guard.scan(tmp_path)
     assert any("Unused import" in i.message for i in issues)
     assert any("Unreachable" in i.message for i in issues)
@@ -304,7 +305,8 @@ def test_scan_skips_hidden_dirs(guard, tmp_path: Path):
     hidden.mkdir()
     (hidden / "bad.py").write_text("import os\nx = 1\n")
     (tmp_path / "good.py").write_text("import os\nprint(os.getcwd())\n")
-    with patch.object(guard, "_run_vulture", return_value=[]):
+    with patch("subprocess.run",
+               side_effect=FileNotFoundError):
         issues = guard.scan(tmp_path)
     # Should not find the unused import in hidden dir
     assert not any(".hidden" in (i.file or "") for i in issues)
@@ -315,6 +317,7 @@ def test_scan_skips_venv(guard, tmp_path: Path):
     venv = tmp_path / "venv"
     venv.mkdir()
     (venv / "bad.py").write_text("import os\nx = 1\n")
-    with patch.object(guard, "_run_vulture", return_value=[]):
+    with patch("subprocess.run",
+               side_effect=FileNotFoundError):
         issues = guard.scan(tmp_path)
     assert not any("venv" in (i.file or "") for i in issues)

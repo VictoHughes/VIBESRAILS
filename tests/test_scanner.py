@@ -479,7 +479,8 @@ def test_get_staged_files_no_git_repo(tmp_path):
     os.chdir(tmp_path)
 
     try:
-        with mock.patch("vibesrails.scanner.is_git_repo", return_value=False):
+        with mock.patch("subprocess.run") as mock_run:
+            mock_run.return_value = mock.Mock(returncode=1)
             assert get_staged_files() == []
     finally:
         os.chdir(original_cwd)
@@ -493,10 +494,18 @@ def test_get_staged_files_git_command_fails(tmp_path):
     os.chdir(tmp_path)
 
     try:
-        with mock.patch("vibesrails.scanner.is_git_repo", return_value=True):
-            with mock.patch("subprocess.run") as mock_run:
-                mock_run.return_value = mock.Mock(returncode=1, stdout="")
-                assert get_staged_files() == []
+        call_count = 0
+        def _side_effect(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                # is_git_repo call succeeds
+                return mock.Mock(returncode=0)
+            # get_staged_files git diff call fails
+            return mock.Mock(returncode=1, stdout="")
+
+        with mock.patch("subprocess.run", side_effect=_side_effect):
+            assert get_staged_files() == []
     finally:
         os.chdir(original_cwd)
 
@@ -513,16 +522,24 @@ def test_get_staged_files_filters_py_files(tmp_path):
     (tmp_path / "data.json").write_text("{}")
 
     try:
-        with mock.patch("vibesrails.scanner.is_git_repo", return_value=True):
-            with mock.patch("subprocess.run") as mock_run:
-                mock_run.return_value = mock.Mock(
-                    returncode=0,
-                    stdout="test.py\ndata.json\nnonexistent.py\n"
-                )
-                files = get_staged_files()
-                assert "test.py" in files
-                assert "data.json" not in files
-                assert "nonexistent.py" not in files
+        call_count = 0
+        def _side_effect(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                # is_git_repo call succeeds
+                return mock.Mock(returncode=0)
+            # get_staged_files git diff returns file list
+            return mock.Mock(
+                returncode=0,
+                stdout="test.py\ndata.json\nnonexistent.py\n"
+            )
+
+        with mock.patch("subprocess.run", side_effect=_side_effect):
+            files = get_staged_files()
+            assert "test.py" in files
+            assert "data.json" not in files
+            assert "nonexistent.py" not in files
     finally:
         os.chdir(original_cwd)
 

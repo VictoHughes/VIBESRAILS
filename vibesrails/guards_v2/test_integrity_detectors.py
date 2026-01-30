@@ -23,32 +23,31 @@ def _get_test_functions(
     return funcs
 
 
+_MOCK_NAMES = {"MagicMock", "Mock", "monkeypatch", "mock", "mocker"}
+_MOCK_ATTRS = {"patch", "MagicMock", "Mock"}
+_MOCK_CALL_NAMES = {"patch", "MagicMock", "Mock"}
+
+
+def _node_is_mock(node: ast.AST) -> bool:
+    """Check if a single AST node references a mock construct."""
+    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        return any("patch" in ast.dump(dec).lower() for dec in node.decorator_list)
+    if isinstance(node, ast.Name):
+        return node.id in _MOCK_NAMES
+    if isinstance(node, ast.Attribute):
+        return node.attr in _MOCK_ATTRS
+    if isinstance(node, ast.Call):
+        f = node.func
+        if isinstance(f, ast.Attribute) and f.attr == "patch":
+            return True
+        if isinstance(f, ast.Name) and f.id in _MOCK_CALL_NAMES:
+            return True
+    return False
+
+
 def _func_uses_mock(func: ast.AST) -> bool:
     """Check if a function body references mocking constructs."""
-    for node in ast.walk(func):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            for dec in node.decorator_list:
-                src = ast.dump(dec)
-                if "patch" in src.lower():
-                    return True
-        if isinstance(node, ast.Name):
-            if node.id in (
-                "MagicMock", "Mock", "monkeypatch",
-                "mock", "mocker",
-            ):
-                return True
-        if isinstance(node, ast.Attribute):
-            if node.attr in ("patch", "MagicMock", "Mock"):
-                return True
-        if isinstance(node, ast.Call):
-            func_node = node.func
-            if isinstance(func_node, ast.Attribute):
-                if func_node.attr == "patch":
-                    return True
-            if isinstance(func_node, ast.Name):
-                if func_node.id in ("patch", "MagicMock", "Mock"):
-                    return True
-    return False
+    return any(_node_is_mock(node) for node in ast.walk(func))
 
 
 def _has_assertion(func: ast.AST) -> bool:

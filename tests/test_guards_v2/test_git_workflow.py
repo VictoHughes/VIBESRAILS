@@ -224,7 +224,7 @@ def test_scan_feature_branch_clean(tmp_path: Path):
 # ── Force push detection (mock only — can't safely test) ─────
 
 
-@patch("vibesrails.guards_v2.git_workflow.subprocess.run")
+@patch("subprocess.run")
 def test_force_push_detected(mock_run, tmp_path: Path):
     """Force push in reflog should warn (mocked for safety)."""
     def _side_effect(args, **kwargs):
@@ -256,7 +256,7 @@ def test_force_push_detected(mock_run, tmp_path: Path):
 
 def test_run_git_timeout(tmp_path: Path):
     """Timeout returns (False, '')."""
-    with patch("vibesrails.guards_v2.git_workflow.subprocess.run",
+    with patch("subprocess.run",
                side_effect=subprocess.TimeoutExpired("git", 10)):
         ok, out = _run_git(["status"], tmp_path)
     assert ok is False

@@ -175,7 +175,7 @@ class TestScan:
     def test_scan_calls_git_diff_cached(self, tmp_path):
         mock_result = type("R", (), {"returncode": 0, "stdout": ""})()
         with patch(
-            "vibesrails.guards_v2.pr_checklist.subprocess.run",
+            "subprocess.run",
             return_value=mock_result,
         ) as mock_run:
             PRChecklistGuard().scan(tmp_path)
@@ -185,21 +185,21 @@ class TestScan:
     def test_scan_returns_empty_on_failure(self, tmp_path):
         mock_result = type("R", (), {"returncode": 128, "stdout": ""})()
         with patch(
-            "vibesrails.guards_v2.pr_checklist.subprocess.run",
+            "subprocess.run",
             return_value=mock_result,
         ):
             assert PRChecklistGuard().scan(tmp_path) == []
 
     def test_scan_handles_timeout(self, tmp_path):
         with patch(
-            "vibesrails.guards_v2.pr_checklist.subprocess.run",
+            "subprocess.run",
             side_effect=subprocess.TimeoutExpired("git", 30),
         ):
             assert PRChecklistGuard().scan(tmp_path) == []
 
     def test_scan_handles_file_not_found(self, tmp_path):
         with patch(
-            "vibesrails.guards_v2.pr_checklist.subprocess.run",
+            "subprocess.run",
             side_effect=FileNotFoundError(),
         ):
             assert PRChecklistGuard().scan(tmp_path) == []
@@ -212,7 +212,7 @@ class TestScan:
         )
         mock_result = type("R", (), {"returncode": 0, "stdout": real_diff})()
         with patch(
-            "vibesrails.guards_v2.pr_checklist.subprocess.run",
+            "subprocess.run",
             return_value=mock_result,
         ):
             issues = PRChecklistGuard().scan(tmp_path)

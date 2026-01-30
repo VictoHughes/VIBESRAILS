@@ -140,8 +140,8 @@ def _run_senior_v2() -> int:
     return 0
 
 
-def dispatch_v2_commands(args) -> bool:
-    """Dispatch v2 guard commands. Returns True if a command was handled."""
+def _dispatch_single_guard(args) -> None:
+    """Handle individual guard flags (audit_deps, complexity, dead_code, etc.)."""
     if args.audit_deps:
         from .guards_v2.dependency_audit import DependencyAuditGuard
         issues = DependencyAuditGuard().scan(Path.cwd())
@@ -186,6 +186,9 @@ def dispatch_v2_commands(args) -> bool:
         print(advisor.generate_report(Path.cwd()))
         sys.exit(0)
 
+
+def _dispatch_pack_commands(args) -> None:
+    """Handle install_pack, remove_pack, list_packs commands."""
     if args.install_pack:
         from .community.pack_manager import PackManager
         ok = PackManager().install(args.install_pack, Path.cwd())
@@ -211,6 +214,9 @@ def dispatch_v2_commands(args) -> bool:
             print(f"  - {p['id']}: {p['description']}")
         sys.exit(0)
 
+
+def _dispatch_test_mutation(args) -> None:
+    """Handle test_integrity, mutation, mutation_quick, senior_v2 commands."""
     if args.test_integrity:
         from .guards_v2.test_integrity import TestIntegrityGuard
         issues = TestIntegrityGuard().scan(Path.cwd())
@@ -234,4 +240,10 @@ def dispatch_v2_commands(args) -> bool:
     if args.senior_v2:
         sys.exit(_run_senior_v2())
 
+
+def dispatch_v2_commands(args) -> bool:
+    """Dispatch v2 guard commands. Returns True if a command was handled."""
+    _dispatch_single_guard(args)
+    _dispatch_pack_commands(args)
+    _dispatch_test_mutation(args)
     return False

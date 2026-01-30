@@ -210,6 +210,39 @@ class LazyCodeGuard:
         (r"return None\s*#", "Explicit return None - is this intentional or lazy?"),
     ]
 
+    @staticmethod
+    def _check_empty_functions(code: str, filepath: str) -> list[GuardIssue]:
+        """Check for empty functions (only pass or docstring+pass)."""
+        issues = []
+        try:
+            tree = ast.parse(code)
+        except SyntaxError:
+            return issues
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            body = node.body
+            is_empty = (len(body) == 1 and isinstance(body[0], ast.Pass))
+            is_docstring_pass = (
+                len(body) == 2
+                and isinstance(body[0], ast.Expr)
+                and isinstance(body[0].value, ast.Constant)
+                and isinstance(body[1], ast.Pass)
+            )
+            if is_empty:
+                issues.append(GuardIssue(
+                    guard="LazyCodeGuard", severity="warn",
+                    message=f"Empty function '{node.name}' - implement or remove",
+                    file=filepath, line=node.lineno
+                ))
+            elif is_docstring_pass:
+                issues.append(GuardIssue(
+                    guard="LazyCodeGuard", severity="warn",
+                    message=f"Function '{node.name}' has only docstring+pass - implement it",
+                    file=filepath, line=node.lineno
+                ))
+        return issues
+
     def check(self, code: str, filepath: str) -> list[GuardIssue]:
         """Check for lazy code patterns."""
         issues = []
@@ -226,34 +259,7 @@ class LazyCodeGuard:
                         line=i
                     ))
 
-        # Check for empty functions (more than just pass)
-        try:
-            tree = ast.parse(code)
-            for node in ast.walk(tree):
-                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    body = node.body
-                    # Function with only pass or docstring+pass
-                    if len(body) == 1 and isinstance(body[0], ast.Pass):
-                        issues.append(GuardIssue(
-                            guard="LazyCodeGuard",
-                            severity="warn",
-                            message=f"Empty function '{node.name}' - implement or remove",
-                            file=filepath,
-                            line=node.lineno
-                        ))
-                    elif len(body) == 2:
-                        if isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant):
-                            if isinstance(body[1], ast.Pass):
-                                issues.append(GuardIssue(
-                                    guard="LazyCodeGuard",
-                                    severity="warn",
-                                    message=f"Function '{node.name}' has only docstring+pass - implement it",
-                                    file=filepath,
-                                    line=node.lineno
-                                ))
-        except SyntaxError:
-            pass
-
+        issues.extend(self._check_empty_functions(code, filepath))
         return issues
 
 
@@ -303,67 +309,64 @@ class BypassGuard:
 class ResilienceGuard:
     """Detects code lacking resilience patterns."""
 
-    def check(self, code: str, filepath: str) -> list[GuardIssue]:
-        """Check for missing resilience patterns."""
+    _NETWORK_PATTERNS = [
+        (r"requests\.(get|post|put|delete|patch)\s*\([^)]*\)", "timeout"),
+        (r"urllib\.request\.urlopen\s*\([^)]*\)", "timeout"),
+        (r"httpx\.(get|post|put|delete|patch)\s*\([^)]*\)", "timeout"),
+        (r"aiohttp\.ClientSession\(\s*\)", "timeout"),
+    ]
+
+    def _check_network_calls(self, lines: list[str], filepath: str) -> list[GuardIssue]:
+        """Check for network calls without timeout."""
         issues = []
-        lines = code.splitlines()
-
-        # Check for network calls without timeout
-        network_patterns = [
-            (r"requests\.(get|post|put|delete|patch)\s*\([^)]*\)", "timeout"),
-            (r"urllib\.request\.urlopen\s*\([^)]*\)", "timeout"),
-            (r"httpx\.(get|post|put|delete|patch)\s*\([^)]*\)", "timeout"),
-            (r"aiohttp\.ClientSession\(\s*\)", "timeout"),
-        ]
-
         for i, line in enumerate(lines, 1):
-            for pattern, missing in network_patterns:
+            for pattern, missing in self._NETWORK_PATTERNS:
                 if re.search(pattern, line) and missing not in line.lower():
                     issues.append(GuardIssue(
-                        guard="ResilienceGuard",
-                        severity="warn",
+                        guard="ResilienceGuard", severity="warn",
                         message=f"Network call without {missing} - add timeout to prevent hanging",
-                        file=filepath,
-                        line=i
+                        file=filepath, line=i
                     ))
+        return issues
 
-        # Check for database calls without error handling context
-        if "execute(" in code or "cursor." in code:
-            if "try:" not in code or "except" not in code:
-                # Find the line with execute
-                for i, line in enumerate(lines, 1):
-                    if "execute(" in line or "cursor." in line:
-                        issues.append(GuardIssue(
-                            guard="ResilienceGuard",
-                            severity="warn",
-                            message="Database operation without try/except - handle connection errors",
-                            file=filepath,
-                            line=i
-                        ))
-                        break
-
-        # Check for file operations without context manager
-        file_patterns = [
-            (r"open\s*\([^)]+\)\s*$", "File open without context manager - use 'with open(...)'"),
-            (r"\.read\(\)\s*$", None),  # OK
-        ]
-
+    @staticmethod
+    def _check_db_calls(code: str, lines: list[str], filepath: str) -> list[GuardIssue]:
+        """Check for database calls without error handling."""
+        if ("execute(" not in code and "cursor." not in code):
+            return []
+        if "try:" in code and "except" in code:
+            return []
         for i, line in enumerate(lines, 1):
-            # Skip if line has 'with'
+            if "execute(" in line or "cursor." in line:
+                return [GuardIssue(
+                    guard="ResilienceGuard", severity="warn",
+                    message="Database operation without try/except - handle connection errors",
+                    file=filepath, line=i
+                )]
+        return []
+
+    @staticmethod
+    def _check_file_ops(lines: list[str], filepath: str) -> list[GuardIssue]:
+        """Check for file operations without context manager."""
+        issues = []
+        for i, line in enumerate(lines, 1):
             if "with " in line:
                 continue
-            for pattern, message in file_patterns:
-                if message and re.search(pattern, line):
-                    # Check if previous line has 'with'
-                    if i > 1 and "with " not in lines[i-2]:
-                        issues.append(GuardIssue(
-                            guard="ResilienceGuard",
-                            severity="warn",
-                            message=message,
-                            file=filepath,
-                            line=i
-                        ))
+            if re.search(r"open\s*\([^)]+\)\s*$", line):
+                if i <= 1 or "with " not in lines[i - 2]:
+                    issues.append(GuardIssue(
+                        guard="ResilienceGuard", severity="warn",
+                        message="File open without context manager - use 'with open(...)'",
+                        file=filepath, line=i
+                    ))
+        return issues
 
+    def check(self, code: str, filepath: str) -> list[GuardIssue]:
+        """Check for missing resilience patterns."""
+        lines = code.splitlines()
+        issues = self._check_network_calls(lines, filepath)
+        issues.extend(self._check_db_calls(code, lines, filepath))
+        issues.extend(self._check_file_ops(lines, filepath))
         return issues
 
 

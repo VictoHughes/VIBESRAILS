@@ -167,39 +167,38 @@ class MetricsCollector:
         print("=" * 50)
 
 
-def track_scan(
-    duration_ms: int,
-    files_scanned: int,
-    semgrep_enabled: bool,
-    semgrep_issues: int,
-    vibesrails_issues: int,
-    duplicates: int,
-    total_issues: int,
-    blocking_issues: int,
-    warnings: int,
-    exit_code: int,
-    guardian_active: bool,
-) -> None:
-    """
-    Track a scan's metrics.
+@dataclass
+class ScanTrackingData:
+    """Groups scan tracking parameters."""
+    duration_ms: int
+    files_scanned: int
+    semgrep_enabled: bool
+    semgrep_issues: int
+    vibesrails_issues: int
+    duplicates: int
+    total_issues: int
+    blocking_issues: int
+    warnings: int
+    exit_code: int
+    guardian_active: bool
 
-    Call this after each scan completes.
-    """
+
+def track_scan(*, data: ScanTrackingData) -> None:
+    """Track a scan's metrics. Call this after each scan completes."""
+    d = data
     collector = MetricsCollector()
-
     metrics = ScanMetrics(
         timestamp=datetime.now().isoformat(),
-        duration_ms=duration_ms,
-        files_scanned=files_scanned,
-        semgrep_enabled=semgrep_enabled,
-        semgrep_issues=semgrep_issues,
-        vibesrails_issues=vibesrails_issues,
-        duplicates=duplicates,
-        total_issues=total_issues,
-        blocking_issues=blocking_issues,
-        warnings=warnings,
-        exit_code=exit_code,
-        guardian_active=guardian_active,
+        duration_ms=d.duration_ms,
+        files_scanned=d.files_scanned,
+        semgrep_enabled=d.semgrep_enabled,
+        semgrep_issues=d.semgrep_issues,
+        vibesrails_issues=d.vibesrails_issues,
+        duplicates=d.duplicates,
+        total_issues=d.total_issues,
+        blocking_issues=d.blocking_issues,
+        warnings=d.warnings,
+        exit_code=d.exit_code,
+        guardian_active=d.guardian_active,
     )
-
     collector.record_scan(metrics)

@@ -25,6 +25,8 @@ _OFFSET_RE = re.compile(r"\bOFFSET\b", re.IGNORECASE)
 
 _RE_FUNCS = {"re.search", "re.match", "re.findall", "re.sub"}
 
+_IGNORE_MARKER = "# vibesrails: ignore"
+
 
 class PerformanceGuard:
     """Detects performance anti-patterns in Python source files."""
@@ -72,17 +74,19 @@ class PerformanceGuard:
         issues.extend(self._check_regex_in_loop(fname, tree))
         issues.extend(self._check_string_concat_in_loop(fname, tree))
         issues.extend(self._check_len_listcomp(fname, tree))
-        issues.extend(self._check_global_mutation(fname, tree))
+        issues.extend(self._check_global_mutation(fname, tree, content))
 
         return issues
 
     def _check_select_star(self, fname: str, content: str) -> list[V2GuardIssue]:
         issues: list[V2GuardIssue] = []
         for i, line in enumerate(content.splitlines(), 1):
+            if _IGNORE_MARKER in line:
+                continue
             if _SELECT_STAR_RE.search(line):
                 issues.append(V2GuardIssue(
                     guard=self.GUARD_NAME, severity="warn",
-                    message="SELECT * found — specify columns explicitly",
+                    message="SELECT * found — specify columns explicitly",  # vibesrails: ignore — pattern definition
                     file=fname, line=i,
                 ))
         return issues
@@ -92,7 +96,7 @@ class PerformanceGuard:
         for i, line in enumerate(content.splitlines(), 1):
             if _SQL_SELECT_RE.search(line):
                 if not _LIMIT_RE.search(line) and not _OFFSET_RE.search(line):
-                    # Don't double-flag SELECT * lines
+                    # Don't double-flag SELECT * lines  # vibesrails: ignore — pattern definition
                     if _SELECT_STAR_RE.search(line):
                         continue
                     issues.append(V2GuardIssue(
@@ -114,12 +118,14 @@ class PerformanceGuard:
         issues: list[V2GuardIssue] = []
         for i, line in enumerate(content.splitlines(), 1):
             stripped = line.strip()
-            if "time.sleep(" in stripped and not stripped.startswith("#"):
+            if _IGNORE_MARKER in line:
+                continue
+            if "time.sleep(" in stripped and not stripped.startswith("#"):  # vibesrails: ignore — pattern definition
                 issues.append(V2GuardIssue(
                     guard=self.GUARD_NAME,
                     severity="warn",
                     message=(
-                        "time.sleep() in application code — "
+                        "time.sleep() in application code — "  # vibesrails: ignore — pattern definition
                         "consider async or event-based approach"
                     ),
                     file=fname,
@@ -237,8 +243,9 @@ class PerformanceGuard:
                 ))
         return issues
 
-    def _check_global_mutation(self, fname: str, tree: ast.Module) -> list[V2GuardIssue]:
+    def _check_global_mutation(self, fname: str, tree: ast.Module, content: str = "") -> list[V2GuardIssue]:
         """Detect assignment to module-level variable inside a function."""
+        lines = content.splitlines() if content else []
         issues: list[V2GuardIssue] = []
         # Collect module-level names
         module_names: set[str] = set()
@@ -254,6 +261,15 @@ class PerformanceGuard:
         # Check functions for `global x` then assignment
         for node in ast.iter_child_nodes(tree):
             if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            # Check if the global statement line has an ignore marker
+            has_ignore = False
+            for child in ast.walk(node):
+                if isinstance(child, ast.Global) and lines:
+                    line_idx = child.lineno - 1
+                    if 0 <= line_idx < len(lines) and _IGNORE_MARKER in lines[line_idx]:
+                        has_ignore = True
+            if has_ignore:
                 continue
             declared_global: set[str] = set()
             for child in ast.walk(node):

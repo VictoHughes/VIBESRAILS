@@ -30,6 +30,8 @@ BLUE = "\033[0;34m"
 NC = "\033[0m"  # No Color
 
 class ScanResult(NamedTuple):
+    """Result from scanning a file for pattern violations."""
+
     file: str
     line: int
     pattern_id: str
@@ -140,15 +142,7 @@ SUPPRESS_PATTERN_REGEX = re.compile(
 
 
 def is_line_suppressed(line: str, pattern_id: str, prev_line: str | None = None) -> bool:
-    """Check if a line has suppression comments.
-
-    Supports:
-    - `# vibesrails: ignore` - ignore all patterns on this line
-    - `# vibesrails: disable` - alias for ignore
-    - `# noqa: vibesrails` - familiar syntax for Python devs
-    - `# vibesrails: ignore [pattern_id]` - ignore specific pattern
-    - `# vibesrails: ignore-next-line` - on previous line
-    """
+    """Check if a line has inline or previous-line suppression comments."""
     # Check same-line suppression
     if SUPPRESS_REGEX.search(line):
         # Check if it's pattern-specific
@@ -186,11 +180,81 @@ def is_path_safe(filepath: str) -> bool:
         return False
 
 
+def _collect_patterns(config: dict) -> tuple[list, list]:
+    """Collect all blocking and warning patterns from config sections."""
+    all_blocking = list(config.get("blocking", []))
+    all_warning = list(config.get("warning", []))
+
+    for section in ["bugs", "architecture", "maintainability"]:
+        for pattern in config.get(section, []):
+            level = pattern.get("level", "WARN")
+            if level == "BLOCK":
+                all_blocking.append(pattern)
+            else:
+                all_warning.append(pattern)
+
+    return all_blocking, all_warning
+
+
+def _should_skip_pattern(
+    pattern: dict, level: str, is_test: bool, allowed_patterns: set, filepath: str,
+) -> bool:
+    """Check if a pattern should be skipped for the given file."""
+    if level == "WARN" and pattern.get("skip_in_tests") and is_test:
+        return True
+    if pattern["id"] in allowed_patterns:
+        return True
+    scope = pattern.get("scope", [])
+    return bool(scope and not matches_pattern(filepath, scope))
+
+
+def _match_line(
+    line: str, prev_line: str | None, pattern: dict, flags: int,
+) -> bool:
+    """Check if a line matches a pattern (with exclusion and suppression)."""
+    if not safe_regex_search(pattern["regex"], line, flags):
+        return False
+    exclude_regex = pattern.get("exclude_regex")
+    if exclude_regex and safe_regex_search(exclude_regex, line):
+        return False
+    return not is_line_suppressed(line, pattern["id"], prev_line)
+
+
+def _scan_patterns(
+    lines: list[str],
+    filepath: str,
+    patterns: list[dict],
+    level: str,
+    allowed_patterns: set,
+) -> list[ScanResult]:
+    """Scan lines against a list of patterns and return results."""
+    results = []
+    is_test = is_test_file(filepath)
+
+    for pattern in patterns:
+        if _should_skip_pattern(pattern, level, is_test, allowed_patterns, filepath):
+            continue
+
+        flags = re.IGNORECASE if pattern.get("flags") == "i" else 0
+
+        for i, line in enumerate(lines, 1):
+            prev_line = lines[i - 2] if i > 1 else None
+            if _match_line(line, prev_line, pattern, flags):
+                results.append(ScanResult(
+                    file=filepath,
+                    line=i,
+                    pattern_id=pattern["id"],
+                    message=pattern["message"],
+                    level=level,
+                ))
+
+    return results
+
+
 def scan_file(filepath: str, config: dict) -> list[ScanResult]:
     """Scan a single file for pattern violations."""
     results = []
 
-    # Path traversal protection
     if not is_path_safe(filepath):
         print(f"{YELLOW}SKIP{NC} {filepath} (outside project directory)")
         return results
@@ -202,106 +266,26 @@ def scan_file(filepath: str, config: dict) -> list[ScanResult]:
         print(f"{YELLOW}SKIP{NC} {filepath} (read error: {e})")
         return results
 
-    # Check file length (complexity settings)
+    # Check file length
     complexity = config.get("complexity", {})
     max_file_lines = complexity.get("max_file_lines", 0)
     if max_file_lines and len(lines) > max_file_lines and not is_test_file(filepath):
         results.append(ScanResult(
-            file=filepath,
-            line=len(lines),
-            pattern_id="file_too_long",
+            file=filepath, line=len(lines), pattern_id="file_too_long",
             message=f"File has {len(lines)} lines (max: {max_file_lines}). Consider splitting into smaller modules.",
             level="WARN",
         ))
 
     # Get exceptions for this file
-    exceptions = config.get("exceptions", {})
     allowed_patterns = set()
-
-    for _, exc_config in exceptions.items():
+    for _, exc_config in config.get("exceptions", {}).items():
         if matches_pattern(filepath, exc_config.get("patterns", [])):
             allowed_patterns.update(exc_config.get("allowed", []))
 
-    # Collect all patterns from all sections
-    all_blocking = config.get("blocking", [])
-    all_warning = config.get("warning", [])
+    all_blocking, all_warning = _collect_patterns(config)
 
-    # Add patterns from pro coding sections
-    for section in ["bugs", "architecture", "maintainability"]:
-        for pattern in config.get(section, []):
-            level = pattern.get("level", "WARN")
-            if level == "BLOCK":
-                all_blocking.append(pattern)
-            else:
-                all_warning.append(pattern)
-
-    # Check blocking patterns
-    for pattern in all_blocking:
-        pattern_id = pattern["id"]
-
-        # Skip if this file has an exception for this pattern
-        if pattern_id in allowed_patterns:
-            continue
-
-        # Check scope (file patterns where rule applies)
-        scope = pattern.get("scope", [])
-        if scope and not matches_pattern(filepath, scope):
-            continue
-
-        regex = pattern["regex"]
-        flags = re.IGNORECASE if pattern.get("flags") == "i" else 0
-        exclude_regex = pattern.get("exclude_regex")
-
-        for i, line in enumerate(lines, 1):
-            if safe_regex_search(regex, line, flags):
-                # Check exclusion pattern
-                if exclude_regex and safe_regex_search(exclude_regex, line):
-                    continue
-
-                # Check inline suppression
-                prev_line = lines[i - 2] if i > 1 else None
-                if is_line_suppressed(line, pattern_id, prev_line):
-                    continue
-
-                results.append(ScanResult(
-                    file=filepath,
-                    line=i,
-                    pattern_id=pattern_id,
-                    message=pattern["message"],
-                    level="BLOCK",
-                ))
-
-    # Check warning patterns (skip in test files if configured)
-    for pattern in all_warning:
-        if pattern.get("skip_in_tests") and is_test_file(filepath):
-            continue
-
-        # Check scope
-        scope = pattern.get("scope", [])
-        if scope and not matches_pattern(filepath, scope):
-            continue
-
-        regex = pattern["regex"]
-        flags = re.IGNORECASE if pattern.get("flags") == "i" else 0
-        exclude = pattern.get("exclude_regex")
-
-        for i, line in enumerate(lines, 1):
-            if safe_regex_search(regex, line, flags):
-                if exclude and safe_regex_search(exclude, line):
-                    continue
-
-                # Check inline suppression
-                prev_line = lines[i - 2] if i > 1 else None
-                if is_line_suppressed(line, pattern["id"], prev_line):
-                    continue
-
-                results.append(ScanResult(
-                    file=filepath,
-                    line=i,
-                    pattern_id=pattern["id"],
-                    message=pattern["message"],
-                    level="WARN",
-                ))
+    results.extend(_scan_patterns(lines, filepath, all_blocking, "BLOCK", allowed_patterns))
+    results.extend(_scan_patterns(lines, filepath, all_warning, "WARN", allowed_patterns))
 
     return results
 
@@ -394,6 +378,7 @@ def get_all_python_files() -> list[str]:
 
 
 def main():
+    """CLI entry point."""
     import argparse
 
     parser = argparse.ArgumentParser(description="vibesrails - Scale up your vibe coding safely")

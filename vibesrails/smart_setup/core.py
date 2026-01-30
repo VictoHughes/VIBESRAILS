@@ -25,41 +25,14 @@ from .i18n import LANG, msg
 from .vibe_mode import prompt_user, prompt_vibe_protections
 
 
-def smart_setup(
-    project_root: Path | None = None,
-    dry_run: bool = False,
-    interactive: bool = True,
-    force: bool = False,
-) -> dict[str, Any]:
-    """Run smart setup analysis with user confirmation.
-
-    Args:
-        project_root: Project directory (defaults to cwd)
-        dry_run: If True, only analyze without creating files
-        interactive: If True, ask for user confirmation
-        force: If True, overwrite existing config
-
-    Returns:
-        Analysis results dict
-    """
-    if project_root is None:
-        project_root = Path.cwd()
-
-    project_root = Path(project_root).resolve()
-
-    print(f"{BLUE}{msg('smart_setup')}{NC}")
-    print("=" * 40)
-    print(f"{msg('analyzing')}: {project_root.name}/")
-    print()
-
-    # Detect project characteristics
+def _detect_and_report(project_root: Path) -> dict:
+    """Run detection and print findings report. Returns detection results."""
     project_types = detect_project_type(project_root)
     existing_configs = detect_existing_configs(project_root)
     has_secrets = detect_secrets_risk(project_root)
     env_files = detect_env_files(project_root)
     arch_info = detect_architecture_complexity(project_root)
 
-    # Report findings
     print(f"{YELLOW}{msg('project_analysis')}{NC}")
 
     if project_types:
@@ -77,14 +50,11 @@ def smart_setup(
 
     if existing_configs:
         print(f"  {msg('existing_configs')}: {', '.join(existing_configs.keys())}")
-
     if has_secrets:
         print(f"  {RED}{msg('secret_patterns_detected')}{NC}")
-
     if env_files:
         print(f"  {msg('env_files')}: {', '.join(f.name for f in env_files)}")
 
-    # Show architecture info
     if arch_info["needs_arch"]:
         print(f"  {BLUE}{msg('arch_detected')}: {len(arch_info['layers'])} {msg('arch_layers')}{NC}")
         for layer in arch_info["layers"][:5]:
@@ -92,19 +62,17 @@ def smart_setup(
     else:
         print(f"  {msg('arch_simple_project')}")
 
-    # Check if config already exists
-    config_path = project_root / "vibesrails.yaml"
-    if config_path.exists() and not force:
-        print(f"\n{YELLOW}{msg('config_exists')}{NC}")
-        if interactive:
-            if not prompt_user(msg('overwrite_config'), default="n"):
-                print(f"{YELLOW}{msg('setup_cancelled')}{NC}")
-                return {"created": False, "reason": "exists"}
-        else:
-            print(msg('use_force'))
-            return {"created": False, "reason": "exists"}
+    return {
+        "project_types": project_types,
+        "existing_configs": existing_configs,
+        "has_secrets": has_secrets,
+        "env_files": env_files,
+        "arch_info": arch_info,
+    }
 
-    # Interactive: ask for protections (vibe coder mode by default)
+
+def _prompt_user_config(project_root: Path, dry_run: bool, interactive: bool, arch_info: dict) -> tuple[list, dict | None]:
+    """Prompt for extra patterns and architecture config. Returns (extra_patterns, architecture_config)."""
     extra_patterns = []
     if interactive and not dry_run:
         print(f"\n{YELLOW}{msg('config_mode')}{NC}")
@@ -118,9 +86,7 @@ def smart_setup(
             extra_patterns = prompt_vibe_protections(project_root)
         elif mode == "2":
             extra_patterns = prompt_extra_patterns(project_root)
-        # mode 3 or other = skip
 
-    # Architecture checking (offer if complex project)
     architecture_config = None
     if arch_info["needs_arch"] and interactive and not dry_run:
         print()
@@ -134,49 +100,19 @@ def smart_setup(
             print(f"  {GREEN}✓ {msg('arch_will_check')}{NC}")
             print(f"  {msg('arch_install_cmd')}: {tool_info.get('install', 'pip install import-linter')}")
 
-    # Generate config
-    config_content = generate_config_with_extras(
-        project_types, has_secrets, env_files, existing_configs, extra_patterns,
-        architecture=architecture_config
-    )
+    return extra_patterns, architecture_config
 
-    # Show preview
-    print(f"\n{YELLOW}{msg('proposed_config')}{NC}")
-    print("-" * 40)
-    print(config_content)
-    print("-" * 40)
 
-    result = {
-        "project_root": str(project_root),
-        "project_types": project_types,
-        "existing_configs": list(existing_configs.keys()),
-        "has_secrets": has_secrets,
-        "env_files": [str(f) for f in env_files],
-        "extra_patterns": extra_patterns,
-        "config_content": config_content,
-        "architecture": architecture_config,
-    }
+def _create_config_files(project_root: Path, config_content: str, architecture_config: dict | None, interactive: bool) -> dict:
+    """Create config files on disk. Returns partial result dict."""
+    result = {}
 
-    if dry_run:
-        dry_run_msg = "(Dry-run mode - no files created)" if LANG == "en" else "(Mode dry-run - aucun fichier cree)"
-        print(f"\n{YELLOW}{dry_run_msg}{NC}")
-        result["created"] = False
-        return result
-
-    # Final confirmation
-    if interactive:
-        print()
-        if not prompt_user(f"{GREEN}{msg('create_config')}{NC}"):
-            print(f"{YELLOW}{msg('setup_cancelled')}{NC}")
-            result["created"] = False
-            return result
-
-    # Create config file
+    config_path = project_root / "vibesrails.yaml"
     config_path.write_text(config_content)
     print(f"\n{GREEN}{msg('created')}: vibesrails.yaml{NC}")
     result["created"] = True
 
-    # Create architecture config if enabled
+    # Architecture config
     if architecture_config and architecture_config.get("enabled"):
         lang = architecture_config.get("language", "python")
         if lang == "python":
@@ -189,16 +125,15 @@ def smart_setup(
                 print(f"{GREEN}{msg('created')}: .importlinter ({msg('arch_config_created')}){NC}")
         result["architecture_config_created"] = True
 
-    # Install hook (with architecture support)
+    # Install hook
     from ..cli import install_hook
     install_hook(architecture_enabled=architecture_config is not None)
 
-    # Create or update CLAUDE.md for Claude Code integration
+    # CLAUDE.md
     claude_md_path = project_root / "CLAUDE.md"
     claude_md_content = generate_claude_md()
 
     if claude_md_path.exists():
-        # Append vibesrails section if not already present
         existing_content = claude_md_path.read_text()
         if "vibesrails" not in existing_content.lower():
             claude_md_path.write_text(existing_content + "\n\n" + claude_md_content)
@@ -212,7 +147,7 @@ def smart_setup(
 
     result["claude_md_created"] = True
 
-    # Offer Claude Code hooks installation
+    # Claude Code hooks
     result["hooks_installed"] = False
     if interactive:
         print()
@@ -223,10 +158,87 @@ def smart_setup(
             else:
                 print(f"{YELLOW}{msg('hooks_not_available')}{NC}")
     else:
-        # Non-interactive: install hooks by default
         if install_claude_hooks(project_root):
             print(f"{GREEN}{msg('created')}: .claude/hooks.json ({msg('claude_hooks')}){NC}")
             result["hooks_installed"] = True
+
+    return result
+
+
+def smart_setup(
+    project_root: Path | None = None,
+    dry_run: bool = False,
+    interactive: bool = True,
+    force: bool = False,
+) -> dict[str, Any]:
+    """Run smart setup analysis with user confirmation."""
+    if project_root is None:
+        project_root = Path.cwd()
+
+    project_root = Path(project_root).resolve()
+
+    print(f"{BLUE}{msg('smart_setup')}{NC}")
+    print("=" * 40)
+    print(f"{msg('analyzing')}: {project_root.name}/")
+    print()
+
+    findings = _detect_and_report(project_root)
+
+    # Check if config already exists
+    config_path = project_root / "vibesrails.yaml"
+    if config_path.exists() and not force:
+        print(f"\n{YELLOW}{msg('config_exists')}{NC}")
+        if interactive:
+            if not prompt_user(msg('overwrite_config'), default="n"):
+                print(f"{YELLOW}{msg('setup_cancelled')}{NC}")
+                return {"created": False, "reason": "exists"}
+        else:
+            print(msg('use_force'))
+            return {"created": False, "reason": "exists"}
+
+    extra_patterns, architecture_config = _prompt_user_config(
+        project_root, dry_run, interactive, findings["arch_info"]
+    )
+
+    # Generate config
+    config_content = generate_config_with_extras(
+        findings["project_types"], findings["has_secrets"], findings["env_files"],
+        findings["existing_configs"], extra_patterns,
+        architecture=architecture_config
+    )
+
+    # Show preview
+    print(f"\n{YELLOW}{msg('proposed_config')}{NC}")
+    print("-" * 40)
+    print(config_content)
+    print("-" * 40)
+
+    result = {
+        "project_root": str(project_root),
+        "project_types": findings["project_types"],
+        "existing_configs": list(findings["existing_configs"].keys()),
+        "has_secrets": findings["has_secrets"],
+        "env_files": [str(f) for f in findings["env_files"]],
+        "extra_patterns": extra_patterns,
+        "config_content": config_content,
+        "architecture": architecture_config,
+    }
+
+    if dry_run:
+        dry_run_msg = "(Dry-run mode - no files created)" if LANG == "en" else "(Mode dry-run - aucun fichier cree)"
+        print(f"\n{YELLOW}{dry_run_msg}{NC}")
+        result["created"] = False
+        return result
+
+    if interactive:
+        print()
+        if not prompt_user(f"{GREEN}{msg('create_config')}{NC}"):
+            print(f"{YELLOW}{msg('setup_cancelled')}{NC}")
+            result["created"] = False
+            return result
+
+    file_result = _create_config_files(project_root, config_content, architecture_config, interactive)
+    result.update(file_result)
 
     print()
     print(f"{GREEN}{msg('setup_complete')}{NC}")
@@ -234,7 +246,7 @@ def smart_setup(
     print(f"  - vibesrails.yaml ({msg('config_file')})")
     print(f"  - .git/hooks/pre-commit ({msg('auto_scan')})")
     print(f"  - CLAUDE.md ({msg('claude_instructions')})")
-    if result["hooks_installed"]:
+    if result.get("hooks_installed"):
         print(f"  - .claude/hooks.json ({msg('claude_hooks')})")
     print(f"\n{msg('next_steps')}:")
     print(f"  1. {msg('commit_normally')}")

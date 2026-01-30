@@ -49,6 +49,7 @@ class ComparisonSwapper(ast.NodeTransformer):
         self.applied = False
 
     def visit_Compare(self, node: ast.Compare) -> ast.Compare:
+        """Handle Compare nodes."""
         for i, op in enumerate(node.ops):
             if type(op) in self.SWAPS:
                 if self.current_idx == self.target_idx:
@@ -68,6 +69,7 @@ class BooleanSwapper(ast.NodeTransformer):
         self.applied = False
 
     def visit_Constant(self, node: ast.Constant) -> ast.Constant:
+        """Handle Constant nodes."""
         if isinstance(node.value, bool):
             if self.current_idx == self.target_idx:
                 node.value = not node.value
@@ -77,6 +79,7 @@ class BooleanSwapper(ast.NodeTransformer):
         return node
 
     def visit_BoolOp(self, node: ast.BoolOp) -> ast.BoolOp:
+        """Handle BoolOp nodes."""
         self.generic_visit(node)
         if isinstance(node.op, ast.And):
             if self.current_idx == self.target_idx:
@@ -102,6 +105,7 @@ class ReturnNoneSwapper(ast.NodeTransformer):
         self.applied = False
 
     def visit_Return(self, node: ast.Return) -> ast.Return:
+        """Handle Return nodes."""
         if node.value is not None:
             if self.current_idx == self.target_idx:
                 node.value = ast.Constant(value=None)
@@ -125,6 +129,7 @@ class ArithmeticSwapper(ast.NodeTransformer):
         self.applied = False
 
     def visit_BinOp(self, node: ast.BinOp) -> ast.BinOp:
+        """Handle BinOp nodes."""
         self.generic_visit(node)
         if type(node.op) in self.SWAPS:
             if self.current_idx == self.target_idx:
@@ -146,6 +151,7 @@ class StatementRemover(ast.NodeTransformer):
     def visit_FunctionDef(
         self, node: ast.FunctionDef
     ) -> ast.FunctionDef:
+        """Handle FunctionDef nodes."""
         if len(node.body) <= 1:
             return node
         new_body = []

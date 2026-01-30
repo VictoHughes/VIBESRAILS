@@ -19,6 +19,8 @@ from unittest import mock
 
 import pytest
 
+import vibesrails.smart_setup.core as _core_mod
+
 
 # ============================================
 # i18n Module Tests
@@ -963,6 +965,7 @@ class TestClaudeIntegration:
 
     def test_install_claude_hooks_creates_dir(self, project_dir):
         """install_claude_hooks creates .claude directory."""
+        import vibesrails.smart_setup.claude_integration as _ci
         from vibesrails.smart_setup.claude_integration import install_claude_hooks
 
         # Mock get_package_data_path to return a valid hooks file
@@ -970,7 +973,7 @@ class TestClaudeIntegration:
         hooks_file = project_dir / "hooks_source.json"
         hooks_file.write_text(json.dumps(hooks_content))
 
-        with mock.patch('vibesrails.smart_setup.claude_integration.get_package_data_path', return_value=hooks_file):
+        with mock.patch.object(_ci, 'get_package_data_path', return_value=hooks_file):
             result = install_claude_hooks(project_dir)
 
         assert result is True
@@ -978,13 +981,14 @@ class TestClaudeIntegration:
 
     def test_install_claude_hooks_creates_file(self, project_dir):
         """install_claude_hooks creates hooks.json."""
+        import vibesrails.smart_setup.claude_integration as _ci
         from vibesrails.smart_setup.claude_integration import install_claude_hooks
 
         hooks_content = {"hooks": {"PreToolUse": [{"command": "vibesrails scan"}]}}
         hooks_file = project_dir / "hooks_source.json"
         hooks_file.write_text(json.dumps(hooks_content))
 
-        with mock.patch('vibesrails.smart_setup.claude_integration.get_package_data_path', return_value=hooks_file):
+        with mock.patch.object(_ci, 'get_package_data_path', return_value=hooks_file):
             result = install_claude_hooks(project_dir)
 
         assert result is True
@@ -996,6 +1000,7 @@ class TestClaudeIntegration:
 
     def test_install_claude_hooks_merges_existing(self, project_dir):
         """install_claude_hooks merges with existing hooks."""
+        import vibesrails.smart_setup.claude_integration as _ci
         from vibesrails.smart_setup.claude_integration import install_claude_hooks
 
         # Create existing hooks
@@ -1009,7 +1014,7 @@ class TestClaudeIntegration:
         hooks_file = project_dir / "hooks_source.json"
         hooks_file.write_text(json.dumps(hooks_content))
 
-        with mock.patch('vibesrails.smart_setup.claude_integration.get_package_data_path', return_value=hooks_file):
+        with mock.patch.object(_ci, 'get_package_data_path', return_value=hooks_file):
             result = install_claude_hooks(project_dir)
 
         assert result is True
@@ -1021,15 +1026,17 @@ class TestClaudeIntegration:
 
     def test_install_claude_hooks_no_source(self, project_dir):
         """install_claude_hooks returns False when source missing."""
+        import vibesrails.smart_setup.claude_integration as _ci
         from vibesrails.smart_setup.claude_integration import install_claude_hooks
 
-        with mock.patch('vibesrails.smart_setup.claude_integration.get_package_data_path', return_value=None):
+        with mock.patch.object(_ci, 'get_package_data_path', return_value=None):
             result = install_claude_hooks(project_dir)
 
         assert result is False
 
     def test_install_claude_hooks_avoids_duplicates(self, project_dir):
         """install_claude_hooks doesn't duplicate vibesrails hooks."""
+        import vibesrails.smart_setup.claude_integration as _ci
         from vibesrails.smart_setup.claude_integration import install_claude_hooks
 
         # Create existing hooks with vibesrails already
@@ -1043,7 +1050,7 @@ class TestClaudeIntegration:
         hooks_file = project_dir / "hooks_source.json"
         hooks_file.write_text(json.dumps(hooks_content))
 
-        with mock.patch('vibesrails.smart_setup.claude_integration.get_package_data_path', return_value=hooks_file):
+        with mock.patch.object(_ci, 'get_package_data_path', return_value=hooks_file):
             result = install_claude_hooks(project_dir)
 
         assert result is True
@@ -1178,7 +1185,7 @@ class TestCore:
 
         # Mock install_hook to avoid git operations (imported from ..cli inside function)
         with mock.patch('vibesrails.cli.install_hook'):
-            with mock.patch('vibesrails.smart_setup.claude_integration.install_claude_hooks', return_value=True):
+            with mock.patch.object(_core_mod, 'install_claude_hooks', return_value=True):
                 result = smart_setup(project_dir, dry_run=False, interactive=False, force=True)
 
         assert result["created"] is True
@@ -1215,7 +1222,7 @@ class TestCore:
         (project_dir / "vibesrails.yaml").write_text("version: '1.0'")
 
         with mock.patch('vibesrails.cli.install_hook'):
-            with mock.patch('vibesrails.smart_setup.claude_integration.install_claude_hooks', return_value=True):
+            with mock.patch.object(_core_mod, 'install_claude_hooks', return_value=True):
                 result = smart_setup(project_dir, dry_run=False, interactive=False, force=True)
 
         assert result["created"] is True
@@ -1225,7 +1232,7 @@ class TestCore:
         from vibesrails.smart_setup.core import smart_setup
 
         with mock.patch('vibesrails.cli.install_hook'):
-            with mock.patch('vibesrails.smart_setup.claude_integration.install_claude_hooks', return_value=True):
+            with mock.patch.object(_core_mod, 'install_claude_hooks', return_value=True):
                 result = smart_setup(project_dir, dry_run=False, interactive=False, force=True)
 
         assert (project_dir / "CLAUDE.md").exists()
@@ -1239,7 +1246,7 @@ class TestCore:
         (project_dir / "CLAUDE.md").write_text("# Project Docs\n\nSome content")
 
         with mock.patch('vibesrails.cli.install_hook'):
-            with mock.patch('vibesrails.smart_setup.claude_integration.install_claude_hooks', return_value=True):
+            with mock.patch.object(_core_mod, 'install_claude_hooks', return_value=True):
                 result = smart_setup(project_dir, dry_run=False, interactive=False, force=True)
 
         content = (project_dir / "CLAUDE.md").read_text()
@@ -1254,7 +1261,7 @@ class TestCore:
         (project_dir / "CLAUDE.md").write_text("# vibesrails instructions\n\nExisting vibesrails content")
 
         with mock.patch('vibesrails.cli.install_hook'):
-            with mock.patch('vibesrails.smart_setup.claude_integration.install_claude_hooks', return_value=True):
+            with mock.patch.object(_core_mod, 'install_claude_hooks', return_value=True):
                 result = smart_setup(project_dir, dry_run=False, interactive=False, force=True)
 
         content = (project_dir / "CLAUDE.md").read_text()
@@ -1296,7 +1303,7 @@ class TestCore:
         # Mock isatty to return False (non-interactive)
         with mock.patch('os.isatty', return_value=False):
             with mock.patch('vibesrails.cli.install_hook'):
-                with mock.patch('vibesrails.smart_setup.claude_integration.install_claude_hooks', return_value=True):
+                with mock.patch.object(_core_mod, 'install_claude_hooks', return_value=True):
                     result = run_smart_setup_cli(force=True, dry_run=False)
 
         assert result is True
@@ -1319,7 +1326,7 @@ class TestCore:
         monkeypatch.chdir(project_dir)
 
         # Mock smart_setup to raise exception
-        with mock.patch('vibesrails.smart_setup.core.smart_setup', side_effect=Exception("Test error")):
+        with mock.patch.object(_core_mod, 'smart_setup', side_effect=Exception("Test error")):
             result = run_smart_setup_cli(force=True, dry_run=False)
 
         assert result is False
@@ -1747,7 +1754,7 @@ class TestCoreExtended:
         monkeypatch.setattr('builtins.input', lambda _: next(inputs))
 
         with mock.patch('vibesrails.cli.install_hook'):
-            with mock.patch('vibesrails.smart_setup.claude_integration.install_claude_hooks', return_value=True):
+            with mock.patch.object(_core_mod, 'install_claude_hooks', return_value=True):
                 result = smart_setup(tmp_path, dry_run=False, interactive=True, force=True)
 
         assert result["created"] is True
@@ -1762,7 +1769,7 @@ class TestCoreExtended:
         monkeypatch.setattr('builtins.input', lambda _: next(inputs))
 
         with mock.patch('vibesrails.cli.install_hook'):
-            with mock.patch('vibesrails.smart_setup.claude_integration.install_claude_hooks', return_value=True):
+            with mock.patch.object(_core_mod, 'install_claude_hooks', return_value=True):
                 result = smart_setup(project_dir, dry_run=False, interactive=True, force=True)
 
         assert result["created"] is True
@@ -1785,7 +1792,7 @@ class TestCoreExtended:
         monkeypatch.setattr('builtins.input', lambda _: next(inputs))
 
         with mock.patch('vibesrails.cli.install_hook'):
-            with mock.patch('vibesrails.smart_setup.claude_integration.install_claude_hooks', return_value=True):
+            with mock.patch.object(_core_mod, 'install_claude_hooks', return_value=True):
                 result = smart_setup(tmp_path, dry_run=False, interactive=True, force=True)
 
         assert result["created"] is True
@@ -1802,7 +1809,7 @@ class TestCoreExtended:
         monkeypatch.setattr('builtins.input', lambda _: next(inputs))
 
         with mock.patch('vibesrails.cli.install_hook'):
-            with mock.patch('vibesrails.smart_setup.claude_integration.install_claude_hooks', return_value=True):
+            with mock.patch.object(_core_mod, 'install_claude_hooks', return_value=True):
                 result = smart_setup(project_dir, dry_run=False, interactive=True, force=True)
 
         assert result["created"] is True
@@ -1825,7 +1832,7 @@ class TestCoreExtended:
         monkeypatch.setattr('builtins.input', mock_input)
 
         with mock.patch('vibesrails.cli.install_hook'):
-            with mock.patch('vibesrails.smart_setup.core.install_claude_hooks', return_value=False):
+            with mock.patch.object(_core_mod, 'install_claude_hooks', return_value=False):
                 result = smart_setup(project_dir, dry_run=False, interactive=True, force=True)
 
         assert result["created"] is True

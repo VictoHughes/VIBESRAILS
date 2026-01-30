@@ -34,11 +34,8 @@ from .scanner import (
 )
 
 
-def main():
-    # Handle learn command (positional argument)
-    if len(sys.argv) > 1 and sys.argv[1] == "learn":
-        sys.exit(handle_learn_command())
-
+def _parse_args():
+    """Parse command-line arguments and return the parsed args."""
     parser = argparse.ArgumentParser(
         description="VibesRails - Scale up your vibe coding safely | From KIONOS™",
         epilog="Examples: vibesrails --all | --show | --stats | --learn | --watch"
@@ -84,57 +81,84 @@ def main():
     parser.add_argument("--mutation-quick", action="store_true",
                         help="Mutation testing on changed functions only")
     parser.add_argument("--senior-v2", action="store_true", help="Run ALL v2 guards (comprehensive scan)")
-    args = parser.parse_args()
+    return parser.parse_args()
 
-    # Handle guardian stats
+
+def _handle_standalone_commands(args):
+    """Handle commands that don't need a config file. Returns True if handled."""
     if args.guardian_stats:
         from .ai_guardian import show_guardian_stats
         show_guardian_stats()
         sys.exit(0)
 
-    # Handle scan statistics
     if args.stats:
         from .metrics import MetricsCollector
         collector = MetricsCollector()
         collector.show_stats()
         sys.exit(0)
 
-    # Handle fixable patterns list
     if args.fixable:
         from .autofix import show_fixable_patterns
         show_fixable_patterns()
         sys.exit(0)
 
-    # Handle watch mode
     if args.watch:
         from .watch import run_watch_mode
         config_path = Path(args.config) if args.config else find_config()
         sys.exit(0 if run_watch_mode(config_path) else 1)
 
-    # === V2 Guards (don't need vibesrails.yaml config) ===
+    # V2 Guards (don't need vibesrails.yaml config)
     dispatch_v2_commands(args)
 
-    # Handle learn mode (doesn't need config, uses Claude API)
     if args.learn:
         from .learn import run_learn_mode
         sys.exit(0 if run_learn_mode() else 1)
 
-    # Handle smart setup (auto-detects project type)
     if args.setup:
         from .smart_setup import run_smart_setup_cli
         sys.exit(0 if run_smart_setup_cli(force=args.force, dry_run=args.dry_run) else 1)
 
-    # Handle init (doesn't need config)
     if args.init:
         sys.exit(0 if init_config() else 1)
 
-    # Handle hook (doesn't need config)
     if args.hook:
         sys.exit(0 if install_hook() else 1)
 
-    # Handle uninstall
     if args.uninstall:
         sys.exit(0 if uninstall() else 1)
+
+
+def _handle_config_commands(args, config, files):
+    """Handle commands that require a loaded config."""
+    if args.validate:
+        sys.exit(0 if validate_config(config) else 1)
+
+    if args.show:
+        show_patterns(config)
+        sys.exit(0)
+
+    if args.senior:
+        sys.exit(run_senior_mode(files))
+
+    if args.fix or args.dry_run:
+        from .autofix import run_autofix
+        run_autofix(config, files, dry_run=args.dry_run, backup=not args.no_backup)
+        if args.dry_run:
+            sys.exit(0)
+        print()
+
+    sys.exit(run_scan(config, files))
+
+
+def main():
+    """CLI entry point."""
+    # Handle learn command (positional argument)
+    if len(sys.argv) > 1 and sys.argv[1] == "learn":
+        sys.exit(handle_learn_command())
+
+    args = _parse_args()
+
+    _handle_standalone_commands(args)
 
     # Find config
     if args.config:
@@ -149,13 +173,6 @@ def main():
 
     config = load_config(config_path)
 
-    if args.validate:
-        sys.exit(0 if validate_config(config) else 1)
-
-    if args.show:
-        show_patterns(config)
-        sys.exit(0)
-
     # Determine files to scan
     if args.file:
         files = [args.file] if Path(args.file).exists() else []
@@ -164,20 +181,7 @@ def main():
     else:
         files = get_staged_files()
 
-    # Handle Senior Mode
-    if args.senior:
-        sys.exit(run_senior_mode(files))
-
-    # Handle auto-fix
-    if args.fix or args.dry_run:
-        from .autofix import run_autofix
-        run_autofix(config, files, dry_run=args.dry_run, backup=not args.no_backup)
-        if args.dry_run:
-            sys.exit(0)
-        # After fix, re-scan to show remaining issues
-        print()
-
-    sys.exit(run_scan(config, files))
+    _handle_config_commands(args, config, files)
 
 
 if __name__ == "__main__":

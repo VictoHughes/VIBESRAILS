@@ -40,7 +40,7 @@ BLOCKED_COMMANDS = [
 ]
 
 
-def check_file_path(tool_input: dict) -> None:
+def check_file_path(tool_input):
     """Check if a file path is protected."""
     file_path = tool_input.get("file_path", "")
     for protected in PROTECTED_PATHS:
@@ -53,7 +53,7 @@ def check_file_path(tool_input: dict) -> None:
             sys.exit(1)
 
 
-def check_bash_command(tool_input: dict) -> None:
+def check_bash_command(tool_input):
     """Check if a bash command targets protected resources."""
     command = tool_input.get("command", "")
     for blocked in BLOCKED_COMMANDS:
@@ -66,7 +66,7 @@ def check_bash_command(tool_input: dict) -> None:
             sys.exit(1)
 
 
-def main() -> None:
+def main():
     """CLI entry point."""
     data = json.loads(sys.stdin.read())
     tool_name = data.get("tool_name", "")

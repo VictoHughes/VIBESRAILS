@@ -2,7 +2,7 @@
 
 > Security scanner + Claude Code integration — one command, everything is set up.
 
-## TL;DR
+## TL;DR (recommended)
 
 ```bash
 pip install vibesrails
@@ -10,7 +10,7 @@ cd your-project
 vibesrails --setup
 ```
 
-That's it. `--setup` creates everything: config, hooks, pre-commit.
+`--setup` detects your project, generates config, installs hooks. Done.
 
 ---
 
@@ -23,9 +23,13 @@ That's it. `--setup` creates everything: config, hooks, pre-commit.
 | `.claude/hooks.json` | Session automation (plans, tasks, scan reminders) |
 | `.git/hooks/pre-commit` | Auto-scan on every commit |
 
+---
+
 ## Installation Methods
 
 ### 1. `vibesrails --setup` (recommended)
+
+Interactive setup that detects your project structure:
 
 ```bash
 pip install vibesrails
@@ -33,63 +37,37 @@ cd your-project
 vibesrails --setup
 ```
 
-- Detects your project type (Django, FastAPI, Flask, etc.)
-- Detects architecture layers (domain, infrastructure, application)
-- Generates DIP rules automatically if layers found
-- Creates all 4 files
-- Interactive: asks what protections you want
+### 2. Self-contained installers
 
-### 2. Installer Scripts
+Each folder below is **plug-and-play** — grab the folder, run the script, done.
 
-For automated/CI environments or if you want the bundled templates.
+| Folder | Platform | Script |
+|--------|----------|--------|
+| `mac-linux/` | macOS, Linux | `bash install.sh /path/to/project` |
+| `windows/` | Windows | `install.bat C:\path\to\project` |
+| `python/` | Any OS | `python install.py /path/to/project` |
+| `offline/` | Air-gapped | `bash INSTALL.sh` (needs `.whl` in folder) |
 
-**Mac/Linux:**
-```bash
-bash installers/unix/claude-code/install.sh /path/to/project
-```
+Each folder contains:
+- `install.sh` / `install.bat` / `install.py` — the installer
+- `vibesrails.yaml` — full config (security + bugs + DIP + guardian)
+- `CLAUDE.md` — Claude Code instructions
+- `.claude/hooks.json` — session automation hooks
 
-**Windows:**
-```cmd
-installers\windows\claude-code\install.bat C:\path\to\project
-```
-
-**Any OS (Python):**
-```bash
-python3 installers/cross-platform/claude-code/install.py /path/to/project
-```
-
-### 3. Offline / Air-gapped
-
-For environments without internet. Requires the `.whl` file in `complete-package/`.
-
-```bash
-bash installers/complete-package/INSTALL.sh /path/to/project
-```
-
-### 4. Pip Only (no Claude Code config)
-
-Just the scanner, no hooks/CLAUDE.md:
+### 3. Pip only (no Claude Code config)
 
 ```bash
 pip install vibesrails
 ```
 
-### 5. From Source (development)
-
-```bash
-bash installers/unix/source/install.sh
-# or
-python3 installers/cross-platform/source/install.py
-```
-
 ---
 
-## What It Does After Install
+## What It Does
 
 ### Security Scanning (automatic on commit)
 
-- Blocks: hardcoded secrets, SQL/command/shell injection, unsafe yaml/numpy, debug mode
-- Warns: star imports, bare except, print statements, TODOs, None comparison
+- **Blocks:** hardcoded secrets, SQL/command/shell injection, unsafe yaml/numpy, debug mode
+- **Warns:** star imports, bare except, print statements, TODOs, None comparison
 
 ### Bug Detection
 
@@ -115,7 +93,6 @@ python3 installers/cross-platform/source/install.py
 
 - Auto-detects AI coding sessions
 - Runs 8 guards: DiffSize, ErrorHandling, Hallucination, Dependency, TestCoverage, LazyCode, Bypass, Resilience
-- Generates `ARCHITECTURE.md`
 
 ---
 
@@ -148,27 +125,29 @@ vibesrails --hook         # Install/update git hook
 
 ```
 installers/
-├── README.md                              # This file
-├── templates/claude-code/                 # Source templates (single source of truth)
-│   ├── vibesrails.yaml                    #   Full config (security + bugs + DIP + complexity)
-│   ├── CLAUDE.md                          #   Claude Code instructions
-│   └── .claude/hooks.json                 #   Session automation
-├── unix/                                  # Mac/Linux scripts
-│   ├── pip/install.sh                     #   pip install
-│   ├── source/install.sh                  #   git clone + editable install
-│   └── claude-code/install.sh             #   Full setup (pip + templates + hook)
-├── windows/                               # Windows scripts
-│   ├── pip/install.bat
-│   ├── source/install.bat
-│   └── claude-code/install.bat
-├── cross-platform/                        # Python scripts (any OS)
-│   ├── pip/install.py
-│   ├── source/install.py
-│   └── claude-code/install.py
-└── complete-package/                      # Offline install (includes .whl)
+├── README.md              # This file
+├── mac-linux/             # Self-contained Mac/Linux installer
+│   ├── install.sh
+│   ├── vibesrails.yaml
+│   ├── CLAUDE.md
+│   └── .claude/hooks.json
+├── windows/               # Self-contained Windows installer
+│   ├── install.bat
+│   ├── vibesrails.yaml
+│   ├── CLAUDE.md
+│   └── .claude/hooks.json
+├── python/                # Self-contained cross-platform installer
+│   ├── install.py
+│   ├── vibesrails.yaml
+│   ├── CLAUDE.md
+│   └── .claude/hooks.json
+└── offline/               # Self-contained offline installer
     ├── INSTALL.sh
     ├── INSTALL.bat
-    └── claude-code/                       #   Bundled templates
+    ├── vibesrails.yaml
+    ├── CLAUDE.md
+    ├── .claude/hooks.json
+    └── vibesrails-*.whl   # (add before use)
 ```
 
 ## Support

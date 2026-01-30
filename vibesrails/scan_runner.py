@@ -13,72 +13,69 @@ from .ai_guardian import (
     should_apply_guardian,
     should_run_senior_mode,
 )
-from .metrics import track_scan
+from .metrics import ScanTrackingData, track_scan
 from .result_merger import ResultMerger
 from .scanner import BLUE, GREEN, NC, RED, YELLOW, ScanResult, scan_file
 from .semgrep_adapter import SemgrepAdapter
 
 
+def _setup_semgrep(config: dict) -> tuple[SemgrepAdapter, bool]:
+    """Initialize Semgrep and return (adapter, available)."""
+    semgrep_config = config.get("semgrep", {"enabled": True, "preset": "auto"})
+    semgrep = SemgrepAdapter(semgrep_config)
+    if not semgrep.enabled:
+        return semgrep, False
+    if not semgrep.is_installed():
+        print("📦 Installing Semgrep (enhanced scanning)...")
+        available = semgrep.install(quiet=False)
+        if available:
+            print(f"{GREEN}✅ Semgrep installed{NC}\n")
+        else:
+            print(f"{YELLOW}⚠️  Semgrep install failed, continuing with VibesRails only{NC}\n")
+        return semgrep, available
+    return semgrep, True
+
+
+def _run_vibesrails_scan(config: dict, files: list[str]) -> tuple[list, bool, str | None]:
+    """Run VibesRails scan on files. Returns (results, guardian_active, agent_name)."""
+    print("🔍 Running VibesRails scan...")
+    guardian_active = should_apply_guardian(config)
+    agent_name = get_ai_agent_name() if guardian_active else None
+    results = []
+    for filepath in files:
+        file_results = scan_file(filepath, config)
+        if guardian_active:
+            file_results = apply_guardian_rules(file_results, config, filepath)
+        results.extend(file_results)
+    print(f"   Found {len(results)} issue(s)\n")
+    return results, guardian_active, agent_name
+
+
 def run_scan(config: dict, files: list[str]) -> int:
     """Run scan with Semgrep + VibesRails orchestration and return exit code."""
     start_time = time.time()
-
     print(f"{BLUE}VibesRails - Security Scan{NC}")
     print("=" * 30)
-
     print_guardian_status(config)
 
     if not files:
         print(f"{GREEN}No Python files to scan{NC}")
         return 0
-
     print(f"Scanning {len(files)} file(s)...\n")
 
-    # Initialize Semgrep adapter
-    semgrep_config = config.get("semgrep", {"enabled": True, "preset": "auto"})
-    semgrep = SemgrepAdapter(semgrep_config)
+    semgrep, semgrep_available = _setup_semgrep(config)
 
-    # Ensure Semgrep is installed (auto-install if needed)
-    semgrep_available = False
-    if semgrep.enabled:
-        if not semgrep.is_installed():
-            print("📦 Installing Semgrep (enhanced scanning)...")
-            semgrep_available = semgrep.install(quiet=False)
-            if semgrep_available:
-                print(f"{GREEN}✅ Semgrep installed{NC}\n")
-            else:
-                print(f"{YELLOW}⚠️  Semgrep install failed, continuing with VibesRails only{NC}\n")
-        else:
-            semgrep_available = True
-
-    # Run Semgrep scan (if available)
     semgrep_results = []
     if semgrep_available and semgrep.enabled:
         print("🔍 Running Semgrep scan...")
         semgrep_results = semgrep.scan(files)
         print(f"   Found {len(semgrep_results)} issue(s)")
 
-    # Run VibesRails scan
-    print("🔍 Running VibesRails scan...")
-    vibesrails_results = []
-    guardian_active = should_apply_guardian(config)
-    agent_name = get_ai_agent_name() if guardian_active else None
+    vibesrails_results, guardian_active, agent_name = _run_vibesrails_scan(config, files)
 
-    for filepath in files:
-        results = scan_file(filepath, config)
-
-        if guardian_active:
-            results = apply_guardian_rules(results, config, filepath)
-
-        vibesrails_results.extend(results)
-
-    print(f"   Found {len(vibesrails_results)} issue(s)\n")
-
-    # Merge results
     merger = ResultMerger()
     unified_results, stats = merger.merge(semgrep_results, vibesrails_results)
 
-    # Display statistics
     if semgrep_results or vibesrails_results:
         print(f"{BLUE}📊 Scan Statistics:{NC}")
         print(f"   Semgrep:     {stats['semgrep']} issues")
@@ -87,44 +84,30 @@ def run_scan(config: dict, files: list[str]) -> int:
             print(f"   Duplicates:  {stats['duplicates']} (merged)")
         print(f"   Total:       {stats['total']} unique issues\n")
 
-    # Categorize and display results
     blocking = [r for r in unified_results if r.level == "BLOCK"]
     warnings = [r for r in unified_results if r.level == "WARN"]
-
     _display_results(merger, unified_results, guardian_active, agent_name)
-
     print("=" * 30)
     print(f"BLOCKING: {len(blocking)} | WARNINGS: {len(warnings)}")
 
     exit_code = 1 if blocking else 0
-
-    # Track metrics
     duration_ms = int((time.time() - start_time) * 1000)
-    track_scan(
-        duration_ms=duration_ms,
-        files_scanned=len(files),
+    track_scan(data=ScanTrackingData(
+        duration_ms=duration_ms, files_scanned=len(files),
         semgrep_enabled=semgrep.enabled and semgrep_available,
-        semgrep_issues=len(semgrep_results),
-        vibesrails_issues=len(vibesrails_results),
-        duplicates=stats.get('duplicates', 0),
-        total_issues=len(unified_results),
-        blocking_issues=len(blocking),
-        warnings=len(warnings),
-        exit_code=exit_code,
-        guardian_active=guardian_active,
-    )
+        semgrep_issues=len(semgrep_results), vibesrails_issues=len(vibesrails_results),
+        duplicates=stats.get('duplicates', 0), total_issues=len(unified_results),
+        blocking_issues=len(blocking), warnings=len(warnings),
+        exit_code=exit_code, guardian_active=guardian_active,
+    ))
 
     if blocking:
         print(f"\n{RED}Fix blocking issues before committing.{NC}")
         return 1
-
     print(f"\n{GREEN}VibesRails: PASSED{NC}")
-
-    # Run Senior Mode if configured
     if should_run_senior_mode(config):
         print()
         _run_senior_mode_checks(files)
-
     return 0
 
 

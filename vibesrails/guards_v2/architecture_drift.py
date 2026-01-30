@@ -214,8 +214,20 @@ class ArchitectureDriftGuard:
         from . import architecture_bypass as bp
         return bp.detect_type_checking_bypass(self, root)
 
+    _SKIP_DIRS = frozenset({
+        ".venv", "venv", ".env", "env",
+        "node_modules", "__pycache__",
+        ".git", ".tox", ".nox", ".mypy_cache",
+        ".pytest_cache", ".ruff_cache",
+        "site-packages", "dist", "build",
+    })
+
     def _iter_py_files(self, project_root: Path) -> list[Path]:
-        return sorted(project_root.rglob("*.py"))
+        results: list[Path] = []
+        for py_file in sorted(project_root.rglob("*.py")):
+            if not any(part in self._SKIP_DIRS for part in py_file.parts):
+                results.append(py_file)
+        return results
 
     def _parse_file(self, path: Path) -> ast.Module | None:
         try:

@@ -16,8 +16,20 @@ ENV/
 .vscode/
 *.swp
 
+# Secrets
+.env
+
 # Local config (users create their own)
 vibesrails.yaml
 
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Generated
+ARCHITECTURE.md
+
 # OS
 .DS_Store
+*.command
