@@ -46,9 +46,9 @@
     "PreToolUse": [
       {
         "type": "command",
-        "matcher": "Write|Edit",
+        "matcher": "Write|Edit|Bash",
         "command": "python3 -m vibesrails.hooks.pre_tool_use",
-        "description": "vibesrails: scan code before writing (blocks secrets, injections)"
+        "description": "vibesrails: scan code and commands (blocks secrets, injections)"
       }
     ],
     "PreCompact": [

@@ -153,6 +153,52 @@ def test_blocks_sk_proj_key():
     assert result.returncode == 1
 
 
+def test_bash_blocks_leaked_api_key():
+    """Bash command with API key is blocked."""
+    result = _run_hook({
+        "tool_name": "Bash",
+        "tool_input": {
+            "command": 'curl -H "Authorization: Bearer sk-proj-abcdefghij1234567890"',
+        },
+    })
+    assert result.returncode == 1
+    assert "BLOCKED" in result.stdout
+    assert "sk-proj" not in result.stdout  # key should be redacted
+
+
+def test_bash_blocks_leaked_password():
+    """Bash command with password is blocked."""
+    result = _run_hook({
+        "tool_name": "Bash",
+        "tool_input": {
+            "command": "mysql -u root password=SuperSecret123",
+        },
+    })
+    assert result.returncode == 1
+
+
+def test_bash_allows_safe_command():
+    """Safe bash command exits 0."""
+    result = _run_hook({
+        "tool_name": "Bash",
+        "tool_input": {
+            "command": "echo hello && git status",
+        },
+    })
+    assert result.returncode == 0
+
+
+def test_bash_blocks_inline_ghp_token():
+    """GitHub token in bash is blocked."""
+    result = _run_hook({
+        "tool_name": "Bash",
+        "tool_input": {
+            "command": "git clone https://ghp_abc1234567890abcdefghijklmnopqr@github.com/repo.git",
+        },
+    })
+    assert result.returncode == 1
+
+
 def test_handles_malformed_json():
     """Malformed input exits 0 gracefully."""
     result = subprocess.run(

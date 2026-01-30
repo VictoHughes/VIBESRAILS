@@ -1,6 +1,7 @@
-"""PreToolUse hook: scan code BEFORE Claude Code writes it to disk.
+"""PreToolUse hook: scan BEFORE Claude Code writes or executes.
 
-Blocks unsafe patterns (secrets, SQL injection, dangerous functions) in real-time.
+Blocks unsafe patterns in code (secrets, SQL injection, dangerous functions)
+and leaked secrets in bash commands.
 Run as: python3 -m vibesrails.hooks.pre_tool_use
 """
 
@@ -41,6 +42,35 @@ CRITICAL_PATTERNS = [
 
 COMPILED_PATTERNS = [(re.compile(p, re.IGNORECASE), msg) for p, msg in CRITICAL_PATTERNS]
 
+# Patterns for secrets leaked in bash commands
+BASH_SECRET_PATTERNS = [
+    (
+        r"(?:AKIA|sk-|ghp_|gho_)[A-Za-z0-9_\-]{10,}",
+        "API key leaked in command",
+    ),
+    (
+        r"(?:Bearer|token|Authorization)[:\s]+['\"]?[A-Za-z0-9_\-]{20,}",
+        "Auth token leaked in command",
+    ),
+    (
+        r"(?:password|passwd|pwd)[=:\s]+['\"]?[^\s'\"]{8,}",
+        "Password leaked in command",
+    ),
+]
+
+COMPILED_BASH_PATTERNS = [(re.compile(p, re.IGNORECASE), msg) for p, msg in BASH_SECRET_PATTERNS]
+
+
+def scan_bash_command(command: str) -> list[str]:
+    """Scan a bash command for leaked secrets."""
+    issues = []
+    for pattern, message in COMPILED_BASH_PATTERNS:
+        if pattern.search(command):
+            # Redact the match in output
+            redacted = pattern.sub("[REDACTED]", command)
+            issues.append(f"  - {message}: {redacted[:80]}")
+    return issues
+
 
 def _should_skip_line(line: str) -> bool:
     """Return True if the line should be excluded from scanning."""
@@ -74,6 +104,16 @@ def main() -> None:
 
     tool_name = data.get("tool_name", "")
     tool_input = data.get("tool_input", {})
+
+    if tool_name == "Bash":
+        command = tool_input.get("command", "")
+        issues = scan_bash_command(command) if command else []
+        if issues:
+            sys.stdout.write(f"BLOCKED by VibesRails (secret in command):\n")  # vibesrails: ignore
+            sys.stdout.write("\n".join(issues) + "\n")  # vibesrails: ignore
+            sys.stdout.write("\nUse environment variables instead.\n")  # vibesrails: ignore
+            sys.exit(1)
+        sys.exit(0)
 
     if tool_name not in ("Write", "Edit"):
         sys.exit(0)
