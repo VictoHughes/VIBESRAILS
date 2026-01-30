@@ -4,66 +4,56 @@
 
 ## Project Overview
 
-VibesRails is a YAML-driven security scanner for Python projects. It helps developers catch secrets, security issues, and code quality problems before they reach production.
+VibesRails is a YAML-driven security scanner for Python projects. It catches secrets, security issues, and code quality problems before production.
+
+## Senior Developer Standards
+
+<investigate_before_answering>
+ALWAYS read and understand relevant files before proposing edits. Never speculate about code you have not opened. If a file is referenced, you MUST read it first. Never claim something works without running the test. Give grounded, hallucination-free answers only.
+</investigate_before_answering>
+
+<no_lazy_work>
+Never take shortcuts. Never skip tests. Never produce incomplete implementations. Never say "I'll leave that as an exercise" or "you can add more later." Every piece of code you write must be complete, tested, and production-ready. If you are unsure about something, say "I don't know" rather than guessing. Uncertainty is acceptable; hallucination is not.
+</no_lazy_work>
+
+<default_to_action>
+Implement changes rather than suggesting them. If intent is unclear, infer the most useful action and proceed. Use tools to discover missing details instead of guessing. Read files before editing. Run tests after writing code.
+</default_to_action>
+
+<anti_bypass>
+Never disable, remove, skip, or work around vibesrails hooks, pre-commit hooks, or security checks. If vibesrails blocks your code, fix the code — do not bypass the guard. Never use --no-verify, never delete hook files, never modify .claude/hooks.json or vibesrails.yaml to weaken protections.
+</anti_bypass>
 
 ## Development Rules
 
 ### 1. Testing (MANDATORY)
 
-**Minimum coverage: 80%**
+Coverage minimum: 80%. Always use `--timeout=60`.
 
 ```bash
-# Tests avec coverage (sécurisé avec timeout)
 pytest tests/ --cov=vibesrails --cov-report=term --timeout=60
-
-# Vérification seuil avant commit
 pytest tests/ --cov=vibesrails --cov-fail-under=80 --timeout=60
 ```
 
-**Garde-fous obligatoires:**
-- Toujours `--timeout=60` (coupe les tests qui dépassent)
-- Utiliser `--cov-report=term` (PAS `term-missing` qui est très lent)
-- Config pytest dans pyproject.toml applique timeout=30 par défaut
+Use `--cov-report=term` (NOT `term-missing` — too slow). Config in pyproject.toml applies timeout=30 by default.
 
-**Test file naming:**
-- `tests/test_<module>.py` for each module
-- Test function: `test_<function>_<scenario>`
-
-**Test structure:**
-```python
-def test_function_happy_path():
-    """Test normal operation."""
-    ...
-
-def test_function_edge_case():
-    """Test boundary conditions."""
-    ...
-
-def test_function_error_handling():
-    """Test error cases."""
-    ...
-```
+Naming: `tests/test_<module>.py`, functions: `test_<function>_<scenario>`
 
 ### 2. Code Quality
 
-**Run before commit:**
+Run before every commit:
 ```bash
-# Lint
 ruff check vibesrails/ --fix
-
-# Security
 bandit -r vibesrails/ -ll
-
-# Self-scan
 vibesrails --all
 ```
 
 ### 3. Architecture
 
-**Module dependencies (enforced by import-linter):**
+Module dependencies (enforced by import-linter):
 ```
-scanner.py    → (no dependencies on cli, smart_setup)
-config.py     → (no dependencies on cli)
+scanner.py    → (no deps on cli, smart_setup)
+config.py     → (no deps on cli)
 guardian.py   → scanner only
 cli.py        → can import all
 smart_setup.py → can import all
@@ -71,43 +61,28 @@ smart_setup.py → can import all
 
 ### 4. Commit Standards
 
-**Pre-commit checklist:**
-1. [ ] Tests + coverage: `pytest tests/ --cov=vibesrails --cov-fail-under=80 --timeout=60`
-2. [ ] Lint clean: `ruff check vibesrails/`
-3. [ ] Security clean: `vibesrails --all`
-4. [ ] No secrets in code
+Pre-commit checklist:
+1. Tests + coverage pass at 80%
+2. Lint clean
+3. `vibesrails --all` clean
+4. No secrets in code
 
-**Commit message format:**
-```
-type(scope): description
+Format: `type(scope): description` — types: feat, fix, refactor, test, docs, chore, style
 
-Co-Authored-By: ...
-```
-
-Types: feat, fix, refactor, test, docs, chore, style
-
-### 5. File Structure
-
-```
-vibesrails/
-├── __init__.py      # Version, public API
-├── scanner.py       # Core scanning logic
-├── config.py        # Config loading/validation
-├── guardian.py      # AI safety features
-├── cli.py           # Command-line interface
-├── smart_setup.py   # Project setup wizard
-├── autofix.py       # Auto-correction
-├── watch.py         # File watcher
-└── learn.py         # Pattern discovery
-```
-
-## Commands
+### 5. Key Commands
 
 ```bash
 vibesrails --all        # Scan entire project
-vibesrails --show       # Show patterns
+vibesrails --show       # Show active patterns
 vibesrails --setup      # Setup new project
 vibesrails --version    # Show version
 ```
 
-## A.B.H.A.M.H
+## Security Hooks (4-layer protection)
+
+1. **PreToolUse** — blocks secrets, SQL injection, eval/exec in Write/Edit/Bash BEFORE execution
+2. **PostToolUse** — warns after write (full vibesrails scan, non-blocking)
+3. **Pre-commit** — blocks commits with issues
+4. **ptuh.py** — self-protection (prevents hook deletion, config weakening)
+
+If a hook blocks you: fix the code. Never bypass.

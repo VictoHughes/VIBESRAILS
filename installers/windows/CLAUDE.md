@@ -1,18 +1,26 @@
 # vibesrails Integration
 
-## Auto-Setup
+Ce projet est protege par vibesrails — scanner de securite automatique.
 
-Ce projet utilise vibesrails pour la sécurité du code.
+## Senior Developer Standards
 
-### Configuration automatique
+<investigate_before_answering>
+ALWAYS read and understand relevant files before proposing edits. Never speculate about code you have not opened. If a file is referenced, you MUST read it first. Never claim something works without running the test. Give grounded, hallucination-free answers only.
+</investigate_before_answering>
 
-Quand tu travailles sur ce projet:
+<no_lazy_work>
+Never take shortcuts. Never skip tests. Never produce incomplete implementations. Never say "I'll leave that as an exercise" or "you can add more later." Every piece of code you write must be complete, tested, and production-ready. If you are unsure about something, say "I don't know" rather than guessing. Uncertainty is acceptable; hallucination is not.
+</no_lazy_work>
 
-1. **Avant de modifier du code**, vérifie que `vibesrails.yaml` existe
-2. Si non, exécute `vibesrails --setup` pour auto-configurer
-3. Le pre-commit hook scannera automatiquement chaque commit
+<default_to_action>
+Implement changes rather than suggesting them. If intent is unclear, infer the most useful action and proceed. Use tools to discover missing details instead of guessing. Read files before editing. Run tests after writing code.
+</default_to_action>
 
-### Commandes utiles
+<anti_bypass>
+Never disable, remove, skip, or work around vibesrails hooks, pre-commit hooks, or security checks. If vibesrails blocks your code, fix the code — do not bypass the guard. Never use --no-verify, never delete hook files, never modify .claude/hooks.json or vibesrails.yaml to weaken protections.
+</anti_bypass>
+
+## Configuration
 
 ```bash
 vibesrails --setup     # Auto-configuration intelligente
@@ -22,76 +30,37 @@ vibesrails --all       # Scanner tout le projet
 vibesrails --watch     # Mode surveillance continue
 ```
 
-### Règles à suivre
+## Rules
 
 - Ne jamais commiter de secrets (passwords, API keys, tokens)
 - Utiliser `os.environ.get()` pour les credentials
 - Si vibesrails bloque, corriger avant de commiter
 - Pour les faux positifs: `# vibesrails: ignore`
 
-### Guardian Mode
+## Security Hooks (4-layer protection)
 
-vibesrails détecte automatiquement Claude Code et active le mode Guardian:
-- Vérifications plus strictes
-- Warnings traités comme bloquants
-- Logging pour analyse
+1. **PreToolUse** — blocks secrets, SQL injection, eval/exec in Write/Edit/Bash BEFORE execution
+2. **PostToolUse** — warns after write (full vibesrails scan, non-blocking)
+3. **Pre-commit** — blocks commits with issues
+4. **ptuh.py** — self-protection (prevents hook deletion, config weakening)
 
-#### Statistiques Guardian
+If a hook blocks you: fix the code. Never bypass.
 
-```bash
-vibesrails --guardian-stats   # Voir les stats de blocks
-```
+## Guardian Mode
 
-Les logs sont stockés dans `.vibesrails/guardian.log` (format JSONL):
-```json
-{"timestamp": "...", "agent": "claude", "file": "...", "pattern_id": "...", "level": "BLOCK"}
-```
+vibesrails detecte automatiquement Claude Code et active le mode Guardian:
+- Verifications plus strictes
+- Warnings traites comme bloquants
+- Logging dans `.vibesrails/guardian.log`
 
-## Skills disponibles
+## Plans & Taches
 
-Si l'utilisateur demande de scanner le code ou configurer la sécurité:
+Les plans sont dans `docs/plans/`. Au demarrage de session:
+1. Verifie s'il y a un plan actif (le plus recent)
+2. Continue depuis la ou tu en etais
+3. Utilise TodoWrite pour tracker les etapes
 
-- `/vibesrails-setup` - Configurer vibesrails pour ce projet
-- `/vibesrails-scan` - Scanner le code pour les problèmes de sécurité
-
-### Workflow recommandé
-
-1. Au début d'un projet: `vibesrails --setup`
-2. Pendant le dev: les commits sont auto-scannés
-3. Si BLOCK: corriger le code, pas bypass
-4. Si faux positif: `# vibesrails: ignore` avec justification
-
-## Intégration Plans & Tâches
-
-### Plans actifs
-
-Les plans de travail sont dans `docs/plans/`. Au démarrage de session:
-1. Vérifie s'il y a un plan actif (le plus récent)
-2. Si oui, continue depuis là où tu en étais
-3. Utilise TodoWrite pour tracker les étapes du plan
-
-### Synchronisation
-
-```
-docs/plans/*.md     → Plan global (brainstorming, design)
-TodoWrite           → Tâches granulaires du plan
-vibesrails          → Sécurité à chaque commit
-```
-
-### Si tu perds le contexte
-
+Si tu perds le contexte:
 1. Lis le plan actif: `docs/plans/YYYY-MM-DD-*.md`
-2. Vérifie les tâches: `TaskList`
-3. Lis le mémo: `.claude/current-task.md`
-4. Reprends où tu en étais
-
-### Persister l'état (anti-compaction)
-
-TodoWrite est en mémoire. Pour persister entre sessions/compactions:
-
-```bash
-# Écrire le mémo de tâche courante
-echo "Task 3/7: Implémenter login OAuth" > .claude/current-task.md
-```
-
-Ce fichier est lu au SessionStart et rappelé automatiquement.
+2. Verifie les taches: `TaskList`
+3. Lis le memo: `.claude/current-task.md`
