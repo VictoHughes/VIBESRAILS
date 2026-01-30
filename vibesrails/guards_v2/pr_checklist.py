@@ -1,10 +1,13 @@
 """PR Checklist Guard — Auto-generates a checklist from git diff."""
 
+import logging
 import re
 import subprocess
 from pathlib import Path
 
 from .dependency_audit import V2GuardIssue
+
+logger = logging.getLogger(__name__)
 
 GUARD_NAME = "pr-checklist"
 

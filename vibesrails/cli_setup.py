@@ -4,10 +4,13 @@ CLI setup/config functions — extracted from cli.py.
 Handles: find_config, init_config, install_hook, uninstall, run_senior_mode.
 """
 
+import logging
 import shutil
 from pathlib import Path
 
 from .scanner import BLUE, GREEN, NC, RED, YELLOW
+
+logger = logging.getLogger(__name__)
 
 
 def find_config() -> Path | None:
@@ -86,50 +89,42 @@ def uninstall() -> bool:
     return True
 
 
+def _get_cached_diff(*extra_args: str) -> str:
+    """Get git staged diff output."""
+    import subprocess
+    cmd = ["git", "diff", "--cached"] + list(extra_args)
+    return subprocess.run(cmd, capture_output=True, text=True).stdout
+
+
+def _read_file_contents(files: list[str]) -> list[tuple[str, str]]:
+    """Read file contents, skipping unreadable files."""
+    contents = []
+    for f in files:
+        try:
+            contents.append((f, Path(f).read_text()))
+        except Exception:
+            logger.debug("Failed to read file for senior mode: %s", f)
+    return contents
+
+
 def run_senior_mode(files: list[str]) -> int:
     """Run Senior Mode checks."""
-    import subprocess
-
     from .senior_mode import ArchitectureMapper, ClaudeReviewer, SeniorGuards
     from .senior_mode.report import SeniorReport
 
-    project_root = Path.cwd()
-
     print(f"{BLUE}Updating ARCHITECTURE.md...{NC}")
-    mapper = ArchitectureMapper(project_root)
-    mapper.save()
+    ArchitectureMapper(Path.cwd()).save()
 
-    diff_result = subprocess.run(
-        ["git", "diff", "--cached"],
-        capture_output=True, text=True
-    )
-    code_diff = diff_result.stdout
+    code_diff = _get_cached_diff()
+    test_diff = _get_cached_diff("--", "tests/")
+    file_contents = _read_file_contents(files)
 
-    test_diff_result = subprocess.run(
-        ["git", "diff", "--cached", "--", "tests/"],
-        capture_output=True, text=True
-    )
-    test_diff = test_diff_result.stdout
-
-    guards = SeniorGuards()
-
-    file_contents = []
-    for f in files:
-        try:
-            content = Path(f).read_text()
-            file_contents.append((f, content))
-        except Exception:
-            pass
-
-    issues = guards.check_all(
-        code_diff=code_diff,
-        test_diff=test_diff,
-        files=file_contents,
+    issues = SeniorGuards().check_all(
+        code_diff=code_diff, test_diff=test_diff, files=file_contents,
     )
 
     reviewer = ClaudeReviewer()
     review_result = None
-
     for filepath, content in file_contents:
         if reviewer.should_review(filepath, code_diff):
             print(f"{BLUE}Running Claude review on {filepath}...{NC}")
@@ -137,14 +132,32 @@ def run_senior_mode(files: list[str]) -> int:
             break
 
     report = SeniorReport(
-        guard_issues=issues,
-        review_result=review_result,
-        architecture_updated=True,
+        guard_issues=issues, review_result=review_result, architecture_updated=True,
     )
-
     print(report.generate())
-
     return 1 if report.has_blocking_issues() else 0
+
+
+_ARCH_CHECK = """
+# Architecture check (optional - fails silently if not installed)
+if command -v lint-imports &> /dev/null; then
+    echo "Checking architecture..."
+    lint-imports || echo "Architecture check failed (non-blocking)"
+fi
+"""
+
+
+def _update_existing_hook(hook_path: Path, architecture_enabled: bool) -> bool:
+    """Update an existing pre-commit hook. Returns True if handled."""
+    content = hook_path.read_text()
+    if "vibesrails" not in content:
+        return False
+    if architecture_enabled and "lint-imports" not in content:
+        hook_path.write_text(content.rstrip() + "\n" + _ARCH_CHECK)
+        print(f"{YELLOW}Updated pre-commit hook with architecture check{NC}")
+    else:
+        print(f"{YELLOW}VibesRails hook already installed{NC}")
+    return True
 
 
 def install_hook(architecture_enabled: bool = False) -> bool:
@@ -156,52 +169,27 @@ def install_hook(architecture_enabled: bool = False) -> bool:
 
     hooks_dir = git_dir / "hooks"
     hooks_dir.mkdir(exist_ok=True)
-
     hook_path = hooks_dir / "pre-commit"
-
-    arch_check = ""
-    if architecture_enabled:
-        arch_check = """
-# Architecture check (optional - fails silently if not installed)
-if command -v lint-imports &> /dev/null; then
-    echo "Checking architecture..."
-    lint-imports || echo "Architecture check failed (non-blocking)"
-fi
-"""
+    arch_check = _ARCH_CHECK if architecture_enabled else ""
 
     if hook_path.exists():
-        content = hook_path.read_text()
-        if "vibesrails" in content:
-            if architecture_enabled and "lint-imports" not in content:
-                content = content.rstrip() + "\n" + arch_check
-                hook_path.write_text(content)
-                print(f"{YELLOW}Updated pre-commit hook with architecture check{NC}")
-            else:
-                print(f"{YELLOW}VibesRails hook already installed{NC}")
+        if _update_existing_hook(hook_path, architecture_enabled):
             return True
-
         print(f"{YELLOW}Appending to existing pre-commit hook{NC}")
         with open(hook_path, "a") as f:
             f.write("\n\n# vibesrails security check\nvibesrails\n")
             if architecture_enabled:
                 f.write(arch_check)
     else:
-        hook_content = f"""#!/bin/bash
-# VibesRails pre-commit hook
-# Scale up your vibe coding - safely
-
-# Find vibesrails command (PATH, local venv, or python -m)
-if command -v vibesrails &> /dev/null; then
-    vibesrails
-elif [ -f ".venv/bin/vibesrails" ]; then
-    .venv/bin/vibesrails
-elif [ -f "venv/bin/vibesrails" ]; then
-    venv/bin/vibesrails
-else
-    python3 -m vibesrails
-fi
-{arch_check}"""
-        hook_path.write_text(hook_content)
+        hook_path.write_text(
+            "#!/bin/bash\n# VibesRails pre-commit hook\n"
+            "# Scale up your vibe coding - safely\n\n"
+            "# Find vibesrails command (PATH, local venv, or python -m)\n"
+            'if command -v vibesrails &> /dev/null; then\n    vibesrails\n'
+            'elif [ -f ".venv/bin/vibesrails" ]; then\n    .venv/bin/vibesrails\n'
+            'elif [ -f "venv/bin/vibesrails" ]; then\n    venv/bin/vibesrails\n'
+            "else\n    python3 -m vibesrails\nfi\n" + arch_check
+        )
         hook_path.chmod(0o755)
 
     print(f"{GREEN}Git hook installed at {hook_path}{NC}")

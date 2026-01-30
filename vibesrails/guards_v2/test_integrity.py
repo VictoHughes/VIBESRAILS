@@ -1,10 +1,13 @@
 """Test Integrity Guard — Detects cheating tests that over-mock."""
 
 import ast
+import logging
 from pathlib import Path
 
 from . import test_integrity_detectors as det
 from .dependency_audit import V2GuardIssue
+
+logger = logging.getLogger(__name__)
 
 GUARD_NAME = "test-integrity"
 

@@ -32,15 +32,8 @@ def get_package_data_path(relative_path: str) -> Path | None:
     return None
 
 
-def generate_claude_md() -> str:
-    """Generate CLAUDE.md content for Claude Code integration."""
-    # Try to load from template
-    template_path = get_package_data_path("claude_integration/CLAUDE.md.template")
-    if template_path and template_path.exists():
-        return template_path.read_text()
-
-    # Fallback to hardcoded content
-    return '''# vibesrails - Instructions Claude Code
+_FALLBACK_CLAUDE_MD = """\
+# vibesrails - Instructions Claude Code
 
 ## Ce projet utilise vibesrails
 
@@ -94,7 +87,34 @@ vibesrails orchestre Semgrep pour une analyse avancee:
 ## Configuration
 
 Fichier: `vibesrails.yaml`
-'''
+"""
+
+
+def generate_claude_md() -> str:
+    """Generate CLAUDE.md content for Claude Code integration."""
+    template_path = get_package_data_path("claude_integration/CLAUDE.md.template")
+    if template_path and template_path.exists():
+        return template_path.read_text()
+    return _FALLBACK_CLAUDE_MD
+
+
+def _has_vibesrails_hook(handlers: list[dict]) -> bool:
+    """Check if any handler in a list is a vibesrails command."""
+    return any("vibesrails" in h.get("command", "") for h in handlers)
+
+
+def _merge_hooks(existing: dict, source_hooks: dict) -> None:
+    """Merge source hooks into existing hooks dict (in-place), skipping vibesrails dupes."""
+    for event, handlers in source_hooks.get("hooks", {}).items():
+        if event not in existing.get("hooks", {}):
+            existing.setdefault("hooks", {})[event] = handlers
+        else:
+            existing_handlers = existing["hooks"][event]
+            has_vr = _has_vibesrails_hook(existing_handlers)
+            for handler in handlers:
+                is_vr = "vibesrails" in handler.get("command", "")
+                if not (is_vr and has_vr):
+                    existing_handlers.append(handler)
 
 
 def install_claude_hooks(project_root: Path) -> bool:
@@ -103,31 +123,16 @@ def install_claude_hooks(project_root: Path) -> bool:
     if not hooks_source or not hooks_source.exists():
         return False
 
-    # Claude Code hooks go in .claude/settings.local.json or project root
     claude_dir = project_root / ".claude"
     claude_dir.mkdir(exist_ok=True)
-
     hooks_dest = claude_dir / "hooks.json"
-
-    # Load source hooks
     source_hooks = json.loads(hooks_source.read_text())
 
-    # If hooks file exists, merge; otherwise create
-    if hooks_dest.exists():
-        existing = json.loads(hooks_dest.read_text())
-        # Merge hooks
-        for event, handlers in source_hooks.get("hooks", {}).items():
-            if event not in existing.get("hooks", {}):
-                existing.setdefault("hooks", {})[event] = handlers
-            else:
-                # Check if vibesrails hook already exists
-                existing_commands = [h.get("command", "") for h in existing["hooks"][event]]
-                for handler in handlers:
-                    if "vibesrails" in handler.get("command", "") and \
-                       not any("vibesrails" in cmd for cmd in existing_commands):
-                        existing["hooks"][event].append(handler)
-        hooks_dest.write_text(json.dumps(existing, indent=2))
-    else:
+    if not hooks_dest.exists():
         hooks_dest.write_text(json.dumps(source_hooks, indent=2))
+    else:
+        existing = json.loads(hooks_dest.read_text())
+        _merge_hooks(existing, source_hooks)
+        hooks_dest.write_text(json.dumps(existing, indent=2))
 
     return True

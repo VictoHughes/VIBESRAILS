@@ -115,7 +115,7 @@ class RequestThrottler:
         self.last_request_time: float = 0
         self.request_times: list[float] = []
 
-    def wait_if_needed(self):
+    def wait_if_needed(self) -> None:
         """Wait if necessary to respect rate limits."""
         now = time.time()
 
@@ -124,7 +124,7 @@ class RequestThrottler:
         if time_since_last < self.config.min_request_interval:
             wait_time = self.config.min_request_interval - time_since_last
             logger.debug(f"[THROTTLE] Waiting {wait_time:.2f}s (min interval)")
-            time.sleep(wait_time)
+            time.sleep(wait_time)  # vibesrails: ignore — intentional throttle delay
             now = time.time()
 
         # 2. Enforce requests per minute limit
@@ -138,7 +138,7 @@ class RequestThrottler:
                 f"[THROTTLE] Rate limit approaching: {len(self.request_times)}/{self.config.requests_per_minute} "
                 f"requests in last minute. Waiting {wait_time:.2f}s"
             )
-            time.sleep(wait_time)
+            time.sleep(wait_time)  # vibesrails: ignore — intentional rate limit delay
             now = time.time()
 
         self.last_request_time = now
@@ -179,7 +179,7 @@ class ResponseCache:
 
         return None
 
-    def set(self, key: str, value: Any):
+    def set(self, key: str, value: Any) -> None:
         """Cache value with timestamp."""
         if not self.config.cache_enabled:
             return
@@ -187,7 +187,7 @@ class ResponseCache:
         self._cache[key] = (value, time.time())
         logger.debug(f"[CACHE] Set: {key}")
 
-    def clear(self):
+    def clear(self) -> None:
         """Clear all cached values."""
         self._cache.clear()
         logger.info("[CACHE] Cleared")
@@ -203,7 +203,7 @@ _cache: ResponseCache | None = None
 @lru_cache()
 def get_rate_limit_config() -> RateLimitConfig:
     """Get global rate limit configuration from environment variables."""
-    global _config
+    global _config  # vibesrails: ignore — singleton pattern for rate limit config
     if _config is None:
         _config = RateLimitConfig.from_env()
     return _config
@@ -211,7 +211,7 @@ def get_rate_limit_config() -> RateLimitConfig:
 
 def get_circuit_breaker() -> CircuitBreaker:
     """Get global circuit breaker."""
-    global _circuit_breaker
+    global _circuit_breaker  # vibesrails: ignore — singleton pattern
     if _circuit_breaker is None:
         _circuit_breaker = CircuitBreaker(get_rate_limit_config())
     return _circuit_breaker
@@ -219,7 +219,7 @@ def get_circuit_breaker() -> CircuitBreaker:
 
 def get_throttler() -> RequestThrottler:
     """Get global request throttler."""
-    global _throttler
+    global _throttler  # vibesrails: ignore — singleton pattern
     if _throttler is None:
         _throttler = RequestThrottler(get_rate_limit_config())
     return _throttler
@@ -227,10 +227,19 @@ def get_throttler() -> RequestThrottler:
 
 def get_cache() -> ResponseCache:
     """Get global response cache."""
-    global _cache
+    global _cache  # vibesrails: ignore — singleton pattern
     if _cache is None:
         _cache = ResponseCache(get_rate_limit_config())
     return _cache
+
+
+_RATE_LIMIT_MARKERS = ("rate", "429", "too many requests", "quota")
+
+
+def _is_rate_limit_error(error: Exception) -> bool:
+    """Check if an exception is a rate limit error."""
+    error_str = str(error).lower()
+    return any(marker in error_str for marker in _RATE_LIMIT_MARKERS)
 
 
 def with_rate_limiting(func: Callable[..., T]) -> Callable[..., T]:
@@ -239,49 +248,31 @@ def with_rate_limiting(func: Callable[..., T]) -> Callable[..., T]:
     def wrapper(*args, **kwargs) -> T:
         """Decorated function wrapper."""
         config = get_rate_limit_config()
-        circuit_breaker = get_circuit_breaker()
-        throttler = get_throttler()
         cache = get_cache()
-
-        # Check cache first
         cache_key = cache.get_cache_key(func.__name__, *args, **kwargs)
         cached = cache.get(cache_key)
         if cached is not None:
             return cached
 
-        # Exponential backoff retry
+        throttler = get_throttler()
+        circuit_breaker = get_circuit_breaker()
         delay = config.initial_delay
         last_exception = None
 
         for attempt in range(config.max_retries + 1):
             try:
-                # Throttle request
                 throttler.wait_if_needed()
-
-                # Execute with circuit breaker
                 result = circuit_breaker.call(func, *args, **kwargs)
-
-                # Cache successful result
                 cache.set(cache_key, result)
-
                 return result
-
             except Exception as e:
                 last_exception = e
-                error_str = str(e).lower()
-
-                # Check if it's a rate limit error
-                is_rate_limit = any(
-                    marker in error_str
-                    for marker in ["rate", "429", "too many requests", "quota"]
-                )
-
-                if is_rate_limit and attempt < config.max_retries:
+                if _is_rate_limit_error(e) and attempt < config.max_retries:
                     logger.warning(
-                        f"[RETRY] Rate limit hit (attempt {attempt + 1}/{config.max_retries}). "
-                        f"Waiting {delay:.1f}s before retry. Error: {e}"
+                        "[RETRY] Rate limit hit (attempt %d/%d). Waiting %.1fs. Error: %s",
+                        attempt + 1, config.max_retries, delay, e,
                     )
-                    time.sleep(delay)
+                    time.sleep(delay)  # vibesrails: ignore — intentional retry backoff
                     delay = min(delay * config.exponential_base, config.max_delay)
                 else:
                     raise
@@ -290,9 +281,9 @@ def with_rate_limiting(func: Callable[..., T]) -> Callable[..., T]:
 
     return wrapper
 
-def reset_rate_limiting():
+def reset_rate_limiting() -> None:
     """Reset all rate limiting state (for testing)."""
-    global _circuit_breaker, _throttler, _cache
+    global _circuit_breaker, _throttler, _cache  # vibesrails: ignore — test reset function
     _circuit_breaker = None
     _throttler = None
     if _cache:

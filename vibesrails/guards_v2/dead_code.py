@@ -1,11 +1,14 @@
 """Dead Code Guard — Detects unused imports, variables, and unreachable code."""
 
 import ast
+import logging
 import subprocess
 import sys
 from pathlib import Path
 
 from .dependency_audit import V2GuardIssue
+
+logger = logging.getLogger(__name__)
 
 GUARD_NAME = "dead-code"
 
@@ -58,6 +61,25 @@ class DeadCodeGuard:
     # Detectors
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _collect_imports(tree: ast.Module) -> list[tuple[str, int]]:
+        """Collect all imported names with their line numbers."""
+        imported: list[tuple[str, int]] = []
+        for node in ast.iter_child_nodes(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    imported.append((alias.asname or alias.name.split(".")[0], node.lineno))
+            elif isinstance(node, ast.ImportFrom):
+                for alias in node.names:
+                    if alias.name != "*":
+                        imported.append((alias.asname or alias.name, node.lineno))
+        return imported
+
+    @staticmethod
+    def _collect_used_names(tree: ast.Module) -> set[str]:
+        """Collect all Name references in the AST."""
+        return {node.id for node in ast.walk(tree) if isinstance(node, ast.Name)}
+
     def _unused_imports(
         self,
         tree: ast.Module,
@@ -65,40 +87,18 @@ class DeadCodeGuard:
         filepath: str,
     ) -> list[V2GuardIssue]:
         """Find imports whose names are never referenced."""
-        issues: list[V2GuardIssue] = []
-        imported: list[tuple[str, int]] = []
+        imported = self._collect_imports(tree)
+        used_names = self._collect_used_names(tree)
 
-        for node in ast.iter_child_nodes(tree):
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    name = alias.asname or alias.name.split(".")[0]
-                    imported.append((name, node.lineno))
-            elif isinstance(node, ast.ImportFrom):
-                for alias in node.names:
-                    if alias.name == "*":
-                        continue
-                    name = alias.asname or alias.name
-                    imported.append((name, node.lineno))
-
-        # Collect all Name references (excluding import lines)
-        used_names: set[str] = set()
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Name):
-                used_names.add(node.id)
-            elif isinstance(node, ast.Attribute):
-                # e.g. os.path — the `os` part is a Name
-                pass
-
-        for name, lineno in imported:
-            if name not in used_names:
-                issues.append(V2GuardIssue(
-                    guard=GUARD_NAME,
-                    severity="info",
-                    message=f"Unused import: '{name}'",
-                    file=filepath,
-                    line=lineno,
-                ))
-        return issues
+        return [
+            V2GuardIssue(
+                guard=GUARD_NAME, severity="info",
+                message=f"Unused import: '{name}'",
+                file=filepath, line=lineno,
+            )
+            for name, lineno in imported
+            if name not in used_names
+        ]
 
     def _unreachable_code(
         self,
@@ -145,6 +145,23 @@ class DeadCodeGuard:
                 ))
                 break  # only report once per body
 
+    @staticmethod
+    def _find_unused_in_func(func_node: ast.AST) -> list[tuple[str, int]]:
+        """Find unused variables in a single function. Returns (name, lineno) pairs."""
+        assigned: dict[str, int] = {}
+        read: set[str] = set()
+        for node in ast.walk(func_node):
+            if not isinstance(node, ast.Name):
+                continue
+            if isinstance(node.ctx, ast.Store) and node.id not in assigned:
+                assigned[node.id] = node.lineno
+            elif isinstance(node.ctx, (ast.Load, ast.Del)):
+                read.add(node.id)
+        return [
+            (name, lineno) for name, lineno in assigned.items()
+            if not name.startswith("_") and name not in read
+        ]
+
     def _unused_variables(
         self,
         tree: ast.Module,
@@ -153,32 +170,15 @@ class DeadCodeGuard:
     ) -> list[V2GuardIssue]:
         """Find variables assigned but never read (skip _ prefix)."""
         issues: list[V2GuardIssue] = []
-
         for func_node in ast.walk(tree):
             if not isinstance(func_node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 continue
-            assigned: dict[str, int] = {}
-            read: set[str] = set()
-
-            for node in ast.walk(func_node):
-                if isinstance(node, ast.Name):
-                    if isinstance(node.ctx, ast.Store):
-                        if node.id not in assigned:
-                            assigned[node.id] = node.lineno
-                    elif isinstance(node.ctx, (ast.Load, ast.Del)):
-                        read.add(node.id)
-
-            for name, lineno in assigned.items():
-                if name.startswith("_"):
-                    continue
-                if name not in read:
-                    issues.append(V2GuardIssue(
-                        guard=GUARD_NAME,
-                        severity="info",
-                        message=f"Unused variable: '{name}'",
-                        file=filepath,
-                        line=lineno,
-                    ))
+            for name, lineno in self._find_unused_in_func(func_node):
+                issues.append(V2GuardIssue(
+                    guard=GUARD_NAME, severity="info",
+                    message=f"Unused variable: '{name}'",
+                    file=filepath, line=lineno,
+                ))
         return issues
 
     def _empty_functions(

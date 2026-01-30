@@ -8,6 +8,7 @@ Supports:
 - Multiple extends: extends: ["./base.yaml", "@vibesrails/web-pack"]
 """
 
+import logging
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -15,6 +16,8 @@ from pathlib import Path
 import yaml
 
 from .scanner import NC, RED, YELLOW
+
+logger = logging.getLogger(__name__)
 
 # Allowed domains for remote config fetch (SSRF protection)
 ALLOWED_REMOTE_DOMAINS = {
@@ -122,6 +125,7 @@ def fetch_remote_config(
     """Fetch config from remote URL with caching and domain validation."""
     # SSRF protection: validate domain allowlist
     if not is_allowed_remote_domain(url, extra_domains):
+        logger.error("BLOCKED: Remote domain not allowed: %s", url)
         print(f"{RED}BLOCKED: Remote domain not allowed: {url}{NC}")
         print(f"  Allowed domains: {', '.join(sorted(ALLOWED_REMOTE_DOMAINS))}")
         print("  Add trusted domains to config: remote_domains: [\"example.com\"]")
@@ -137,6 +141,7 @@ def fetch_remote_config(
 
             # Size limit for remote configs
             if len(content) > 500_000:  # 500KB limit
+                logger.warning("Remote config too large, skipping: %s", url)
                 print(f"{YELLOW}WARN: Remote config too large, skipping: {url}{NC}")
                 return None
 
@@ -145,6 +150,7 @@ def fetch_remote_config(
             return config
 
     except (urllib.error.URLError, yaml.YAMLError) as e:
+        logger.warning("Failed to fetch remote config %s: %s", url, e)
         print(f"{YELLOW}WARN: Failed to fetch remote config {url}: {e}{NC}")
         return None
 
@@ -168,6 +174,7 @@ def load_extended_config(
     # Circular reference check
     path_key = str(config_path.resolve())
     if path_key in seen_paths:
+        logger.warning("Circular config reference detected: %s", config_path)
         print(f"{YELLOW}WARN: Circular config reference detected: {config_path}{NC}")
         return {}
 
@@ -201,61 +208,58 @@ def load_extended_config(
     return merged
 
 
+def _resolve_pack(ref: str, seen_paths: set[str]) -> dict | None:
+    """Resolve a built-in pack reference."""
+    pack_path = resolve_pack_path(ref)
+    if pack_path:
+        return load_extended_config(pack_path, seen_paths.copy())
+    logger.warning("Unknown pack: %s", ref)
+    print(f"{YELLOW}WARN: Unknown pack: {ref}{NC}")
+    print(f"  Available packs: {', '.join(BUILTIN_PACKS.keys())}")
+    return None
+
+
+def _resolve_remote(ref: str) -> dict | None:
+    """Resolve a remote URL config reference."""
+    remote_config = fetch_remote_config(ref)
+    if not remote_config:
+        return None
+    extends = remote_config.pop("extends", None)
+    if extends:
+        logger.warning("Remote config extends not supported: %s", ref)
+        print(f"{YELLOW}WARN: Remote config extends not supported: {ref}{NC}")
+    return remote_config
+
+
+def _resolve_local_path(ref: str, base_dir: Path) -> Path:
+    """Convert a ref string to a local Path."""
+    if ref.startswith("/"):
+        return Path(ref)
+    return base_dir / ref
+
+
 def resolve_extends(
     ref: str,
     base_dir: Path,
-    seen_paths: set[str]
+    seen_paths: set[str],
 ) -> dict | None:
-    """Resolve a single extends reference.
-
-    Args:
-        ref: The extends reference (path, URL, or pack name)
-        base_dir: Directory of the config file (for relative paths)
-        seen_paths: Set of already-loaded paths
-
-    Returns:
-        Loaded config dict or None
-    """
-    # Built-in pack
+    """Resolve a single extends reference."""
     if ref.startswith("@vibesrails/"):
-        pack_path = resolve_pack_path(ref)
-        if pack_path:
-            return load_extended_config(pack_path, seen_paths.copy())
-        else:
-            print(f"{YELLOW}WARN: Unknown pack: {ref}{NC}")
-            print(f"  Available packs: {', '.join(BUILTIN_PACKS.keys())}")
-            return None
+        return _resolve_pack(ref, seen_paths)
 
-    # Remote URL
-    if ref.startswith("http://") or ref.startswith("https://"):
-        remote_config = fetch_remote_config(ref)
-        if remote_config:
-            # Remote configs can also have extends (but not recursive remote)
-            extends = remote_config.pop("extends", None)
-            if extends:
-                print(f"{YELLOW}WARN: Remote config extends not supported: {ref}{NC}")
-            return remote_config
-        return None
+    if ref.startswith(("http://", "https://")):
+        return _resolve_remote(ref)
 
-    # Local file path
-    if ref.startswith("./") or ref.startswith("../") or ref.startswith("/"):
-        if ref.startswith("/"):
-            local_path = Path(ref)
-        else:
-            local_path = base_dir / ref
-
-        if local_path.exists():
-            return load_extended_config(local_path, seen_paths.copy())
-        else:
-            print(f"{YELLOW}WARN: Config file not found: {local_path}{NC}")
-            return None
-
-    # Assume local file in same directory
-    local_path = base_dir / ref
+    local_path = _resolve_local_path(ref, base_dir)
     if local_path.exists():
         return load_extended_config(local_path, seen_paths.copy())
 
-    print(f"{YELLOW}WARN: Could not resolve extends: {ref}{NC}")
+    if ref.startswith(("./", "../", "/")):
+        logger.warning("Config file not found: %s", local_path)
+        print(f"{YELLOW}WARN: Config file not found: {local_path}{NC}")
+    else:
+        logger.warning("Could not resolve extends: %s", ref)
+        print(f"{YELLOW}WARN: Could not resolve extends: {ref}{NC}")
     return None
 
 

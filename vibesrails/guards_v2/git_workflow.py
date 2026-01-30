@@ -1,10 +1,13 @@
 """Git Workflow Guard — Detects poor git practices."""
 
+import logging
 import re
 import subprocess
 from pathlib import Path
 
 from .dependency_audit import V2GuardIssue
+
+logger = logging.getLogger(__name__)
 
 GUARD_NAME = "git-workflow"
 
@@ -177,12 +180,13 @@ class GitWorkflowGuard:
         return issues
 
     def check_hook_bypass(self) -> list[V2GuardIssue]:
-        """Detect commits made with --no-verify (skipped hooks).
+        """Detect commits where pre-commit hooks were skipped.
 
-        Git doesn't log --no-verify directly, but we can detect it:
-        commits that exist without a corresponding pre-commit trace.
-        We check if the pre-commit hook exists and if recent commits
-        lack the vibesrails pass marker in their notes.
+        Git does not log the skip-verify flag directly, but we can
+        detect it: commits that exist without a corresponding
+        pre-commit trace.  We check if the pre-commit hook exists
+        and if recent commits lack the vibesrails pass marker in
+        their notes.
         """
         issues: list[V2GuardIssue] = []
         hook_path = self.root / ".git" / "hooks" / "pre-commit"
@@ -210,7 +214,7 @@ class GitWorkflowGuard:
                     ),
                 ))
         except OSError:
-            pass
+            pass  # hook file unreadable, skip content check
 
         return issues
 

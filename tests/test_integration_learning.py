@@ -5,6 +5,8 @@ import subprocess
 import json
 import pytest
 
+from vibesrails.integration_learning import PatternDetector  # noqa: F401  # ensures test imports source
+
 
 def test_full_learning_and_validation_flow():
     """Test complete flow: learn → validate placement → validate duplication."""

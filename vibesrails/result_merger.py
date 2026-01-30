@@ -6,11 +6,14 @@ Merges and deduplicates results from both scanners, providing a unified view
 with source attribution and statistics.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
 from .scanner import ScanResult
 from .semgrep_adapter import SemgrepResult
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -29,81 +32,50 @@ class UnifiedResult:
 class ResultMerger:
     """Merges results from Semgrep and VibesRails with intelligent deduplication."""
 
+    def _convert_semgrep(self, result: SemgrepResult) -> UnifiedResult:
+        """Convert a SemgrepResult to UnifiedResult."""
+        return UnifiedResult(
+            file=result.file, line=result.line, source="SEMGREP",
+            rule_id=result.rule_id, message=result.message,
+            level=self._map_severity(result.severity),
+            category=self._categorize_semgrep(result.rule_id),
+            code_snippet=result.code_snippet or "",
+        )
+
+    def _convert_vibesrails(self, result: ScanResult) -> UnifiedResult:
+        """Convert a ScanResult to UnifiedResult."""
+        return UnifiedResult(
+            file=result.file, line=result.line, source="VIBESRAILS",
+            rule_id=result.pattern_id, message=result.message,
+            level=result.level,
+            category=self._categorize_vibesrails(result.pattern_id),
+        )
+
     def merge(
         self,
         semgrep_results: List[SemgrepResult],
-        vibesrails_results: List[ScanResult]
+        vibesrails_results: List[ScanResult],
     ) -> Tuple[List[UnifiedResult], Dict[str, int]]:
-        """
-        Merge results from both scanners.
-
-        Deduplication strategy:
-        - Key: (file, line) tuple
-        - Priority: Semgrep first (more precise AST), then VibesRails
-        - Track duplicates for transparency
-
-        Args:
-            semgrep_results: Results from Semgrep scan
-            vibesrails_results: Results from VibesRails scan
-
-        Returns:
-            Tuple of (unified_results, statistics)
-            statistics = {"semgrep": 10, "vibesrails": 5, "duplicates": 2}
-        """
+        """Merge results from both scanners with deduplication."""
         unified = []
-        seen = set()  # (file, line) for deduplication
-        stats = {
-            "semgrep": 0,
-            "vibesrails": 0,
-            "duplicates": 0,
-            "total": 0
-        }
+        seen: set[tuple] = set()
+        stats = {"semgrep": 0, "vibesrails": 0, "duplicates": 0, "total": 0}
 
-        # Add Semgrep results first (higher priority)
-        for result in semgrep_results:
-            key = (result.file, result.line)
-            if key in seen:
-                stats["duplicates"] += 1
-                continue
+        for source_key, results, converter in [
+            ("semgrep", semgrep_results, self._convert_semgrep),
+            ("vibesrails", vibesrails_results, self._convert_vibesrails),
+        ]:
+            for result in results:
+                key = (result.file, result.line)
+                if key in seen:
+                    stats["duplicates"] += 1
+                    continue
+                unified.append(converter(result))
+                seen.add(key)
+                stats[source_key] += 1
 
-            unified.append(UnifiedResult(
-                file=result.file,
-                line=result.line,
-                source="SEMGREP",
-                rule_id=result.rule_id,
-                message=result.message,
-                level=self._map_severity(result.severity),
-                category=self._categorize_semgrep(result.rule_id),
-                code_snippet=result.code_snippet or ""
-            ))
-            seen.add(key)
-            stats["semgrep"] += 1
-
-        # Add VibesRails results (skip duplicates)
-        for result in vibesrails_results:
-            key = (result.file, result.line)
-            if key in seen:
-                stats["duplicates"] += 1
-                continue
-
-            unified.append(UnifiedResult(
-                file=result.file,
-                line=result.line,
-                source="VIBESRAILS",
-                rule_id=result.pattern_id,
-                message=result.message,
-                level=result.level,
-                category=self._categorize_vibesrails(result.pattern_id),
-                code_snippet=""
-            ))
-            seen.add(key)
-            stats["vibesrails"] += 1
-
-        # Sort by file then line
         unified.sort(key=lambda r: (r.file, r.line))
-
         stats["total"] = len(unified)
-
         return unified, stats
 
     def _map_severity(self, semgrep_severity: str) -> str:

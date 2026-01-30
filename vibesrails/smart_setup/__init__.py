@@ -4,6 +4,8 @@ vibesrails Smart Setup Package.
 Auto-configuration for Claude Code projects.
 """
 
+from pathlib import Path
+
 from .core import run_smart_setup_cli, smart_setup
 from .detection import (
     ARCHITECTURE_TOOLS,
@@ -25,7 +27,20 @@ from .vibe_mode import (
     scan_for_secrets,
 )
 
+SMART_SETUP_VERSION = "1.0.0"
+
+
+def detect_project_info(project_root: Path) -> dict[str, object]:
+    """Detect project type and language for a given root directory."""
+    return {
+        "types": detect_project_type(project_root),
+        "language": detect_project_language(project_root),
+    }
+
+
 __all__ = [
+    "SMART_SETUP_VERSION",
+    "detect_project_info",
     # Core
     "smart_setup",
     "run_smart_setup_cli",

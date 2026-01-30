@@ -64,7 +64,7 @@ class TestCircuitBreaker:
             try:
                 circuit.call(lambda: (_ for _ in ()).throw(RuntimeError("fail")))
             except RuntimeError:
-                pass
+                pass  # intentionally triggering failures to trip circuit breaker
 
         assert circuit.state == "open"
 

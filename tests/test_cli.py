@@ -807,8 +807,7 @@ class TestEdgeCases:
                 result = uninstall()
                 assert result is True
             except PermissionError:
-                # On some systems, this might fail - that's expected
-                pass
+                pass  # on some systems, hook install may fail due to permissions
         finally:
             os.chdir(original_cwd)
 

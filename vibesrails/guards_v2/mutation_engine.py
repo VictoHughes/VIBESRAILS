@@ -6,6 +6,7 @@ and helper functions. AST visitors live in mutation_visitors.
 
 import ast
 import copy
+import logging
 import os
 import shutil
 import subprocess
@@ -24,6 +25,8 @@ from .mutation_visitors import (
     StatementRemover,
     _count_targets,
 )
+
+logger = logging.getLogger(__name__)
 
 MAX_MUTATIONS_PER_FILE = 20
 MUTATION_TEST_TIMEOUT = 30
@@ -121,31 +124,66 @@ def mutation_in_functions(
     return len(functions) == 0
 
 
-def scan_file(
-    source_path: Path,
-    test_path: Path,
-    project_root: Path,
-    functions_filter: set[str] | None = None,
-) -> FileMutationReport:
-    """Run mutation testing on a single source file."""
-    report = FileMutationReport(
-        file=str(source_path.relative_to(project_root))
-    )
-    source_code = source_path.read_text(encoding="utf-8")
-    try:
-        tree = ast.parse(source_code)
-    except SyntaxError:
-        return report
-
+def _collect_mutations(tree: ast.Module) -> list[tuple[str, int]]:
+    """Collect all possible mutations from an AST."""
     mutations: list[tuple[str, int]] = []
     for mut_type in MUTATION_TYPES:
         count = _count_targets(tree, mut_type)
         for idx in range(count):
             mutations.append((mut_type, idx))
+    return mutations[:MAX_MUTATIONS_PER_FILE]
 
-    if len(mutations) > MAX_MUTATIONS_PER_FILE:
-        mutations = mutations[:MAX_MUTATIONS_PER_FILE]
 
+def _should_skip_mutation(
+    mutated, tree, functions_filter: set[str] | None,
+) -> bool:
+    """Check if a mutation should be skipped."""
+    if mutated is None:
+        return True
+    if functions_filter is not None:
+        return not mutation_in_functions(tree, mutated, functions_filter)
+    return False
+
+
+def _run_single_mutation(
+    mut_type: str, idx: int, tree: ast.Module,
+    functions_filter: set[str] | None,
+    tmp_src: Path, tmp_test: Path, report: "FileMutationReport",
+) -> None:
+    """Run a single mutation and update report."""
+    mutated = apply_mutation(tree, mut_type, idx)
+    if _should_skip_mutation(mutated, tree, functions_filter):
+        return
+    report.total += 1
+    try:
+        mutant_code = ast.unparse(mutated)
+    except Exception:
+        report.total -= 1
+        return
+    tmp_src.write_text(mutant_code, encoding="utf-8")
+    survived = run_tests_on_mutant(tmp_src, tmp_test)
+    report.results.append(MutantResult(
+        file=report.file, function="unknown",
+        mutation_type=mut_type, line=0, killed=not survived,
+    ))
+    if survived:
+        report.survived += 1
+    else:
+        report.killed += 1
+
+
+def scan_file(
+    source_path: Path, test_path: Path, project_root: Path,
+    functions_filter: set[str] | None = None,
+) -> FileMutationReport:
+    """Run mutation testing on a single source file."""
+    report = FileMutationReport(file=str(source_path.relative_to(project_root)))
+    try:
+        tree = ast.parse(source_path.read_text(encoding="utf-8"))
+    except SyntaxError:
+        return report
+
+    mutations = _collect_mutations(tree)
     if not mutations:
         return report
 
@@ -155,37 +193,11 @@ def scan_file(
         tmp_test.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(test_path, tmp_test)
 
-        rel = source_path.relative_to(project_root)
-        tmp_src = tmp_dir / rel
+        tmp_src = tmp_dir / source_path.relative_to(project_root)
         tmp_src.parent.mkdir(parents=True, exist_ok=True)
 
         for mut_type, idx in mutations:
-            mutated = apply_mutation(tree, mut_type, idx)
-            if mutated is None:
-                continue
-            if functions_filter is not None:
-                if not mutation_in_functions(
-                    tree, mutated, functions_filter
-                ):
-                    continue
-            report.total += 1
-            try:
-                mutant_code = ast.unparse(mutated)
-            except Exception:
-                report.total -= 1
-                continue
-            tmp_src.write_text(mutant_code, encoding="utf-8")
-            survived = run_tests_on_mutant(tmp_src, tmp_test)
-            result = MutantResult(
-                file=report.file, function="unknown",
-                mutation_type=mut_type, line=0,
-                killed=not survived,
-            )
-            report.results.append(result)
-            if survived:
-                report.survived += 1
-            else:
-                report.killed += 1
+            _run_single_mutation(mut_type, idx, tree, functions_filter, tmp_src, tmp_test, report)
 
     return report
 
@@ -207,9 +219,20 @@ def get_source_files(project_root: Path) -> list[Path]:
     return sorted(set(files))
 
 
-def get_changed_functions(
-    project_root: Path,
-) -> dict[str, set[str]]:
+def _parse_diff_line(line: str, current_file: str | None, changed: dict[str, set[str]]) -> str | None:
+    """Parse a single diff line and return updated current_file."""
+    if line.startswith("+++ b/"):
+        f = line[6:]
+        return f if f.endswith(".py") else None
+    if line.startswith("@@") and current_file is not None and "def " in line:
+        parts = line.split("def ", 1)
+        if len(parts) > 1:
+            fname = parts[1].split("(")[0].strip()
+            changed.setdefault(current_file, set()).add(fname)
+    return current_file
+
+
+def get_changed_functions(project_root: Path) -> dict[str, set[str]]:
     """Get functions changed in the last git diff."""
     try:
         result = subprocess.run(
@@ -224,17 +247,6 @@ def get_changed_functions(
 
     changed: dict[str, set[str]] = {}
     current_file: str | None = None
-
     for line in result.stdout.splitlines():
-        if line.startswith("+++ b/"):
-            f = line[6:]
-            if f.endswith(".py"):
-                current_file = f
-        elif line.startswith("@@") and current_file is not None:
-            if "def " in line:
-                parts = line.split("def ", 1)
-                if len(parts) > 1:
-                    fname = parts[1].split("(")[0].strip()
-                    changed.setdefault(current_file, set()).add(fname)
-
+        current_file = _parse_diff_line(line, current_file, changed)
     return changed

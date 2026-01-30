@@ -1,7 +1,10 @@
 """Detects patterns in project structure."""
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass

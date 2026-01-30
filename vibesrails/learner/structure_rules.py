@@ -1,4 +1,5 @@
 """Generate structure validation rules from detected patterns."""
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -6,6 +7,8 @@ from typing import Any
 import yaml
 
 from .pattern_detector import DetectedPattern
+
+logger = logging.getLogger(__name__)
 
 
 class StructureRulesGenerator:

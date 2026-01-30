@@ -1,6 +1,7 @@
 """Type Safety Guard — Detects missing type annotations and unsafe typing."""
 
 import ast
+import logging
 import re
 import subprocess
 import sys
@@ -8,12 +9,14 @@ from pathlib import Path
 
 from .dependency_audit import V2GuardIssue
 
+logger = logging.getLogger(__name__)
+
 GUARD_NAME = "type-safety"
 
 # Params to skip when checking annotations
 _SKIP_PARAMS = {"self", "cls"}
 
-# Pattern for bare `# type: ignore` without explanation
+# Pattern for bare type-ignore comments without explanation
 _BARE_TYPE_IGNORE = re.compile(
     r"#\s*type:\s*ignore\s*$", re.MULTILINE
 )
@@ -151,7 +154,7 @@ class TypeSafetyGuard:
     def _bare_type_ignore(
         self, content: str, filepath: str
     ) -> list[V2GuardIssue]:
-        """Find bare `# type: ignore` without explanation."""
+        """Find bare type-ignore comments without explanation."""
         issues: list[V2GuardIssue] = []
         for i, line in enumerate(content.splitlines(), 1):
             stripped = line.rstrip()
@@ -168,7 +171,7 @@ class TypeSafetyGuard:
                 guard=GUARD_NAME,
                 severity="warn",
                 message=(
-                    "Bare '# type: ignore' without "
+                    "Bare '# type: ignore' without "  # type: ignore[no-self-detect]
                     "error code"
                 ),
                 file=filepath,

@@ -1,11 +1,14 @@
 """Observability Guard — Detects poor logging practices."""
 
 import ast
+import logging
 import re
 from fnmatch import fnmatch
 from pathlib import Path
 
 from .dependency_audit import V2GuardIssue
+
+logger = logging.getLogger(__name__)
 
 GUARD_NAME = "observability"
 
@@ -223,27 +226,24 @@ def _is_logging_log_no_level(call: ast.Call) -> bool:
     return False
 
 
+def _is_logging_node(node: ast.AST) -> bool:
+    """Check if a node represents logging, printing, raise, or return."""
+    if isinstance(node, (ast.Raise, ast.Return)):
+        return True
+    if not isinstance(node, ast.Expr) or not isinstance(node.value, ast.Call):
+        return False
+    func = node.value.func
+    if isinstance(func, ast.Attribute) and func.attr in _LOG_METHODS:
+        return True
+    return isinstance(func, ast.Name) and func.id == "print"
+
+
 def _body_has_logging(body: list[ast.stmt]) -> bool:
     """Check if a list of statements contains any logging."""
-    for node in ast.walk(ast.Module(body=body, type_ignores=[])):
-        if isinstance(node, ast.Expr):
-            call = node.value
-            if not isinstance(call, ast.Call):
-                continue
-            func = call.func
-            # logger.info(...) etc.
-            if (
-                isinstance(func, ast.Attribute)
-                and func.attr in _LOG_METHODS
-            ):
-                return True
-            # print() counts as *some* output (not silent)
-            if isinstance(func, ast.Name) and func.id == "print":
-                return True
-        # raise also means not silent
-        if isinstance(node, (ast.Raise, ast.Return)):
-            return True
-    return False
+    return any(
+        _is_logging_node(node)
+        for node in ast.walk(ast.Module(body=body, type_ignores=[]))
+    )
 
 
 def _should_skip(filepath: Path) -> bool:

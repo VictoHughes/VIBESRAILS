@@ -7,11 +7,14 @@ Supports auto-install, preset configurations, and graceful degradation.
 """
 
 import json
+import logging
 import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
 from typing import List, Optional
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -80,75 +83,42 @@ class SemgrepAdapter:
         if self.is_installed():
             return True
 
-        print("📦 Installing Semgrep (first time setup)...")
+        logger.info("Installing Semgrep (first time setup)...")
         success = self.install()
 
         if success:
-            print("✅ Semgrep installed successfully")
+            logger.info("Semgrep installed successfully")
             return True
         else:
-            print("⚠️  Failed to install Semgrep, continuing with VibesRails only")
+            logger.warning("Failed to install Semgrep, continuing with VibesRails only")
             return False
 
-    def scan(self, files: List[str]) -> List[SemgrepResult]:
-        """
-        Scan files with Semgrep.
-
-        Args:
-            files: List of file paths to scan
-
-        Returns:
-            List of SemgrepResult objects (empty if Semgrep unavailable)
-        """
-        if not self.enabled:
-            return []
-
-        if not self.is_installed():
-            return []  # Graceful degradation
-
-        if not files:
-            return []
-
-        # Build Semgrep command
-        cmd = [
-            "semgrep",
-            "--config", self._get_config_flag(),
-            "--json",
-            "--quiet",
-            "--no-git-ignore",  # Respect our own ignore logic
-        ]
-
-        # Add additional rules
+    def _build_command(self, files: List[str]) -> List[str]:
+        """Build the Semgrep command line."""
+        cmd = ["semgrep", "--config", self._get_config_flag(), "--json", "--quiet", "--no-git-ignore"]
         for rule in self.additional_rules:
             cmd.extend(["--config", rule])
-
-        # Exclude rules
         for rule in self.exclude_rules:
             cmd.extend(["--exclude-rule", rule])
-
-        # Add files
         cmd.extend(files)
+        return cmd
+
+    def scan(self, files: List[str]) -> List[SemgrepResult]:
+        """Scan files with Semgrep. Returns empty list if unavailable."""
+        if not self.enabled or not self.is_installed() or not files:
+            return []
 
         try:
             result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=300  # 5 min max
+                self._build_command(files),
+                capture_output=True, text=True, timeout=300,
             )
-
-            # Semgrep returns exit code 1 when findings exist
-            # Only fail on actual errors (exit code > 1)
             if result.returncode > 1:
                 return []
-
             return self._parse_results(result.stdout)
-
-        except subprocess.TimeoutExpired:
-            print("⚠️  Semgrep scan timed out (5min limit)")
+        except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
+            logger.warning("Semgrep scan failed or timed out")
             return []
-        except subprocess.CalledProcessError:
-            return []  # Fail gracefully
 
     def _get_config_flag(self) -> str:
         """

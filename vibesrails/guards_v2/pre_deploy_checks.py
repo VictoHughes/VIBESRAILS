@@ -1,10 +1,13 @@
 """Pre-Deploy Checks — Individual check implementations."""
 
+import logging
 import re
 import subprocess
 from pathlib import Path
 
 from .dependency_audit import V2GuardIssue
+
+logger = logging.getLogger(__name__)
 
 GUARD_NAME = "pre-deploy"
 
@@ -16,62 +19,43 @@ _BLOCKING_TODO_RE = re.compile(
 _COV_PERCENT_RE = re.compile(r"TOTAL\s+\d+\s+\d+\s+(\d+)%")
 
 
+def _run_pytest(project_root: Path) -> subprocess.CompletedProcess | V2GuardIssue:
+    """Run pytest and return result or a blocking issue on failure."""
+    try:
+        return subprocess.run(
+            ["python", "-m", "pytest", "tests/",
+             f"--cov={guess_package(project_root)}",
+             "--cov-report=term", "--timeout=60", "-q"],
+            capture_output=True, text=True, timeout=120,
+            cwd=str(project_root),
+        )
+    except FileNotFoundError:
+        return V2GuardIssue(guard=GUARD_NAME, severity="block", message="pytest not found — cannot verify tests")
+    except subprocess.TimeoutExpired:
+        return V2GuardIssue(guard=GUARD_NAME, severity="block", message="pytest timed out after 120s")
+
+
 def check_pytest(
     project_root: Path, coverage_threshold: int,
 ) -> list[V2GuardIssue]:
     """Run pytest and check exit code + coverage."""
-    issues: list[V2GuardIssue] = []
-    try:
-        result = subprocess.run(
-            [
-                "python", "-m", "pytest",
-                "tests/",
-                f"--cov={guess_package(project_root)}",
-                "--cov-report=term",
-                "--timeout=60",
-                "-q",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=120,
-            cwd=str(project_root),
-        )
-    except FileNotFoundError:
-        issues.append(V2GuardIssue(
-            guard=GUARD_NAME,
-            severity="block",
-            message="pytest not found — cannot verify tests",
-        ))
-        return issues
-    except subprocess.TimeoutExpired:
-        issues.append(V2GuardIssue(
-            guard=GUARD_NAME,
-            severity="block",
-            message="pytest timed out after 120s",
-        ))
-        return issues
+    result = _run_pytest(project_root)
+    if isinstance(result, V2GuardIssue):
+        return [result]
 
+    issues: list[V2GuardIssue] = []
     if result.returncode != 0:
         issues.append(V2GuardIssue(
-            guard=GUARD_NAME,
-            severity="block",
-            message=(
-                "pytest failed with exit code "
-                f"{result.returncode}"
-            ),
+            guard=GUARD_NAME, severity="block",
+            message=f"pytest failed with exit code {result.returncode}",
         ))
 
     cov = parse_coverage(result.stdout + result.stderr)
     if cov is not None and cov < coverage_threshold:
         issues.append(V2GuardIssue(
-            guard=GUARD_NAME,
-            severity="block",
-            message=(
-                f"Coverage {cov}% is below threshold "
-                f"{coverage_threshold}%"
-            ),
+            guard=GUARD_NAME, severity="block",
+            message=f"Coverage {cov}% is below threshold {coverage_threshold}%",
         ))
-
     return issues
 
 
@@ -256,7 +240,7 @@ def guess_package(project_root: Path) -> str:
             if m:
                 return m.group(1).replace("-", "_")
         except OSError:
-            pass
+            pass  # pyproject.toml unreadable, fall through to directory scan
     for child in sorted(project_root.iterdir()):
         if child.is_dir() and (child / "__init__.py").exists():
             return child.name

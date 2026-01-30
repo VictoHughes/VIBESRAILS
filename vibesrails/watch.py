@@ -4,10 +4,19 @@ vibesrails watch mode - Live scanning during coding.
 Monitors Python files and scans on save.
 """
 
+from __future__ import annotations
+
+import logging
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Any
 
 from .scanner import BLUE, GREEN, NC, RED, YELLOW, load_config, scan_file
+
+logger = logging.getLogger(__name__)
 
 # Optional watchdog import
 try:
@@ -19,8 +28,6 @@ except ImportError:
     # Dummy base class when watchdog not installed
     class FileSystemEventHandler:
         """Fallback base class when watchdog is not installed."""
-
-        pass
     Observer = None
 
 
@@ -31,7 +38,7 @@ class VibesRailsHandler(FileSystemEventHandler):
         self.config = config
         self.last_scan = {}  # Debounce repeated events
 
-    def on_modified(self, event):
+    def on_modified(self, event: Any) -> None:
         """Handle file modification events."""
         if event.is_directory:
             return
@@ -56,7 +63,7 @@ class VibesRailsHandler(FileSystemEventHandler):
         # Scan the file
         self.scan_file(filepath)
 
-    def scan_file(self, filepath: str):
+    def scan_file(self, filepath: str) -> None:
         """Scan a single file and report results."""
         # Get relative path for cleaner output
         try:
@@ -109,7 +116,7 @@ def run_watch_mode(config_path: Path | None = None) -> bool:
 
     try:
         while True:
-            time.sleep(1)
+            time.sleep(1)  # vibesrails: ignore — file watcher polling loop
     except KeyboardInterrupt:
         print(f"\n{YELLOW}Stopping watch mode...{NC}")
         observer.stop()

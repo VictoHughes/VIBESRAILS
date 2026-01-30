@@ -1,9 +1,12 @@
 """Database Safety Guard — Detects unsafe SQL and DB patterns."""
 
+import logging
 import re
 from pathlib import Path
 
 from .dependency_audit import V2GuardIssue
+
+logger = logging.getLogger(__name__)
 
 GUARD_NAME = "database-safety"
 

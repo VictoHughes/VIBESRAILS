@@ -3,6 +3,7 @@
 Uses mutation testing to verify tests actually check logic.
 """
 
+import logging
 from pathlib import Path
 
 from .dependency_audit import V2GuardIssue
@@ -30,6 +31,8 @@ from .mutation_engine import (  # noqa: F401
 )
 from .mutation_mutmut import _parse_mutmut_results
 from .mutation_mutmut import scan_with_mutmut as _scan_with_mutmut
+
+logger = logging.getLogger(__name__)
 
 GUARD_NAME = "MutationGuard"
 WARN_THRESHOLD = 0.60
@@ -90,92 +93,67 @@ class MutationGuard:
         """Get functions changed in the last git diff."""
         return get_changed_functions(project_root)
 
-    def scan(
-        self, project_root: Path
-    ) -> list[V2GuardIssue]:
-        """Run full mutation testing with built-in engine.
-
-        Args:
-            project_root: Root path of the project.
-
-        Returns:
-            List of guard issues found.
-        """
+    @staticmethod
+    def _issues_for_report(r: "FileMutationReport") -> list[V2GuardIssue]:
+        """Generate issues for a single file mutation report."""
         issues: list[V2GuardIssue] = []
-        reports: list[FileMutationReport] = []
-        sources = self._get_source_files(project_root)
+        if r.score < BLOCK_THRESHOLD:
+            issues.append(V2GuardIssue(
+                guard=GUARD_NAME, severity="block",
+                message=f"{r.file}: mutation score {r.score:.0%} < 30% — tests do not verify logic",
+                file=r.file,
+            ))
+        elif r.score < WARN_THRESHOLD:
+            issues.append(V2GuardIssue(
+                guard=GUARD_NAME, severity="warn",
+                message=f"{r.file}: mutation score {r.score:.0%} — tests are weak",
+                file=r.file,
+            ))
+        for m in r.results:
+            if not m.killed:
+                issues.append(V2GuardIssue(
+                    guard=GUARD_NAME, severity="info",
+                    message=f"Surviving mutant in {r.file}: {m.mutation_type}",
+                    file=r.file, line=m.line,
+                ))
+        return issues
 
-        for src in sources:
+    @staticmethod
+    def _overall_issue(overall: float) -> V2GuardIssue | None:
+        """Generate overall score issue if below thresholds."""
+        if overall < BLOCK_THRESHOLD:
+            return V2GuardIssue(
+                guard=GUARD_NAME, severity="block",
+                message=f"Overall mutation score {overall:.0%} < 30% — project tests are unreliable",
+            )
+        if overall < WARN_THRESHOLD:
+            return V2GuardIssue(
+                guard=GUARD_NAME, severity="warn",
+                message=f"Overall mutation score {overall:.0%} < 60% — project tests need improvement",
+            )
+        return None
+
+    def scan(self, project_root: Path) -> list[V2GuardIssue]:
+        """Run full mutation testing with built-in engine."""
+        reports: list[FileMutationReport] = []
+        for src in self._get_source_files(project_root):
             test_file = self._find_test_file(src, project_root)
             if test_file is None:
                 continue
-            report = self._scan_file(
-                src, test_file, project_root
-            )
+            report = self._scan_file(src, test_file, project_root)
             if report.total > 0:
                 reports.append(report)
 
-        total_killed = sum(r.killed for r in reports)
-        total_all = sum(r.total for r in reports)
-        overall = (
-            total_killed / total_all if total_all > 0 else 1.0
-        )
-
+        issues: list[V2GuardIssue] = []
         for r in reports:
-            if r.score < BLOCK_THRESHOLD:
-                issues.append(V2GuardIssue(
-                    guard=GUARD_NAME,
-                    severity="block",
-                    message=(
-                        f"{r.file}: mutation score "
-                        f"{r.score:.0%} < 30% — "
-                        f"tests do not verify logic"
-                    ),
-                    file=r.file,
-                ))
-            elif r.score < WARN_THRESHOLD:
-                issues.append(V2GuardIssue(
-                    guard=GUARD_NAME,
-                    severity="warn",
-                    message=(
-                        f"{r.file}: mutation score "
-                        f"{r.score:.0%} — "
-                        f"tests are weak"
-                    ),
-                    file=r.file,
-                ))
+            issues.extend(self._issues_for_report(r))
 
-            for m in r.results:
-                if not m.killed:
-                    issues.append(V2GuardIssue(
-                        guard=GUARD_NAME,
-                        severity="info",
-                        message=(
-                            f"Surviving mutant in {r.file}: "
-                            f"{m.mutation_type}"
-                        ),
-                        file=r.file,
-                        line=m.line,
-                    ))
-
-        if total_all > 0 and overall < BLOCK_THRESHOLD:
-            issues.insert(0, V2GuardIssue(
-                guard=GUARD_NAME,
-                severity="block",
-                message=(
-                    f"Overall mutation score {overall:.0%} "
-                    f"< 30% — project tests are unreliable"
-                ),
-            ))
-        elif total_all > 0 and overall < WARN_THRESHOLD:
-            issues.insert(0, V2GuardIssue(
-                guard=GUARD_NAME,
-                severity="warn",
-                message=(
-                    f"Overall mutation score {overall:.0%} "
-                    f"< 60% — project tests need improvement"
-                ),
-            ))
+        total_all = sum(r.total for r in reports)
+        if total_all > 0:
+            overall = sum(r.killed for r in reports) / total_all
+            oi = self._overall_issue(overall)
+            if oi:
+                issues.insert(0, oi)
 
         return issues
 
@@ -259,41 +237,27 @@ class MutationGuard:
 
         total_killed = sum(r.killed for r in reports)
         total_all = sum(r.total for r in reports)
-        overall = (
-            total_killed / total_all if total_all > 0 else 1.0
-        )
+        overall = total_killed / total_all if total_all > 0 else 1.0
 
         lines = [
             "=== Mutation Testing Report ===",
-            f"Overall score: {overall:.0%} "
-            f"({total_killed}/{total_all} mutants killed)",
-            "",
-            "Per-file results:",
+            f"Overall score: {overall:.0%} ({total_killed}/{total_all} mutants killed)",
+            "", "Per-file results:",
         ]
 
         for r in reports:
-            lines.append(
-                f"  {r.file}: {r.score:.0%} "
-                f"({r.killed}/{r.total})"
-            )
-            survivors = [
-                m for m in r.results if not m.killed
-            ]
+            lines.append(f"  {r.file}: {r.score:.0%} ({r.killed}/{r.total})")
+            survivors = [m for m in r.results if not m.killed]
             if survivors:
                 lines.append("    Surviving mutants:")
-                for m in survivors:
-                    lines.append(
-                        f"      - {m.mutation_type}"
-                    )
+                lines.extend(f"      - {m.mutation_type}" for m in survivors)
 
         weak = [r for r in reports if r.score < WARN_THRESHOLD]
         if weak:
-            lines.append("")
-            lines.append("Advice:")
-            for r in weak:
-                lines.append(
-                    f"  {r.file} has {r.score:.0%} "
-                    f"mutation score — tests don't verify its logic"
-                )
+            lines.extend(["", "Advice:"])
+            lines.extend(
+                f"  {r.file} has {r.score:.0%} mutation score — tests don't verify its logic"
+                for r in weak
+            )
 
         return "\n".join(lines)

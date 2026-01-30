@@ -1,9 +1,12 @@
 """Pre-Deploy Guard — Comprehensive pre-deployment checklist."""
 
+import logging
 from pathlib import Path
 
 from . import pre_deploy_checks as checks
 from .dependency_audit import V2GuardIssue
+
+logger = logging.getLogger(__name__)
 
 
 def _read_init_version(project_root: Path) -> str | None:

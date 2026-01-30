@@ -1,9 +1,12 @@
 """Complexity Guard — Detects overly complex functions using AST analysis."""
 
 import ast
+import logging
 from pathlib import Path
 
 from .dependency_audit import V2GuardIssue
+
+logger = logging.getLogger(__name__)
 
 # Thresholds
 CYCLOMATIC_WARN = 10
@@ -36,6 +39,17 @@ class ComplexityGuard:
                 count += len(child.values) - 1
         return count
 
+    @staticmethod
+    def _cognitive_increment(child: ast.AST, depth: int) -> int:
+        """Calculate cognitive complexity increment for a node."""
+        if isinstance(child, (ast.If, ast.IfExp, ast.For, ast.While, ast.ExceptHandler)):
+            return 1 + depth
+        if isinstance(child, ast.BoolOp):
+            return len(child.values) - 1
+        return 0
+
+    _NESTING_TYPES = (ast.If, ast.For, ast.While, ast.ExceptHandler, ast.With)
+
     def _cognitive_complexity(self, node: ast.FunctionDef) -> int:
         """Cognitive complexity: like cyclomatic but penalizes nesting."""
         score = 0
@@ -43,31 +57,14 @@ class ComplexityGuard:
         def _walk(n: ast.AST, depth: int) -> None:
             nonlocal score
             for child in ast.iter_child_nodes(n):
-                increment = 0
-                nesting_bump = 0
-                if isinstance(child, (ast.If, ast.IfExp)):
-                    increment = 1
-                    nesting_bump = depth
-                elif isinstance(child, (ast.For, ast.While)):
-                    increment = 1
-                    nesting_bump = depth
-                elif isinstance(child, ast.ExceptHandler):
-                    increment = 1
-                    nesting_bump = depth
-                elif isinstance(child, ast.BoolOp):
-                    increment = len(child.values) - 1
-
-                score += increment + nesting_bump
-
-                # Increase depth for nesting constructs
-                if isinstance(child, (ast.If, ast.For, ast.While,
-                                      ast.ExceptHandler, ast.With)):
-                    _walk(child, depth + 1)
-                else:
-                    _walk(child, depth)
+                score += self._cognitive_increment(child, depth)
+                next_depth = depth + 1 if isinstance(child, self._NESTING_TYPES) else depth
+                _walk(child, next_depth)
 
         _walk(node, 0)
         return score
+
+    _DEPTH_TYPES = (ast.If, ast.For, ast.While, ast.ExceptHandler, ast.With, ast.Try)
 
     def _nesting_depth(self, node: ast.FunctionDef) -> int:
         """Max nesting depth inside a function."""
@@ -76,15 +73,11 @@ class ComplexityGuard:
         def _walk(n: ast.AST, depth: int) -> None:
             nonlocal max_depth
             for child in ast.iter_child_nodes(n):
-                if isinstance(child, (ast.If, ast.For, ast.While,
-                                      ast.ExceptHandler, ast.With,
-                                      ast.Try)):
-                    new_depth = depth + 1
-                    if new_depth > max_depth:
-                        max_depth = new_depth
-                    _walk(child, new_depth)
-                else:
-                    _walk(child, depth)
+                is_nesting = isinstance(child, self._DEPTH_TYPES)
+                next_depth = depth + 1 if is_nesting else depth
+                if next_depth > max_depth:
+                    max_depth = next_depth
+                _walk(child, next_depth)
 
         _walk(node, 0)
         return max_depth
@@ -112,90 +105,52 @@ class ComplexityGuard:
             if isinstance(child, ast.Return)
         )
 
+    @staticmethod
+    def _check_metric(
+        value: int, warn_limit: int, block_limit: int,
+        name: str, msg_template: str, filepath: str, line: int,
+    ) -> V2GuardIssue | None:
+        """Check a metric against thresholds. msg_template uses {val} and {limit}."""
+        if value > block_limit:
+            return V2GuardIssue(
+                guard=GUARD_NAME, severity="block",
+                message=msg_template.format(name=name, val=value, limit=block_limit),
+                file=filepath, line=line,
+            )
+        if value > warn_limit:
+            return V2GuardIssue(
+                guard=GUARD_NAME, severity="warn",
+                message=msg_template.format(name=name, val=value, limit=warn_limit),
+                file=filepath, line=line,
+            )
+        return None
+
     def analyze_function(
-        self, node: ast.FunctionDef, filepath: str
+        self, node: ast.FunctionDef, filepath: str,
     ) -> list[V2GuardIssue]:
         """Analyze a single function node for complexity issues."""
         issues: list[V2GuardIssue] = []
         name = node.name
         line = node.lineno
 
-        # Cyclomatic
-        cc = self._cyclomatic_complexity(node)
-        if cc > CYCLOMATIC_BLOCK:
-            issues.append(V2GuardIssue(
-                guard=GUARD_NAME, severity="block",
-                message=f"'{name}' cyclomatic complexity {cc} > {CYCLOMATIC_BLOCK}",
-                file=filepath, line=line,
-            ))
-        elif cc > CYCLOMATIC_WARN:
-            issues.append(V2GuardIssue(
-                guard=GUARD_NAME, severity="warn",
-                message=f"'{name}' cyclomatic complexity {cc} > {CYCLOMATIC_WARN}",
-                file=filepath, line=line,
-            ))
+        metric_checks = [
+            (self._cyclomatic_complexity(node), CYCLOMATIC_WARN, CYCLOMATIC_BLOCK,
+             "'{name}' cyclomatic complexity {val} > {limit}"),
+            (self._cognitive_complexity(node), COGNITIVE_WARN, COGNITIVE_BLOCK,
+             "'{name}' cognitive complexity {val} > {limit}"),
+            (self._param_count(node), PARAM_WARN, PARAM_BLOCK,
+             "'{name}' has {val} params > {limit}"),
+            (self._nesting_depth(node), NESTING_WARN, NESTING_BLOCK,
+             "'{name}' nesting depth {val} > {limit}"),
+            (self._function_length(node), LENGTH_WARN, LENGTH_BLOCK,
+             "'{name}' is {val} lines > {limit}"),
+        ]
 
-        # Cognitive
-        cog = self._cognitive_complexity(node)
-        if cog > COGNITIVE_BLOCK:
-            issues.append(V2GuardIssue(
-                guard=GUARD_NAME, severity="block",
-                message=f"'{name}' cognitive complexity {cog} > {COGNITIVE_BLOCK}",
-                file=filepath, line=line,
-            ))
-        elif cog > COGNITIVE_WARN:
-            issues.append(V2GuardIssue(
-                guard=GUARD_NAME, severity="warn",
-                message=f"'{name}' cognitive complexity {cog} > {COGNITIVE_WARN}",
-                file=filepath, line=line,
-            ))
+        for value, warn_limit, block_limit, template in metric_checks:
+            issue = self._check_metric(value, warn_limit, block_limit, name, template, filepath, line)
+            if issue:
+                issues.append(issue)
 
-        # Params
-        pc = self._param_count(node)
-        if pc > PARAM_BLOCK:
-            issues.append(V2GuardIssue(
-                guard=GUARD_NAME, severity="block",
-                message=f"'{name}' has {pc} params > {PARAM_BLOCK}",
-                file=filepath, line=line,
-            ))
-        elif pc > PARAM_WARN:
-            issues.append(V2GuardIssue(
-                guard=GUARD_NAME, severity="warn",
-                message=f"'{name}' has {pc} params > {PARAM_WARN}",
-                file=filepath, line=line,
-            ))
-
-        # Nesting
-        nd = self._nesting_depth(node)
-        if nd > NESTING_BLOCK:
-            issues.append(V2GuardIssue(
-                guard=GUARD_NAME, severity="block",
-                message=f"'{name}' nesting depth {nd} > {NESTING_BLOCK}",
-                file=filepath, line=line,
-            ))
-        elif nd > NESTING_WARN:
-            issues.append(V2GuardIssue(
-                guard=GUARD_NAME, severity="warn",
-                message=f"'{name}' nesting depth {nd} > {NESTING_WARN}",
-                file=filepath, line=line,
-            ))
-
-        # Length
-        fl = self._function_length(node)
-        if fl > LENGTH_BLOCK:
-            issues.append(V2GuardIssue(
-                guard=GUARD_NAME, severity="block",
-                message=f"'{name}' is {fl} lines > {LENGTH_BLOCK}",
-                file=filepath, line=line,
-            ))
-        elif fl > LENGTH_WARN:
-            issues.append(V2GuardIssue(
-                guard=GUARD_NAME, severity="warn",
-                message=f"'{name}' is {fl} lines > {LENGTH_WARN}",
-                file=filepath, line=line,
-            ))
-
-        # Returns
         rc = self._return_count(node)
         if rc > RETURN_WARN:
             issues.append(V2GuardIssue(

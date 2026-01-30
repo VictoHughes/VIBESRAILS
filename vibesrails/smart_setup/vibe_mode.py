@@ -4,11 +4,14 @@ vibesrails Smart Setup - Vibe Coder Mode.
 User-friendly pattern setup without requiring regex knowledge.
 """
 
+import logging
 import re
 from pathlib import Path
 
 from ..scanner import BLUE, GREEN, NC, RED, YELLOW
 from .i18n import LANG, msg
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # PREDEFINED PROTECTION CATEGORIES
@@ -115,6 +118,7 @@ def scan_for_secrets(project_root: Path) -> dict[str, list[dict]]:
                     continue
                 _scan_line(line, rel_path, line_num, found)
         except Exception:
+            logger.debug("Failed to read file during secret scan")
             continue
 
     return {k: v for k, v in found.items() if v}
@@ -268,7 +272,7 @@ def _prompt_additional_categories(found_secrets: dict) -> list[dict]:
                         selected.extend(VIBE_PROTECTIONS[category]["patterns"])
                         print(f"  {GREEN}✓ {VIBE_PROTECTIONS[category]['name']}{NC}")
             except ValueError:
-                pass
+                pass  # ignore non-numeric input, re-prompt
 
     return selected
 

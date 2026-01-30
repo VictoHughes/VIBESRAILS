@@ -2,12 +2,15 @@
 
 import ast
 import json
+import logging
 import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 from .dependency_audit import V2GuardIssue
+
+logger = logging.getLogger(__name__)
 
 GUARD = "ArchitectureDriftGuard"
 
@@ -121,54 +124,56 @@ class ArchitectureDriftGuard:
                             message=f"Import violation: {line}",
                         ))
         except (FileNotFoundError, subprocess.TimeoutExpired):
-            pass
+            pass  # import-linter not available, skip check
         return issues
 
-    def _auto_generate_config(
-        self, project_root: Path
-    ) -> Path | None:
-        """Generate .importlinter from directory structure."""
+    @staticmethod
+    def _detect_dirs(project_root: Path) -> dict[str, str]:
+        """Detect layer directories in project root."""
         detected: dict[str, str] = {}
         for child in project_root.iterdir():
-            if child.is_dir():
-                layer = _layer_for_dir(child.name)
-                if layer:
-                    detected[child.name] = layer
+            if not child.is_dir():
+                continue
+            layer = _layer_for_dir(child.name)
+            if layer:
+                detected[child.name] = layer
+        return detected
+
+    @staticmethod
+    def _build_contract(
+        dirname: str, layer: str, detected: dict[str, str],
+    ) -> list[str] | None:
+        """Build a single import-linter contract section."""
+        deps = _allowed_deps(layer)
+        if not deps:
+            return None
+        allowed_dirs = [d for d, lyr in detected.items() if lyr in deps]
+        if not allowed_dirs:
+            return None
+        forbidden = [d for d in detected if d != dirname and d not in allowed_dirs]
+        lines = [
+            f"name = {layer} depends on allowed",
+            "type = forbidden",
+            f"source_modules = {dirname}",
+        ]
+        if forbidden:
+            lines.append("forbidden_modules = " + "\n    ".join(forbidden))
+        lines.append("")
+        return lines
+
+    def _auto_generate_config(self, project_root: Path) -> Path | None:
+        """Generate .importlinter from directory structure."""
+        detected = self._detect_dirs(project_root)
         if len(detected) < 2:
             return None
-        lines = [
-            "[importlinter]",
-            f"root_package = {project_root.name}",
-            "",
-        ]
+        lines = ["[importlinter]", f"root_package = {project_root.name}", ""]
         contract_idx = 0
         for dirname, layer in detected.items():
-            deps = _allowed_deps(layer)
-            if not deps:
-                continue
-            allowed_dirs: list[str] = []
-            for dep_layer in deps:
-                for d, lyr in detected.items():
-                    if lyr == dep_layer:
-                        allowed_dirs.append(d)
-            if allowed_dirs:
+            contract = self._build_contract(dirname, layer, detected)
+            if contract:
                 contract_idx += 1
-                cname = f"contract_{contract_idx}"
-                lines.append(f"[importlinter:contract:{cname}]")
-                lines.append(f"name = {layer} depends on allowed")
-                lines.append("type = forbidden")
-                lines.append(f"source_modules = {dirname}")
-                forbidden = [
-                    d for d in detected
-                    if d != dirname
-                    and d not in allowed_dirs
-                ]
-                if forbidden:
-                    lines.append(
-                        "forbidden_modules = "
-                        + "\n    ".join(forbidden)
-                    )
-                lines.append("")
+                lines.append(f"[importlinter:contract:contract_{contract_idx}]")
+                lines.extend(contract)
         if contract_idx == 0:
             return None
         config_path = project_root / ".importlinter"
@@ -248,7 +253,7 @@ class ArchitectureDriftGuard:
                 try:
                     previous = json.loads(lines[-1])
                 except json.JSONDecodeError:
-                    pass
+                    pass  # corrupted metrics entry, skip comparison
         entry = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "violations": current_violations,
@@ -268,32 +273,32 @@ class ArchitectureDriftGuard:
                 ))
         return issues
 
+    @staticmethod
+    def _extract_imports(tree: ast.Module) -> list[str]:
+        """Extract all import module names from an AST."""
+        imports: list[str] = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom) and node.module:
+                imports.append(node.module)
+            elif isinstance(node, ast.Import):
+                imports.extend(alias.name for alias in node.names)
+        return imports
+
     def take_snapshot(self, project_root: Path) -> Path:
         """Save current import graph snapshot."""
         snapshot_dir = project_root / ".vibesrails"
         snapshot_dir.mkdir(parents=True, exist_ok=True)
-        snapshot_path = (
-            snapshot_dir / "architecture_snapshot.json"
-        )
+        snapshot_path = snapshot_dir / "architecture_snapshot.json"
         graph: dict[str, list[str]] = {}
         for py_file in self._iter_py_files(project_root):
             tree = self._parse_file(py_file)
             if tree is None:
                 continue
-            rel = str(py_file.relative_to(project_root))
-            imports: list[str] = []
-            for node in ast.walk(tree):
-                if isinstance(node, ast.ImportFrom):
-                    if node.module:
-                        imports.append(node.module)
-                elif isinstance(node, ast.Import):
-                    for alias in node.names:
-                        imports.append(alias.name)
+            imports = self._extract_imports(tree)
             if imports:
+                rel = str(py_file.relative_to(project_root))
                 graph[rel] = sorted(set(imports))
-        snapshot_path.write_text(
-            json.dumps(graph, indent=2, sort_keys=True)
-        )
+        snapshot_path.write_text(json.dumps(graph, indent=2, sort_keys=True))
         return snapshot_path
 
     def generate_report(self, project_root: Path) -> str:

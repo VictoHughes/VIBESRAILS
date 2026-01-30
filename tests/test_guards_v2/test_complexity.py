@@ -67,7 +67,7 @@ def deep(a, b, c, d, e):
                     if e:
                         for y in range(10):
                             if y > 5:
-                                pass
+                                pass  # intentional nesting for complexity test
 """
     _write(tmp_path, code)
     issues = guard.scan(tmp_path)
@@ -92,9 +92,9 @@ def deeply_nested(a):
                 try:
                     if x > 5:
                         with open("f") as fh:
-                            pass
+                            pass  # deep nesting fixture
                 except Exception:
-                    pass
+                    pass  # deep nesting fixture
 """
     _write(tmp_path, code)
     issues = guard.scan(tmp_path)

@@ -18,6 +18,9 @@ ENV/
 
 # Secrets
 .env
+*.pem
+*.key
+*.p12
 
 # Local config (users create their own)
 vibesrails.yaml

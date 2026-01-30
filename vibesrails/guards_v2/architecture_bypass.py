@@ -1,9 +1,12 @@
 """AI Bypass Detection — AST-based detection of architecture circumvention."""
 
 import ast
+import logging
 from pathlib import Path
 
 from .dependency_audit import V2GuardIssue
+
+logger = logging.getLogger(__name__)
 
 GUARD = "ArchitectureDriftGuard"
 
@@ -14,24 +17,26 @@ def _all_layer_dirs() -> set[str]:
     return _impl()
 
 
+def _has_all_assignment(stmts: list[ast.stmt]) -> bool:
+    """Check if any statement assigns to __all__."""
+    for node in stmts:
+        if isinstance(node, ast.Assign):
+            if any(isinstance(t, ast.Name) and t.id == "__all__" for t in node.targets):
+                return True
+    return False
+
+
 def _check_reexport_file(tree: ast.Module) -> tuple[bool, int, int]:
     """Check if a module is a re-export module. Returns (is_reexport, imports, total)."""
     stmts = tree.body
-    if len(stmts) < 1:
+    if not stmts:
         return False, 0, 0
-    imports = 0
-    has_all = False
-    for node in stmts:
-        if isinstance(node, (ast.Import, ast.ImportFrom)):
-            imports += 1
-        elif isinstance(node, ast.Assign):
-            if any(isinstance(t, ast.Name) and t.id == "__all__" for t in node.targets):
-                has_all = True
+    imports = sum(1 for n in stmts if isinstance(n, (ast.Import, ast.ImportFrom)))
     total = len([
         s for s in stmts
         if not (isinstance(s, ast.Expr) and isinstance(s.value, ast.Constant))
     ])
-    is_reexport = total >= 2 and imports > 0 and (imports / total) >= 0.8 and has_all
+    is_reexport = total >= 2 and imports > 0 and (imports / total) >= 0.8 and _has_all_assignment(stmts)
     return is_reexport, imports, total
 
 
@@ -59,6 +64,18 @@ def detect_reexport_modules(
     return issues
 
 
+def _check_wrapper_class(node: ast.ClassDef) -> bool:
+    """Check if a class delegates all its methods."""
+    methods = [
+        n for n in node.body
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and n.name != "__init__"
+    ]
+    if len(methods) < 2:
+        return False
+    return all(_is_delegating(m) for m in methods)
+
+
 def detect_wrapper_classes(
     guard: object, project_root: Path,
 ) -> list[V2GuardIssue]:
@@ -71,28 +88,11 @@ def detect_wrapper_classes(
         for node in ast.walk(tree):
             if not isinstance(node, ast.ClassDef):
                 continue
-            methods = [
-                n for n in node.body
-                if isinstance(n, (ast.FunctionDef,
-                                  ast.AsyncFunctionDef))
-                and n.name != "__init__"
-            ]
-            if len(methods) < 2:
-                continue
-            delegating = 0
-            for method in methods:
-                if _is_delegating(method):
-                    delegating += 1
-            if delegating == len(methods):
+            if _check_wrapper_class(node):
                 issues.append(V2GuardIssue(
-                    guard=GUARD,
-                    severity="warn",
-                    message=(
-                        f"Wrapper class '{node.name}' "
-                        "delegates all methods"
-                    ),
-                    file=str(py_file),
-                    line=node.lineno,
+                    guard=GUARD, severity="warn",
+                    message=f"Wrapper class '{node.name}' delegates all methods",
+                    file=str(py_file), line=node.lineno,
                 ))
     return issues
 
@@ -130,6 +130,25 @@ def _is_inner_call(node: ast.expr) -> bool:
     )
 
 
+def _find_layer_imports_in_func(
+    func_node: ast.AST, layer_dirs: set[str], py_file: Path,
+) -> list[V2GuardIssue]:
+    """Find layer imports inside a function node."""
+    issues: list[V2GuardIssue] = []
+    for child in ast.walk(func_node):
+        if not isinstance(child, ast.ImportFrom):
+            continue
+        mod = child.module or ""
+        top = mod.split(".")[0]
+        if top in layer_dirs:
+            issues.append(V2GuardIssue(
+                guard=GUARD, severity="warn",
+                message=f"Function-level import of '{mod}'",
+                file=str(py_file), line=child.lineno,
+            ))
+    return issues
+
+
 def detect_function_level_imports(
     guard: object, project_root: Path,
 ) -> list[V2GuardIssue]:
@@ -141,26 +160,8 @@ def detect_function_level_imports(
         if tree is None:
             continue
         for node in ast.walk(tree):
-            if not isinstance(
-                node,
-                (ast.FunctionDef, ast.AsyncFunctionDef),
-            ):
-                continue
-            for child in ast.walk(node):
-                if isinstance(child, ast.ImportFrom):
-                    mod = child.module or ""
-                    top = mod.split(".")[0]
-                    if top in layer_dirs:
-                        issues.append(V2GuardIssue(
-                            guard=GUARD,
-                            severity="warn",
-                            message=(
-                                "Function-level import "
-                                f"of '{mod}'"
-                            ),
-                            file=str(py_file),
-                            line=child.lineno,
-                        ))
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                issues.extend(_find_layer_imports_in_func(node, layer_dirs, py_file))
     return issues
 
 

@@ -8,6 +8,8 @@ from unittest import mock
 
 import pytest
 
+import vibesrails.watch as watch_mod
+
 
 # ============================================
 # HAS_WATCHDOG Flag Tests
@@ -602,5 +604,137 @@ class TestWatchIntegration:
             assert "WARN" in captured.out
             assert "file1.py" in captured.out
             assert "file2.py" in captured.out
+        finally:
+            os.chdir(original_cwd)
+
+
+# ============================================
+# Non-mock tests (real module behavior)
+# ============================================
+
+
+class TestWatchModuleAttributes:
+    """Test module-level attributes without mocking."""
+
+    def test_has_watchdog_is_bool(self):
+        """HAS_WATCHDOG is a boolean."""
+        assert isinstance(watch_mod.HAS_WATCHDOG, bool)
+
+    def test_handler_class_exists(self):
+        """VibesRailsHandler is importable."""
+        assert hasattr(watch_mod, "VibesRailsHandler")
+
+    def test_run_watch_mode_is_callable(self):
+        """run_watch_mode is callable."""
+        assert callable(watch_mod.run_watch_mode)
+
+
+class TestHandlerConfig:
+    """Test handler configuration without mocking."""
+
+    def test_handler_stores_complex_config(self):
+        """Handler preserves complex config structures."""
+        from vibesrails.watch import VibesRailsHandler
+
+        config = {
+            "blocking": [{"id": "a", "regex": "x"}],
+            "warning": [{"id": "b", "regex": "y"}],
+            "exceptions": {"file.py": ["a"]},
+        }
+        handler = VibesRailsHandler(config)
+        assert handler.config["blocking"][0]["id"] == "a"
+        assert handler.config["warning"][0]["id"] == "b"
+
+    def test_handler_last_scan_tracks_files(self):
+        """Handler tracks scanned files in last_scan."""
+        from vibesrails.watch import VibesRailsHandler
+
+        handler = VibesRailsHandler({"blocking": [], "warning": []})
+        assert isinstance(handler.last_scan, dict)
+        handler.last_scan["/test.py"] = time.time()
+        assert "/test.py" in handler.last_scan
+
+    def test_handler_debounce_logic(self):
+        """Handler debounce tracks timestamps correctly."""
+        from vibesrails.watch import VibesRailsHandler
+
+        handler = VibesRailsHandler({"blocking": [], "warning": []})
+        now = time.time()
+        handler.last_scan["/a.py"] = now
+        handler.last_scan["/b.py"] = now - 5
+        assert handler.last_scan["/a.py"] >= now
+        assert handler.last_scan["/b.py"] < now
+
+    def test_handler_scan_real_clean_file(self, tmp_path, capsys):
+        """Handler scans a real clean file without mocks."""
+        from vibesrails.watch import VibesRailsHandler
+
+        config = {
+            "blocking": [
+                {"id": "secret", "name": "Secret",
+                 "regex": r"password\s*=\s*[\"'][^\"']+",
+                 "message": "No secrets"}
+            ],
+            "warning": [],
+            "exceptions": {},
+        }
+        handler = VibesRailsHandler(config)
+        clean = tmp_path / "clean.py"
+        clean.write_text("import os\nx = 42\n")
+        original_cwd = os.getcwd()
+        os.chdir(tmp_path)
+        try:
+            handler.scan_file(str(clean))
+            captured = capsys.readouterr()
+            assert "clean.py" in captured.out
+        finally:
+            os.chdir(original_cwd)
+
+    def test_handler_scan_real_blocking_file(self, tmp_path, capsys):
+        """Handler detects real blocking issues without mocks."""
+        from vibesrails.watch import VibesRailsHandler
+
+        config = {
+            "blocking": [
+                {"id": "secret", "name": "Secret",
+                 "regex": r"password\s*=\s*[\"'][^\"']+",
+                 "message": "No secrets"}
+            ],
+            "warning": [],
+            "exceptions": {},
+        }
+        handler = VibesRailsHandler(config)
+        bad = tmp_path / "bad.py"
+        bad.write_text('password = "hunter2"\n')
+        original_cwd = os.getcwd()
+        os.chdir(tmp_path)
+        try:
+            handler.scan_file(str(bad))
+            captured = capsys.readouterr()
+            assert "BLOCK" in captured.out
+        finally:
+            os.chdir(original_cwd)
+
+    def test_handler_scan_real_warning_file(self, tmp_path, capsys):
+        """Handler detects real warnings without mocks."""
+        from vibesrails.watch import VibesRailsHandler
+
+        config = {
+            "blocking": [],
+            "warning": [
+                {"id": "todo", "name": "TODO",
+                 "regex": r"# TODO", "message": "Fix TODO"}
+            ],
+            "exceptions": {},
+        }
+        handler = VibesRailsHandler(config)
+        f = tmp_path / "todo.py"
+        f.write_text("# TODO fix this\n")
+        original_cwd = os.getcwd()
+        os.chdir(tmp_path)
+        try:
+            handler.scan_file(str(f))
+            captured = capsys.readouterr()
+            assert "WARN" in captured.out
         finally:
             os.chdir(original_cwd)

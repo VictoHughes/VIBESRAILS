@@ -202,7 +202,7 @@ def test_type_checking_bypass_detected(guard, tmp_path):
         if TYPE_CHECKING:
             from domain.entity import User
         def process(u: "User") -> None:
-            pass
+            pass  # stub for type-checking test
     """))
     issues = guard._detect_type_checking_bypass(tmp_path)
     assert len(issues) == 1

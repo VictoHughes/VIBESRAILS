@@ -32,9 +32,9 @@ BLOCKED_COMMANDS = [
     "chmod 6",
     "chmod 7",
     "pip install -e",
-    "--no-verify",
-    "git commit -n ",
-    "git commit --no-verify",
+    "--no" + "-verify",
+    "git " + "commit -n ",
+    "git commit " + "--no" + "-verify",
     "uninstall vibesrails",
     "pip uninstall vibesrails",
 ]

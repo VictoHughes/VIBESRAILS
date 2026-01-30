@@ -1,6 +1,7 @@
 """Dependency Audit Checks — Typosquat, abandoned, and CVE detection."""
 
 import json
+import logging
 import re
 import subprocess
 import urllib.error
@@ -9,6 +10,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .dependency_audit import V2GuardIssue
+
+logger = logging.getLogger(__name__)
 
 # Top 100 popular PyPI packages for typosquatting detection
 POPULAR_PACKAGES: list[str] = [
@@ -82,11 +85,26 @@ def check_typosquatting(normalized_name: str) -> str | None:
     for popular in POPULAR_PACKAGES:
         pop_norm = normalize_pkg_name(popular)
         if normalized_name == pop_norm:
-            return None  # exact match, not a typo
+            # exact match with popular package, not a typo
+            return None
         dist = _levenshtein(normalized_name, pop_norm)
         if dist <= _LEVENSHTEIN_THRESHOLD and dist > 0:
             return popular
     return None
+
+
+def _find_latest_release_date(releases: dict) -> datetime | None:
+    """Find the most recent upload date across all releases."""
+    latest: datetime | None = None
+    for rel_files in releases.values():
+        for f in rel_files:
+            upload = f.get("upload_time_iso_8601") or f.get("upload_time")
+            if not upload:
+                continue
+            dt = datetime.fromisoformat(upload.replace("Z", "+00:00"))
+            if latest is None or dt > latest:
+                latest = dt
+    return latest
 
 
 def check_abandoned(
@@ -102,37 +120,19 @@ def check_abandoned(
         return None
     try:
         info = pypi_data.get("info", {})
-        releases = pypi_data.get("releases", {})
-        latest_date: datetime | None = None
-        for rel_files in releases.values():
-            for f in rel_files:
-                upload = (
-                    f.get("upload_time_iso_8601")
-                    or f.get("upload_time")
-                )
-                if upload:
-                    dt = datetime.fromisoformat(
-                        upload.replace("Z", "+00:00")
-                    )
-                    if latest_date is None or dt > latest_date:
-                        latest_date = dt
+        latest_date = _find_latest_release_date(pypi_data.get("releases", {}))
         if latest_date is None:
             return None
         age = datetime.now(timezone.utc) - latest_date
         if age.days > _ABANDONED_YEARS * 365:
             years = round(age.days / 365, 1)
             return V2GuardIssue(
-                guard="DependencyAuditGuard",
-                severity="warn",
-                message=(
-                    f"Possibly abandoned: {pkg} — last release "
-                    f"{years} years ago ({info.get('version', '?')})."
-                ),
-                file=filepath,
-                line=lineno,
+                guard="DependencyAuditGuard", severity="warn",
+                message=f"Possibly abandoned: {pkg} — last release {years} years ago ({info.get('version', '?')}).",
+                file=filepath, line=lineno,
             )
     except Exception:
-        pass
+        pass  # PyPI date parsing failed, skip abandoned check
     return None
 
 
@@ -157,59 +157,30 @@ def fetch_pypi(
         return None
 
 
+def _make_issue(severity: str, message: str, filepath: str, lineno: int | None) -> V2GuardIssue:
+    """Create a DependencyAuditGuard issue."""
+    return V2GuardIssue(guard="DependencyAuditGuard", severity=severity, message=message, file=filepath, line=lineno)
+
+
 def check_package(
-    pkg: str,
-    version: str | None,
-    filepath: str,
-    lineno: int | None,
-    pypi_cache: dict[str, dict | None],
+    pkg: str, version: str | None, filepath: str,
+    lineno: int | None, pypi_cache: dict[str, dict | None],
 ) -> list[V2GuardIssue]:
     """Run all checks on a single package."""
     issues: list[V2GuardIssue] = []
     norm = normalize_pkg_name(pkg)
 
     if version is None:
-        issues.append(V2GuardIssue(
-            guard="DependencyAuditGuard",
-            severity="warn",
-            message=(
-                f"Unpinned dependency: {pkg}. "
-                "Pin with == for reproducibility."
-            ),
-            file=filepath,
-            line=lineno,
-        ))
+        issues.append(_make_issue("warn", f"Unpinned dependency: {pkg}. Pin with == for reproducibility.", filepath, lineno))
 
     typo = check_typosquatting(norm)
     if typo:
-        issues.append(V2GuardIssue(
-            guard="DependencyAuditGuard",
-            severity="block",
-            message=(
-                f"Possible typosquatting: '{pkg}' is very similar to "
-                f"popular package '{typo}'. Verify this is intentional."
-            ),
-            file=filepath,
-            line=lineno,
-        ))
+        issues.append(_make_issue("block", f"Possible typosquatting: '{pkg}' is very similar to popular package '{typo}'. Verify this is intentional.", filepath, lineno))
 
-    if version:
-        bad_versions = KNOWN_BAD_VERSIONS.get(norm, [])
-        if version in bad_versions:
-            issues.append(V2GuardIssue(
-                guard="DependencyAuditGuard",
-                severity="block",
-                message=(
-                    f"Known vulnerable version: {pkg}=={version}. "
-                    "Upgrade to a patched release."
-                ),
-                file=filepath,
-                line=lineno,
-            ))
+    if version and version in KNOWN_BAD_VERSIONS.get(norm, []):
+        issues.append(_make_issue("block", f"Known vulnerable version: {pkg}=={version}. Upgrade to a patched release.", filepath, lineno))
 
-    abandoned_issue = check_abandoned(
-        pkg, norm, filepath, lineno, pypi_cache
-    )
+    abandoned_issue = check_abandoned(pkg, norm, filepath, lineno, pypi_cache)
     if abandoned_issue:
         issues.append(abandoned_issue)
 
@@ -253,5 +224,5 @@ def run_pip_audit(
         subprocess.TimeoutExpired,
         json.JSONDecodeError,
     ):
-        pass
+        pass  # pip-audit unavailable or returned invalid data
     return issues

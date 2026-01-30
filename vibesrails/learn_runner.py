@@ -4,10 +4,30 @@ Handles project structure learning and pattern detection.
 """
 
 import json
+import logging
 from pathlib import Path
 
 from .learner import PatternDetector, SignatureIndexer, StructureRulesGenerator
 from .scanner import BLUE, GREEN, NC, YELLOW
+
+logger = logging.getLogger(__name__)
+
+
+def _build_signature_index(project_root: Path, cache_dir: Path) -> int:
+    """Build and save signature index. Returns count."""
+    print("\n  Building signature index...")
+    indexer = SignatureIndexer(project_root)
+    signatures = indexer.build_index()
+    index_data = [
+        {"name": sig.name, "signature_type": sig.signature_type,
+         "file_path": sig.file_path, "line_number": sig.line_number,
+         "parameters": sig.parameters, "return_type": sig.return_type,
+         "parent_class": sig.parent_class}
+        for sig in signatures
+    ]
+    with open(cache_dir / "signature_index.json", "w") as f:
+        json.dump(index_data, f, indent=2)
+    return len(signatures)
 
 
 def handle_learn_command() -> int:
@@ -18,50 +38,23 @@ def handle_learn_command() -> int:
     cache_dir = project_root / ".vibesrails"
     cache_dir.mkdir(exist_ok=True)
 
-    # Detect patterns
     print("  Detecting patterns...")
-    detector = PatternDetector(project_root)
-    patterns = detector.detect()
+    patterns = PatternDetector(project_root).detect()
 
     if not patterns:
         print(f"{YELLOW}  No clear patterns detected yet.{NC}")
         return 0
 
     print(f"{GREEN}  Detected patterns:{NC}")
-    for pattern in patterns:
-        print(f"    - {pattern.category:12} → {pattern.location:30} "
-              f"({pattern.confidence:.0%} confidence, {pattern.examples} examples)")
+    for p in patterns:
+        print(f"    - {p.category:12} → {p.location:30} ({p.confidence:.0%} confidence, {p.examples} examples)")
 
-    # Generate rules
     print("\n  Generating structure rules...")
-    generator = StructureRulesGenerator()
-    patterns_file = cache_dir / "learned_patterns.yaml"
-    generator.save_rules(patterns, patterns_file)
+    StructureRulesGenerator().save_rules(patterns, cache_dir / "learned_patterns.yaml")
     print(f"{GREEN}  ✓ Rules saved to .vibesrails/learned_patterns.yaml{NC}")
 
-    # Build signature index
-    print("\n  Building signature index...")
-    indexer = SignatureIndexer(project_root)
-    signatures = indexer.build_index()
-
-    index_file = cache_dir / "signature_index.json"
-    index_data = [
-        {
-            "name": sig.name,
-            "signature_type": sig.signature_type,
-            "file_path": sig.file_path,
-            "line_number": sig.line_number,
-            "parameters": sig.parameters,
-            "return_type": sig.return_type,
-            "parent_class": sig.parent_class,
-        }
-        for sig in signatures
-    ]
-    with open(index_file, "w") as f:
-        json.dump(index_data, f, indent=2)
-
-    print(f"{GREEN}  ✓ Indexed {len(signatures)} signatures{NC}")
+    sig_count = _build_signature_index(project_root, cache_dir)
+    print(f"{GREEN}  ✓ Indexed {sig_count} signatures{NC}")
     print(f"\n{GREEN}✓ Learning complete!{NC}")
     print("  Patterns and signatures cached in .vibesrails/")
-
     return 0

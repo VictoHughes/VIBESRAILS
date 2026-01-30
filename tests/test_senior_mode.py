@@ -27,13 +27,13 @@ class TestArchitectureMapper:
 
         (tmp_path / "models.py").write_text("""
 class User:
-    pass
+    pass  # ORM model placeholder
 
 class Order:
-    pass
+    pass  # ORM model placeholder
 
 def create_user():
-    pass
+    pass  # stub for architecture detection
 """)
 
         mapper = ArchitectureMapper(tmp_path)

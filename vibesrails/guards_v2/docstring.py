@@ -1,10 +1,13 @@
 """Docstring Guard — Detects missing, empty, or outdated docstrings."""
 
 import ast
+import logging
 import re
 from pathlib import Path
 
 from .dependency_audit import V2GuardIssue
+
+logger = logging.getLogger(__name__)
 
 GUARD_NAME = "docstring"
 
@@ -205,36 +208,28 @@ _PARAM_PATTERN = re.compile(
 )
 
 
+_PARAM_PATTERNS = [
+    re.compile(r":param\s+(\w+)"),
+    re.compile(r"@param\s+(\w+)"),
+    re.compile(r"(\w+)\s*\(.*?\)\s*:"),
+    re.compile(r"(\w+)\s*:"),
+]
+
+
 def _extract_doc_params(doc: str) -> set[str]:
     """Extract parameter names referenced in a docstring."""
     params: set[str] = set()
-    # Only look at lines that look like param docs
     for line in doc.splitlines():
         stripped = line.strip()
         if not stripped:
             continue
-        # Sphinx / Javadoc style
-        m = re.match(r":param\s+(\w+)", stripped)
-        if m:
-            params.add(m.group(1))
-            continue
-        m = re.match(r"@param\s+(\w+)", stripped)
-        if m:
-            params.add(m.group(1))
-            continue
-        # Google style — "name (type):" or "name:"
-        # Only match under Args/Parameters sections
-        m = re.match(r"(\w+)\s*\(.*?\)\s*:", stripped)
-        if m:
-            word = m.group(1)
-            if word not in _NON_PARAM_WORDS:
-                params.add(word)
-                continue
-        m = re.match(r"(\w+)\s*:", stripped)
-        if m:
-            word = m.group(1)
-            if word not in _NON_PARAM_WORDS:
-                params.add(word)
+        for pattern in _PARAM_PATTERNS:
+            m = pattern.match(stripped)
+            if m:
+                word = m.group(1)
+                if word not in _NON_PARAM_WORDS:
+                    params.add(word)
+                break
     return params
 
 
@@ -247,22 +242,19 @@ _NON_PARAM_WORDS = frozenset({
 })
 
 
+_EXCLUDED_DIRS = frozenset({
+    "venv", ".venv", "node_modules", "site-packages",
+    "__pycache__", "tests", "test",
+})
+
+
 def _is_excluded(path: Path) -> bool:
     """Skip test files, __init__.py, venvs, hidden dirs."""
     if path.name == "__init__.py":
         return True
-    if path.name.startswith("test_") or path.name.endswith(
-        "_test.py"
-    ):
+    if path.name.startswith("test_") or path.name.endswith("_test.py"):
         return True
-    parts = path.parts
-    for part in parts:
-        if part.startswith(".") or part == "__pycache__":
-            return True
-        if part in (
-            "venv", ".venv", "node_modules", "site-packages"
-        ):
-            return True
-        if part in ("tests", "test"):
-            return True
-    return False
+    return any(
+        part.startswith(".") or part in _EXCLUDED_DIRS
+        for part in path.parts
+    )

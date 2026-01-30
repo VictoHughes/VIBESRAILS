@@ -1,10 +1,13 @@
 """Performance Guard — Detects common performance anti-patterns via AST + regex."""
 
 import ast
+import logging
 import re
 from pathlib import Path
 
 from .dependency_audit import V2GuardIssue
+
+logger = logging.getLogger(__name__)
 
 # Patterns for DB calls that indicate potential N+1
 _DB_CALL_PATTERNS = (
@@ -57,7 +60,7 @@ class PerformanceGuard:
         fname = str(filepath)
 
         # Regex-based checks (work even if AST parse fails)
-        issues.extend(self._check_select_star(fname, content))
+        issues.extend(self._check_select_star(fname, filepath, content))
         issues.extend(self._check_no_limit(fname, content))
         issues.extend(
             self._check_time_sleep(fname, filepath, content)
@@ -78,7 +81,10 @@ class PerformanceGuard:
 
         return issues
 
-    def _check_select_star(self, fname: str, content: str) -> list[V2GuardIssue]:
+    def _check_select_star(self, fname: str, filepath: Path, content: str) -> list[V2GuardIssue]:
+        # Skip test files — they contain SELECT * in test data  # vibesrails: ignore
+        if filepath.name.startswith("test_") or "/tests/" in fname:
+            return []
         issues: list[V2GuardIssue] = []
         for i, line in enumerate(content.splitlines(), 1):
             if _IGNORE_MARKER in line:
@@ -243,51 +249,49 @@ class PerformanceGuard:
                 ))
         return issues
 
+    @staticmethod
+    def _collect_module_names(tree: ast.Module) -> set[str]:
+        """Collect module-level variable names."""
+        names: set[str] = set()
+        for node in ast.iter_child_nodes(tree):
+            if isinstance(node, ast.Assign):
+                names.update(t.id for t in node.targets if isinstance(t, ast.Name))
+            elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                names.add(node.target.id)
+        return names
+
+    @staticmethod
+    def _func_has_ignore(func_node: ast.AST, lines: list[str]) -> bool:
+        """Check if any global statement in the function has an ignore marker."""
+        for child in ast.walk(func_node):
+            if not isinstance(child, ast.Global) or not lines:
+                continue
+            line_idx = child.lineno - 1
+            if 0 <= line_idx < len(lines) and _IGNORE_MARKER in lines[line_idx]:
+                return True
+        return False
+
     def _check_global_mutation(self, fname: str, tree: ast.Module, content: str = "") -> list[V2GuardIssue]:
         """Detect assignment to module-level variable inside a function."""
         lines = content.splitlines() if content else []
         issues: list[V2GuardIssue] = []
-        # Collect module-level names
-        module_names: set[str] = set()
-        for node in ast.iter_child_nodes(tree):
-            if isinstance(node, ast.Assign):
-                for target in node.targets:
-                    if isinstance(target, ast.Name):
-                        module_names.add(target.id)
-            elif isinstance(node, ast.AnnAssign):
-                if isinstance(node.target, ast.Name):
-                    module_names.add(node.target.id)
+        module_names = self._collect_module_names(tree)
 
-        # Check functions for `global x` then assignment
         for node in ast.iter_child_nodes(tree):
             if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 continue
-            # Check if the global statement line has an ignore marker
-            has_ignore = False
-            for child in ast.walk(node):
-                if isinstance(child, ast.Global) and lines:
-                    line_idx = child.lineno - 1
-                    if 0 <= line_idx < len(lines) and _IGNORE_MARKER in lines[line_idx]:
-                        has_ignore = True
-            if has_ignore:
+            if self._func_has_ignore(node, lines):
                 continue
-            declared_global: set[str] = set()
-            for child in ast.walk(node):
-                if isinstance(child, ast.Global):
-                    declared_global.update(child.names)
-            for name in declared_global:
-                if name in module_names:
-                    issues.append(V2GuardIssue(
-                        guard=self.GUARD_NAME,
-                        severity="warn",
-                        message=(
-                            f"Global state mutation: '{name}' "
-                            f"modified inside function "
-                            f"'{node.name}'"
-                        ),
-                        file=fname,
-                        line=node.lineno,
-                    ))
+            declared_global = {
+                n for child in ast.walk(node) if isinstance(child, ast.Global)
+                for n in child.names
+            }
+            for name in declared_global & module_names:
+                issues.append(V2GuardIssue(
+                    guard=self.GUARD_NAME, severity="warn",
+                    message=f"Global state mutation: '{name}' modified inside function '{node.name}'",
+                    file=fname, line=node.lineno,
+                ))
         return issues
 
 

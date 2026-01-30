@@ -1,7 +1,10 @@
 """Architecture mapping for Claude context."""
 import ast
+import logging
 from datetime import datetime
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 class ArchitectureMapper:
@@ -67,6 +70,7 @@ class ArchitectureMapper:
                     "lines": lines,
                 })
             except Exception:
+                logger.debug("Failed to parse module")
                 continue
         return modules
 

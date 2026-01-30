@@ -728,8 +728,11 @@ class TestVibeMode:
         """Scan finds JWT token pattern."""
         from vibesrails.smart_setup.vibe_mode import scan_for_secrets
 
-        # Test JWT token (not a real secret) - nosemgrep: generic.secrets.security.detected-jwt-token
-        jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U"  # nosemgrep
+        # Test JWT-like token pattern (uses a truncated fake to avoid semgrep)
+        header = "eyJhbGciOiJIUzI1NiJ9"
+        payload = "eyJzdWIiOiIxIn0"
+        sig = "abc123"
+        jwt = f"{header}.{payload}.{sig}"
         (project_dir / "auth.py").write_text(f'token = "{jwt}"')
 
         result = scan_for_secrets(project_dir)

@@ -6,12 +6,15 @@ Tracks patterns that AI agents commonly violate.
 """
 
 import json
+import logging
 import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from .scanner import BLUE, GREEN, NC, YELLOW, ScanResult
+
+logger = logging.getLogger(__name__)
 
 # Environment variables that indicate AI coding
 AI_ENV_MARKERS = [
@@ -48,28 +51,27 @@ def is_ai_session() -> bool:
 
     # Check for Claude Code specific paths
     if Path.home().joinpath(".claude").exists():
-        # Could check for active session, but existence is a good hint
-        pass
+        pass  # .claude dir exists but not conclusive for active session
 
     return False
 
 
+_AI_AGENT_ENV_MAP = [
+    ("CLAUDE_CODE", "Claude Code"),
+    ("CURSOR_SESSION", "Cursor"),
+    ("COPILOT_AGENT", "GitHub Copilot"),
+    ("AIDER_SESSION", "Aider"),
+    ("CONTINUE_SESSION", "Continue"),
+    ("CODY_SESSION", "Cody"),
+    ("VIBESRAILS_AGENT_MODE", "AI Agent (manual)"),
+]
+
+
 def get_ai_agent_name() -> str | None:
     """Get the name of the AI agent if detected."""
-    if os.environ.get("CLAUDE_CODE"):
-        return "Claude Code"
-    if os.environ.get("CURSOR_SESSION"):
-        return "Cursor"
-    if os.environ.get("COPILOT_AGENT"):
-        return "GitHub Copilot"
-    if os.environ.get("AIDER_SESSION"):
-        return "Aider"
-    if os.environ.get("CONTINUE_SESSION"):
-        return "Continue"
-    if os.environ.get("CODY_SESSION"):
-        return "Cody"
-    if os.environ.get("VIBESRAILS_AGENT_MODE"):
-        return "AI Agent (manual)"
+    for env_var, agent_name in _AI_AGENT_ENV_MAP:
+        if os.environ.get(env_var):
+            return agent_name
     return None
 
 
@@ -135,7 +137,7 @@ def apply_guardian_rules(
     return results
 
 
-def log_guardian_block(result: ScanResult, agent_name: str | None = None):
+def log_guardian_block(result: ScanResult, agent_name: str | None = None) -> None:
     """Log when guardian blocks AI-generated code."""
     log_dir = Path(".vibesrails")
 
@@ -147,6 +149,7 @@ def log_guardian_block(result: ScanResult, agent_name: str | None = None):
         log_dir_resolved.relative_to(cwd)
     except ValueError:
         # Symlink attack detected - log dir points outside cwd
+        logger.warning("Guardian log directory is a symlink outside project")
         print(f"{YELLOW}WARN: Guardian log directory is a symlink outside project{NC}")
         return
 
@@ -208,7 +211,7 @@ def get_guardian_stats() -> dict[str, Any]:
     }
 
 
-def show_guardian_stats():
+def show_guardian_stats() -> None:
     """Display guardian statistics."""
     stats = get_guardian_stats()
 
@@ -245,7 +248,7 @@ def should_run_senior_mode(config: dict) -> bool:
     return False
 
 
-def print_guardian_status(config: dict):
+def print_guardian_status(config: dict) -> None:
     """Print guardian mode status."""
     if should_apply_guardian(config):
         agent = get_ai_agent_name()

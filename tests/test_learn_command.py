@@ -4,6 +4,8 @@ from pathlib import Path
 import subprocess
 import pytest
 
+from vibesrails.learn_command import run_learn_mode  # noqa: F401
+
 
 def test_learn_command_creates_cache():
     """Learn command should create .vibesrails cache with learned patterns."""

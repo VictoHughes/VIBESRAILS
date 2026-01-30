@@ -4,6 +4,7 @@ vibesrails Smart Setup - Core Setup Logic.
 Main smart_setup function and CLI entry point.
 """
 
+import logging
 import os
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,8 @@ from .detection import (
 )
 from .i18n import LANG, msg
 from .vibe_mode import prompt_user, prompt_vibe_protections
+
+logger = logging.getLogger(__name__)
 
 
 def _detect_and_report(project_root: Path) -> dict:
@@ -269,5 +272,6 @@ def run_smart_setup_cli(force: bool = False, dry_run: bool = False) -> bool:
         )
         return result.get("created", False) or dry_run
     except Exception as e:
+        logger.error("Smart setup failed: %s", e)
         print(f"{RED}Error: {e}{NC}")
         return False

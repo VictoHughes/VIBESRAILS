@@ -1,10 +1,13 @@
 """API Design Guard — Detects common API design issues."""
 
 import ast
+import logging
 import re
 from pathlib import Path
 
 from .dependency_audit import V2GuardIssue
+
+logger = logging.getLogger(__name__)
 
 GUARD_NAME = "api-design"
 

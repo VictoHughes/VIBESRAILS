@@ -274,3 +274,66 @@ def test_pip_audit_not_installed_no_crash(mock_run, guard, tmp_path):
     req.write_text("requests==2.19.0\n")
     issues = guard.run_pip_audit(tmp_path)
     assert len(issues) == 0
+
+
+# ── Non-mock tests (real computation) ────────────────────────────
+
+
+def test_v2_guard_issue_dataclass():
+    """Test V2GuardIssue creation and fields."""
+    issue = V2GuardIssue(
+        guard="test", severity="warn", message="test msg",
+        file="foo.py", line=10,
+    )
+    assert issue.guard == "test"
+    assert issue.severity == "warn"
+    assert issue.file == "foo.py"
+    assert issue.line == 10
+
+
+def test_v2_guard_issue_defaults():
+    """Test V2GuardIssue default values."""
+    issue = V2GuardIssue(guard="g", severity="block", message="m")
+    assert issue.file is None
+    assert issue.line is None
+
+
+def test_normalize_case_insensitive():
+    """Test normalize handles upper case."""
+    assert _normalize_pkg_name("Flask") == "flask"
+    assert _normalize_pkg_name("PyYAML") == "pyyaml"
+
+
+def test_levenshtein_symmetric():
+    """Levenshtein distance is symmetric."""
+    assert _levenshtein("abc", "abd") == _levenshtein("abd", "abc")
+
+
+def test_guard_scan_no_dep_files(guard, tmp_path):
+    """Guard scan returns empty when no dependency files exist."""
+    issues = guard.scan(tmp_path)
+    assert issues == []
+
+
+def test_guard_scan_requirements_empty(guard, tmp_path):
+    """Guard scan handles empty requirements.txt."""
+    (tmp_path / "requirements.txt").write_text("")
+    issues = guard.scan_requirements_file(tmp_path / "requirements.txt")
+    assert issues == []
+
+
+def test_guard_scan_requirements_only_comments(guard, tmp_path):
+    """Guard scan ignores comment-only requirements."""
+    (tmp_path / "requirements.txt").write_text("# just a comment\n# another\n")
+    issues = guard.scan_requirements_file(tmp_path / "requirements.txt")
+    assert issues == []
+
+
+def test_normalize_preserves_lowercase():
+    """Normalize keeps lowercase names unchanged."""
+    assert _normalize_pkg_name("requests") == "requests"
+
+
+def test_levenshtein_both_empty():
+    """Levenshtein of two empty strings is 0."""
+    assert _levenshtein("", "") == 0

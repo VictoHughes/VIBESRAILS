@@ -7,6 +7,8 @@ from unittest import mock
 
 import pytest
 
+import vibesrails.learn as learn_module
+
 
 # ============================================
 # HAS_ANTHROPIC Flag Tests
@@ -603,3 +605,161 @@ suggested:
             assert "No response from Claude" in captured.out
         finally:
             os.chdir(original_cwd)
+
+
+# ============================================
+# Non-mock tests (real behavior)
+# ============================================
+
+
+class TestLearnModuleAttributes:
+    """Test module-level attributes without mocking."""
+
+    def test_learn_prompt_is_string(self):
+        """LEARN_PROMPT is a non-empty string."""
+        assert isinstance(learn_module.LEARN_PROMPT, str)
+        assert len(learn_module.LEARN_PROMPT) > 100
+
+    def test_learn_prompt_mentions_yaml(self):
+        """LEARN_PROMPT references YAML output format."""
+        assert "yaml" in learn_module.LEARN_PROMPT.lower()
+
+    def test_learn_prompt_mentions_regex(self):
+        """LEARN_PROMPT asks for regex patterns."""
+        assert "regex" in learn_module.LEARN_PROMPT.lower()
+
+    def test_learn_prompt_mentions_level(self):
+        """LEARN_PROMPT mentions severity levels."""
+        prompt = learn_module.LEARN_PROMPT
+        assert "BLOCK" in prompt or "WARN" in prompt
+
+    def test_has_anthropic_is_bool(self):
+        """HAS_ANTHROPIC is a boolean."""
+        assert isinstance(learn_module.HAS_ANTHROPIC, bool)
+
+    def test_sample_codebase_callable(self):
+        """sample_codebase is callable."""
+        assert callable(learn_module.sample_codebase)
+
+    def test_analyze_with_claude_callable(self):
+        """analyze_with_claude is callable."""
+        assert callable(learn_module.analyze_with_claude)
+
+    def test_run_learn_mode_callable(self):
+        """run_learn_mode is callable."""
+        assert callable(learn_module.run_learn_mode)
+
+
+class TestSampleCodebaseReal:
+    """Real file-based tests for sample_codebase."""
+
+    def test_sample_empty_dir(self, tmp_path, monkeypatch):
+        """sample_codebase returns '' when no files found."""
+        original_cwd = os.getcwd()
+        os.chdir(tmp_path)
+        try:
+            monkeypatch.setattr(
+                "vibesrails.learn.get_all_python_files", lambda: []
+            )
+            assert learn_module.sample_codebase() == ""
+        finally:
+            os.chdir(original_cwd)
+
+    def test_sample_single_file_content(self, tmp_path, monkeypatch):
+        """sample_codebase includes file content."""
+        f = tmp_path / "hello.py"
+        f.write_text("print('hello')")
+        original_cwd = os.getcwd()
+        os.chdir(tmp_path)
+        try:
+            monkeypatch.setattr(
+                "vibesrails.learn.get_all_python_files",
+                lambda: [str(f)],
+            )
+            result = learn_module.sample_codebase()
+            assert "print('hello')" in result
+        finally:
+            os.chdir(original_cwd)
+
+    def test_sample_respects_max_files(self, tmp_path, monkeypatch):
+        """sample_codebase limits file count."""
+        files = []
+        for i in range(10):
+            p = tmp_path / f"f{i}.py"
+            p.write_text(f"x = {i}")
+            files.append(str(p))
+        original_cwd = os.getcwd()
+        os.chdir(tmp_path)
+        try:
+            monkeypatch.setattr(
+                "vibesrails.learn.get_all_python_files", lambda: files
+            )
+            result = learn_module.sample_codebase(max_files=3)
+            assert result.count("# File:") == 3
+        finally:
+            os.chdir(original_cwd)
+
+    def test_sample_respects_max_lines(self, tmp_path, monkeypatch):
+        """sample_codebase truncates long files."""
+        f = tmp_path / "long.py"
+        f.write_text("\n".join(f"line{i}" for i in range(200)))
+        original_cwd = os.getcwd()
+        os.chdir(tmp_path)
+        try:
+            monkeypatch.setattr(
+                "vibesrails.learn.get_all_python_files", lambda: [str(f)]
+            )
+            result = learn_module.sample_codebase(max_lines_per_file=10)
+            assert "line9" in result
+            assert "line50" not in result
+        finally:
+            os.chdir(original_cwd)
+
+
+class TestLearnPromptContent:
+    """Pure non-mock tests for LEARN_PROMPT content."""
+
+    def test_prompt_has_yaml_format_example(self):
+        """LEARN_PROMPT includes YAML example block."""
+        assert "```yaml" in learn_module.LEARN_PROMPT
+
+    def test_prompt_mentions_id_field(self):
+        """LEARN_PROMPT describes the id field."""
+        assert "id:" in learn_module.LEARN_PROMPT
+
+    def test_prompt_mentions_message_field(self):
+        """LEARN_PROMPT describes the message field."""
+        assert "message:" in learn_module.LEARN_PROMPT
+
+    def test_prompt_mentions_level_field(self):
+        """LEARN_PROMPT describes the level field."""
+        assert "level:" in learn_module.LEARN_PROMPT
+
+    def test_prompt_mentions_suggested_section(self):
+        """LEARN_PROMPT references suggested section."""
+        assert "suggested:" in learn_module.LEARN_PROMPT
+
+    def test_prompt_warns_about_common(self):
+        """LEARN_PROMPT warns not to suggest common patterns."""
+        assert "common" in learn_module.LEARN_PROMPT.lower()
+
+    def test_prompt_mentions_code_samples(self):
+        """LEARN_PROMPT mentions code samples to analyze."""
+        assert "CODE SAMPLES" in learn_module.LEARN_PROMPT
+
+    def test_prompt_mentions_empty_response(self):
+        """LEARN_PROMPT describes empty response format."""
+        assert "suggested: []" in learn_module.LEARN_PROMPT
+
+    def test_analyze_returns_none_without_anthropic(self):
+        """analyze_with_claude returns None when HAS_ANTHROPIC is False."""
+        original = learn_module.HAS_ANTHROPIC
+        try:
+            learn_module.HAS_ANTHROPIC = False
+            assert learn_module.analyze_with_claude("code") is None
+        finally:
+            learn_module.HAS_ANTHROPIC = original
+
+    def test_module_has_rate_limiting_import(self):
+        """Learn module imports rate_limiting."""
+        assert hasattr(learn_module, "with_rate_limiting")

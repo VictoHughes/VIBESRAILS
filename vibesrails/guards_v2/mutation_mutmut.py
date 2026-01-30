@@ -3,11 +3,14 @@
 Handles subprocess calls to mutmut and output parsing.
 """
 
+import logging
 import shutil
 import subprocess
 from pathlib import Path
 
 from .dependency_audit import V2GuardIssue
+
+logger = logging.getLogger(__name__)
 
 GUARD_NAME = "MutationGuard"
 WARN_THRESHOLD = 0.60

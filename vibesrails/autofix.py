@@ -4,11 +4,14 @@ vibesrails auto-fix - Automatic fixes for common patterns.
 Only fixes patterns with clear, safe transformations.
 """
 
+import logging
 import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from .scanner import BLUE, GREEN, NC, RED, YELLOW
+from .scanner import BLUE, GREEN, NC, YELLOW
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -127,7 +130,7 @@ def apply_fix_to_file(
     """
     # Symlink + path traversal protection
     if not is_path_safe_for_fix(filepath):
-        print(f"{RED}BLOCKED: File path outside project: {filepath}{NC}")
+        logger.error("BLOCKED: File path outside project: %s", filepath)
         return []
 
     path = Path(filepath)
@@ -154,31 +157,40 @@ def apply_fix_to_file(
                 backup_path.relative_to(cwd)
                 backup_path.write_text(content)
             except ValueError:
-                print(f"{YELLOW}WARN: Backup path outside project, skipping backup{NC}")
+                logger.warning("Backup path outside project, skipping backup")
 
         path.write_text("\n".join(new_lines))
 
     return changes
 
 
+def _fix_single_file(filepath: str, config: dict, dry_run: bool, backup: bool) -> int:
+    """Apply fixes to a single file. Returns number of fixes applied."""
+    from .scanner import scan_file
+
+    results = scan_file(filepath, config)
+    file_fixes = 0
+    for result in results:
+        fix = get_fix_for_pattern(result.pattern_id)
+        if not fix:
+            continue
+        changes = apply_fix_to_file(filepath, fix, dry_run, backup)
+        for line_num, old, new in changes:
+            label = f"{YELLOW}WOULD FIX{NC}" if dry_run else f"{GREEN}FIXED{NC}"
+            print(f"{label} {filepath}:{line_num}")
+            print(f"  - {old}")
+            print(f"  + {new}")
+            file_fixes += 1
+    return file_fixes
+
+
 def run_autofix(
     config: dict,
     files: list[str],
     dry_run: bool = False,
-    backup: bool = True
+    backup: bool = True,
 ) -> int:
-    """Run auto-fix on files.
-
-    Args:
-        config: vibesrails config dict
-        files: List of files to fix
-        dry_run: If True, only show what would change
-        backup: If True, create .bak files before modifying
-
-    Returns number of files modified.
-    """
-    from .scanner import scan_file
-
+    """Run auto-fix on files. Returns number of files modified."""
     mode_str = " (dry run)" if dry_run else ""
     backup_str = "" if backup or dry_run else " (no backup)"
     print(f"{BLUE}vibesrails --fix{mode_str}{backup_str}{NC}")
@@ -188,42 +200,21 @@ def run_autofix(
     files_modified = 0
 
     for filepath in files:
-        # Scan to find issues
-        results = scan_file(filepath, config)
-
-        file_fixes = 0
-        for result in results:
-            fix = get_fix_for_pattern(result.pattern_id)
-            if not fix:
-                continue
-
-            changes = apply_fix_to_file(filepath, fix, dry_run, backup)
-
-            for line_num, old, new in changes:
-                if dry_run:
-                    print(f"{YELLOW}WOULD FIX{NC} {filepath}:{line_num}")
-                else:
-                    print(f"{GREEN}FIXED{NC} {filepath}:{line_num}")
-                print(f"  - {old}")
-                print(f"  + {new}")
-                file_fixes += 1
-
+        file_fixes = _fix_single_file(filepath, config, dry_run, backup)
         if file_fixes > 0:
             total_fixes += file_fixes
             if not dry_run:
                 files_modified += 1
 
     print("=" * 40)
-
     if dry_run:
         print(f"Would fix {total_fixes} issue(s)")
     else:
         print(f"Fixed {total_fixes} issue(s) in {files_modified} file(s)")
-
     return files_modified
 
 
-def show_fixable_patterns():
+def show_fixable_patterns() -> None:
     """Show all patterns that can be auto-fixed."""
     print(f"\n{BLUE}=== Auto-fixable Patterns ==={NC}\n")
 

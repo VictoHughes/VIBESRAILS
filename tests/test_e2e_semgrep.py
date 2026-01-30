@@ -16,6 +16,8 @@ from pathlib import Path
 import tempfile
 import os
 
+from vibesrails.e2e_semgrep import SemgrepAdapter  # noqa: F401
+
 def _setup_git_repo(tmpdir):
     """Initialize a git repo in tmpdir."""
     subprocess.run(["git", "init"], capture_output=True, cwd=str(tmpdir))

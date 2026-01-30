@@ -5,10 +5,14 @@ Handles: _print_v2_issues, _get_staged_diff, _run_senior_v2,
 and all --flag dispatch for v2 guards.
 """
 
+import argparse
+import logging
 import sys
 from pathlib import Path
 
 from .scanner import BLUE, GREEN, NC, RED, YELLOW
+
+logger = logging.getLogger(__name__)
 
 
 def _print_v2_issues(title: str, issues: list) -> None:
@@ -43,11 +47,40 @@ def _get_staged_diff() -> str:
         )
         return result.stdout
     except Exception:
+        logger.debug("Failed to get staged diff")
         return ""
 
 
-def _run_senior_v2() -> int:
-    """Run ALL v2 guards — comprehensive senior scan."""
+_SKIP_DIRS = ("__pycache__", ".venv", "venv", "node_modules", ".git", "build", "dist", ".egg")
+
+
+def _collect_v1_files(root: Path) -> list[tuple[str, str]]:
+    """Collect Python files for V1 guard scanning."""
+    files = []
+    for py_file in root.glob("**/*.py"):
+        if any(p in str(py_file) for p in _SKIP_DIRS):
+            continue
+        try:
+            files.append((str(py_file), py_file.read_text()))
+        except Exception:
+            logger.debug("Failed to read file for senior scan")
+    return files[:50]
+
+
+def _print_guard_status(name: str, issues: list) -> None:
+    """Print colored status line for a guard."""
+    blocks = sum(1 for i in issues if i.severity == "block")
+    warns = sum(1 for i in issues if i.severity == "warn")
+    if blocks:
+        print(f"{RED}🚫 {name}: {blocks} blocking, {warns} warnings{NC}")
+    elif warns:
+        print(f"{YELLOW}⚠️  {name}: {warns} warnings{NC}")
+    else:
+        print(f"{GREEN}✅ {name}: clean{NC}")
+
+
+def _get_v2_guards() -> list[tuple[str, object]]:
+    """Import and instantiate all V2 guards."""
     from .guards_v2.api_design import APIDesignGuard
     from .guards_v2.architecture_drift import ArchitectureDriftGuard
     from .guards_v2.complexity import ComplexityGuard
@@ -61,43 +94,8 @@ def _run_senior_v2() -> int:
     from .guards_v2.performance import PerformanceGuard
     from .guards_v2.test_integrity import TestIntegrityGuard
     from .guards_v2.type_safety import TypeSafetyGuard
-    from .senior_mode.guards import SeniorGuards
 
-    root = Path.cwd()
-    all_issues = []
-
-    print(f"\n{BLUE}╔══════════════════════════════════════════════╗{NC}")
-    print(f"{BLUE}║     🎓 VIBESRAILS v2 — SENIOR SCAN          ║{NC}")
-    print(f"{BLUE}╚══════════════════════════════════════════════╝{NC}\n")
-
-    print(f"{BLUE}── V1 Guards (Senior Mode) ──{NC}")
-    senior = SeniorGuards()
-    v1_files = []
-    for py_file in root.glob("**/*.py"):
-        if any(p in str(py_file) for p in (
-            "__pycache__", ".venv", "venv", "node_modules",
-            ".git", "build", "dist", ".egg"
-        )):
-            continue
-        try:
-            v1_files.append((str(py_file), py_file.read_text()))
-        except Exception:
-            pass
-    v1_issues = senior.check_all(
-        code_diff="", files=v1_files[:50]
-    )
-    v1_blocks = sum(1 for i in v1_issues if i.severity == "block")
-    v1_warns = sum(1 for i in v1_issues if i.severity == "warn")
-    if v1_blocks:
-        print(f"{RED}🚫 Senior Guards: {v1_blocks} blocking, {v1_warns} warnings{NC}")
-    elif v1_warns:
-        print(f"{YELLOW}⚠️  Senior Guards: {v1_warns} warnings{NC}")
-    else:
-        print(f"{GREEN}✅ Senior Guards: clean{NC}")
-
-    print(f"\n{BLUE}── V2 Guards ──{NC}")
-
-    guards = [
+    return [
         ("Dependency Audit", DependencyAuditGuard()),
         ("Performance", PerformanceGuard()),
         ("Complexity", ComplexityGuard()),
@@ -113,17 +111,27 @@ def _run_senior_v2() -> int:
         ("Architecture Drift", ArchitectureDriftGuard()),
     ]
 
-    for name, guard in guards:
+
+def _run_senior_v2() -> int:
+    """Run ALL v2 guards — comprehensive senior scan."""
+    from .senior_mode.guards import SeniorGuards
+
+    root = Path.cwd()
+    all_issues = []
+
+    print(f"\n{BLUE}╔══════════════════════════════════════════════╗{NC}")
+    print(f"{BLUE}║     🎓 VIBESRAILS v2 — SENIOR SCAN          ║{NC}")
+    print(f"{BLUE}╚══════════════════════════════════════════════╝{NC}\n")
+
+    print(f"{BLUE}── V1 Guards (Senior Mode) ──{NC}")
+    v1_issues = SeniorGuards().check_all(code_diff="", files=_collect_v1_files(root))
+    _print_guard_status("Senior Guards", v1_issues)
+
+    print(f"\n{BLUE}── V2 Guards ──{NC}")
+    for name, guard in _get_v2_guards():
         issues = guard.scan(root)
         all_issues.extend(issues)
-        blocks = sum(1 for i in issues if i.severity == "block")
-        warns = sum(1 for i in issues if i.severity == "warn")
-        if blocks:
-            print(f"{RED}🚫 {name}: {blocks} blocking, {warns} warnings{NC}")
-        elif warns:
-            print(f"{YELLOW}⚠️  {name}: {warns} warnings{NC}")
-        else:
-            print(f"{GREEN}✅ {name}: clean{NC}")
+        _print_guard_status(name, issues)
 
     total_blocks = sum(1 for i in all_issues if i.severity == "block")
     total_warns = sum(1 for i in all_issues if i.severity == "warn")
@@ -133,38 +141,37 @@ def _run_senior_v2() -> int:
     if total_blocks:
         print(f"\n{RED}🚫 BLOCKED — Fix blocking issues before shipping{NC}")
         return 1
-    elif total_warns:
+    if total_warns:
         print(f"\n{YELLOW}⚠️  Warnings found — review before shipping{NC}")
     else:
         print(f"\n{GREEN}✅ All clear — ship it!{NC}")
     return 0
 
 
+def _run_guard_and_exit(guard_cls, title: str) -> None:
+    """Run a single guard, print results, and exit."""
+    issues = guard_cls().scan(Path.cwd())
+    _print_v2_issues(title, issues)
+    sys.exit(1 if any(i.severity == "block" for i in issues) else 0)
+
+
 def _dispatch_single_guard(args) -> None:
     """Handle individual guard flags (audit_deps, complexity, dead_code, etc.)."""
     if args.audit_deps:
         from .guards_v2.dependency_audit import DependencyAuditGuard
-        issues = DependencyAuditGuard().scan(Path.cwd())
-        _print_v2_issues("Dependency Audit", issues)
-        sys.exit(1 if any(i.severity == "block" for i in issues) else 0)
+        _run_guard_and_exit(DependencyAuditGuard, "Dependency Audit")
 
     if args.complexity:
         from .guards_v2.complexity import ComplexityGuard
-        issues = ComplexityGuard().scan(Path.cwd())
-        _print_v2_issues("Complexity Analysis", issues)
-        sys.exit(1 if any(i.severity == "block" for i in issues) else 0)
+        _run_guard_and_exit(ComplexityGuard, "Complexity Analysis")
 
     if args.dead_code:
         from .guards_v2.dead_code import DeadCodeGuard
-        issues = DeadCodeGuard().scan(Path.cwd())
-        _print_v2_issues("Dead Code Detection", issues)
-        sys.exit(1 if any(i.severity == "block" for i in issues) else 0)
+        _run_guard_and_exit(DeadCodeGuard, "Dead Code Detection")
 
     if args.env_check:
         from .guards_v2.env_safety import EnvSafetyGuard
-        issues = EnvSafetyGuard().scan(Path.cwd())
-        _print_v2_issues("Environment Safety", issues)
-        sys.exit(1 if any(i.severity == "block" for i in issues) else 0)
+        _run_guard_and_exit(EnvSafetyGuard, "Environment Safety")
 
     if args.pr_check:
         from .guards_v2.pr_checklist import PRChecklistGuard
@@ -182,8 +189,7 @@ def _dispatch_single_guard(args) -> None:
 
     if args.upgrade:
         from .advisors.upgrade_advisor import UpgradeAdvisor
-        advisor = UpgradeAdvisor()
-        print(advisor.generate_report(Path.cwd()))
+        print(UpgradeAdvisor().generate_report(Path.cwd()))
         sys.exit(0)
 
 
@@ -241,7 +247,7 @@ def _dispatch_test_mutation(args) -> None:
         sys.exit(_run_senior_v2())
 
 
-def dispatch_v2_commands(args) -> bool:
+def dispatch_v2_commands(args: argparse.Namespace) -> bool:
     """Dispatch v2 guard commands. Returns True if a command was handled."""
     _dispatch_single_guard(args)
     _dispatch_pack_commands(args)

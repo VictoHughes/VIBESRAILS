@@ -1,6 +1,7 @@
 """Upgrade Advisor — analyzes dependencies and recommends upgrades."""
 
 import json
+import logging
 import re
 import urllib.error
 import urllib.request
@@ -8,6 +9,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ..guards_v2.dependency_audit import V2GuardIssue
+
+logger = logging.getLogger(__name__)
 
 _PYPI_TIMEOUT = 5
 
@@ -252,6 +255,7 @@ class UpgradeAdvisor:
                 filepath.read_text(encoding="utf-8", errors="ignore")
             )
         except Exception:
+            logger.debug("Failed to parse pyproject.toml")
             return []
 
         results: list[tuple[str, str | None, str]] = []
@@ -289,5 +293,6 @@ class UpgradeAdvisor:
                 self._cache[normalized_name] = data
                 return data
         except Exception:
+            logger.debug("Failed to fetch PyPI info for %s", normalized_name)
             self._cache[normalized_name] = None
             return None

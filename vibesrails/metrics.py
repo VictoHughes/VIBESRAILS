@@ -7,10 +7,13 @@ No telemetry - all data stays on user's machine.
 """
 
 import json
+import logging
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass

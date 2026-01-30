@@ -1,8 +1,11 @@
 """Function and class signature indexing."""
 import ast
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -31,7 +34,7 @@ class SignatureIndexer:
             try:
                 signatures.extend(self._extract_signatures(py_file))
             except Exception:
-                # Skip files with syntax errors
+                logger.debug("Skipping file with syntax errors")
                 continue
 
         return signatures
@@ -42,6 +45,7 @@ class SignatureIndexer:
             content = file_path.read_text()
             tree = ast.parse(content)
         except Exception:
+            logger.debug("Failed to parse file for signatures")
             return []
 
         signatures = []

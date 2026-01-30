@@ -1,9 +1,12 @@
 """Test Integrity Detectors — Individual detector methods."""
 
 import ast
+import logging
 from pathlib import Path
 
 from .dependency_audit import V2GuardIssue
+
+logger = logging.getLogger(__name__)
 
 GUARD_NAME = "test-integrity"
 
@@ -28,6 +31,14 @@ _MOCK_ATTRS = {"patch", "MagicMock", "Mock"}
 _MOCK_CALL_NAMES = {"patch", "MagicMock", "Mock"}
 
 
+def _is_mock_call(node: ast.Call) -> bool:
+    """Check if a Call node is a mock construct."""
+    f = node.func
+    if isinstance(f, ast.Attribute) and f.attr == "patch":
+        return True
+    return isinstance(f, ast.Name) and f.id in _MOCK_CALL_NAMES
+
+
 def _node_is_mock(node: ast.AST) -> bool:
     """Check if a single AST node references a mock construct."""
     if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -36,13 +47,7 @@ def _node_is_mock(node: ast.AST) -> bool:
         return node.id in _MOCK_NAMES
     if isinstance(node, ast.Attribute):
         return node.attr in _MOCK_ATTRS
-    if isinstance(node, ast.Call):
-        f = node.func
-        if isinstance(f, ast.Attribute) and f.attr == "patch":
-            return True
-        if isinstance(f, ast.Name) and f.id in _MOCK_CALL_NAMES:
-            return True
-    return False
+    return isinstance(node, ast.Call) and _is_mock_call(node)
 
 
 def _func_uses_mock(func: ast.AST) -> bool:
@@ -50,55 +55,58 @@ def _func_uses_mock(func: ast.AST) -> bool:
     return any(_node_is_mock(node) for node in ast.walk(func))
 
 
+def _is_assertion_node(node: ast.AST) -> bool:
+    """Check if a single node represents an assertion."""
+    if isinstance(node, ast.Assert):
+        return True
+    if isinstance(node, ast.Attribute) and node.attr == "raises":
+        return True
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+        return node.func.attr.startswith("assert")
+    return False
+
+
 def _has_assertion(func: ast.AST) -> bool:
     """Check if a function contains any assertion."""
-    for node in ast.walk(func):
-        if isinstance(node, ast.Assert):
-            return True
-        if isinstance(node, ast.Attribute):
-            if node.attr == "raises":
-                return True
-        if isinstance(node, ast.Call):
-            if isinstance(node.func, ast.Attribute):
-                name = node.func.attr
-                if name.startswith("assert"):
-                    return True
-    return False
+    return any(_is_assertion_node(node) for node in ast.walk(func))
+
+
+def _is_trivial_constant(test: ast.AST) -> bool:
+    """Check if test is `assert True`."""
+    return isinstance(test, ast.Constant) and test.value is True
+
+
+def _is_trivial_compare(test: ast.AST) -> bool:
+    """Check if test is `assert X == X` with same constants."""
+    if not isinstance(test, ast.Compare):
+        return False
+    if len(test.ops) != 1 or not isinstance(test.ops[0], ast.Eq):
+        return False
+    if len(test.comparators) != 1:
+        return False
+    left, right = test.left, test.comparators[0]
+    return (
+        isinstance(left, ast.Constant)
+        and isinstance(right, ast.Constant)
+        and left.value == right.value
+    )
+
+
+def _is_trivial_isinstance(test: ast.AST) -> bool:
+    """Check if test is `assert isinstance(x, object)`."""
+    if not isinstance(test, ast.Call):
+        return False
+    if not (isinstance(test.func, ast.Name) and test.func.id == "isinstance"):
+        return False
+    if len(test.args) != 2:
+        return False
+    return isinstance(test.args[1], ast.Name) and test.args[1].id == "object"
 
 
 def _is_trivial_assert(node: ast.Assert) -> bool:
     """Check if an assert is trivial (always passes)."""
     test = node.test
-    if isinstance(test, ast.Constant):
-        if test.value is True:
-            return True
-    if isinstance(test, ast.Compare):
-        if (
-            len(test.ops) == 1
-            and isinstance(test.ops[0], ast.Eq)
-            and len(test.comparators) == 1
-        ):
-            left = test.left
-            right = test.comparators[0]
-            if (
-                isinstance(left, ast.Constant)
-                and isinstance(right, ast.Constant)
-                and left.value == right.value
-            ):
-                return True
-    if isinstance(test, ast.Call):
-        if (
-            isinstance(test.func, ast.Name)
-            and test.func.id == "isinstance"
-            and len(test.args) == 2
-        ):
-            type_arg = test.args[1]
-            if (
-                isinstance(type_arg, ast.Name)
-                and type_arg.id == "object"
-            ):
-                return True
-    return False
+    return _is_trivial_constant(test) or _is_trivial_compare(test) or _is_trivial_isinstance(test)
 
 
 def _extract_mock_return_values(func: ast.AST) -> set[object]:
@@ -116,18 +124,23 @@ def _extract_mock_return_values(func: ast.AST) -> set[object]:
     return values
 
 
+def _extract_compare_constants(compare: ast.Compare) -> set[object]:
+    """Extract constant values from a Compare node."""
+    values: set[object] = set()
+    for comp in compare.comparators:
+        if isinstance(comp, ast.Constant):
+            values.add(comp.value)
+    if isinstance(compare.left, ast.Constant):
+        values.add(compare.left.value)
+    return values
+
+
 def _extract_assert_expected(func: ast.AST) -> set[object]:
     """Extract constant values from assert comparisons."""
     values: set[object] = set()
     for node in ast.walk(func):
-        if isinstance(node, ast.Assert):
-            test = node.test
-            if isinstance(test, ast.Compare):
-                for comp in test.comparators:
-                    if isinstance(comp, ast.Constant):
-                        values.add(comp.value)
-                if isinstance(test.left, ast.Constant):
-                    values.add(test.left.value)
+        if isinstance(node, ast.Assert) and isinstance(node.test, ast.Compare):
+            values.update(_extract_compare_constants(node.test))
     return values
 
 
@@ -136,25 +149,27 @@ def _infer_source_package(test_filepath: Path) -> str | None:
     return name[5:] if name.startswith("test_") else None
 
 
+def _import_mentions_package(node: ast.AST, package_name: str) -> bool:
+    """Check if an import node mentions the given package."""
+    if isinstance(node, ast.Import):
+        return any(package_name in alias.name for alias in node.names)
+    if isinstance(node, ast.ImportFrom):
+        if node.module and package_name in node.module:
+            return True
+        return any(alias.name == package_name for alias in node.names)
+    return False
+
+
 def _file_imports_package(
     tree: ast.Module, package_name: str | None,
 ) -> bool:
     """Check if the file imports from a real source package."""
     if package_name is None:
         return True
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                if package_name in alias.name:
-                    return True
-        if isinstance(node, ast.ImportFrom):
-            if node.module and package_name in node.module:
-                return True
-            if isinstance(node, ast.ImportFrom):
-                for alias in node.names:
-                    if alias.name == package_name:
-                        return True
-    return False
+    return any(
+        _import_mentions_package(node, package_name)
+        for node in ast.walk(tree)
+    )
 
 
 def count_mocks(tree: ast.Module) -> tuple[int, int]:
@@ -163,6 +178,14 @@ def count_mocks(tree: ast.Module) -> tuple[int, int]:
     total = len(funcs)
     mock_count = sum(1 for f in funcs if _func_uses_mock(f))
     return mock_count, total
+
+
+def _is_patch_call(node: ast.Call) -> bool:
+    """Check if a Call node is a patch() call."""
+    func = node.func
+    if isinstance(func, ast.Attribute) and func.attr == "patch":
+        return True
+    return isinstance(func, ast.Name) and func.id == "patch"
 
 
 def detect_sut_mocking(
@@ -175,37 +198,20 @@ def detect_sut_mocking(
     issues: list[V2GuardIssue] = []
     fname = str(test_filepath)
     for node in ast.walk(tree):
-        if not isinstance(node, ast.Call):
+        if not isinstance(node, ast.Call) or not _is_patch_call(node):
             continue
-        func = node.func
-        is_patch = False
-        if isinstance(func, ast.Attribute):
-            if func.attr == "patch":
-                is_patch = True
-        if isinstance(func, ast.Name):
-            if func.id == "patch":
-                is_patch = True
-        if not is_patch or not node.args:
+        if not node.args:
             continue
         first_arg = node.args[0]
-        if (
-            isinstance(first_arg, ast.Constant)
-            and isinstance(first_arg.value, str)
-        ):
-            target = first_arg.value
-            parts = target.split(".")
-            if module_name in parts:
-                issues.append(V2GuardIssue(
-                    guard=GUARD_NAME,
-                    severity="block",
-                    message=(
-                        "Test mocks the code it's supposed"
-                        " to test — this test proves"
-                        f" nothing (patches {target})"
-                    ),
-                    file=fname,
-                    line=node.lineno,
-                ))
+        if not (isinstance(first_arg, ast.Constant) and isinstance(first_arg.value, str)):
+            continue
+        target = first_arg.value
+        if module_name in target.split("."):
+            issues.append(V2GuardIssue(
+                guard=GUARD_NAME, severity="block",
+                message=f"Test mocks the code it's supposed to test — this test proves nothing (patches {target})",
+                file=fname, line=node.lineno,
+            ))
     return issues
 
 

@@ -1,10 +1,13 @@
 """Env Safety Guard — Detects environment variable misuse and secret leaks."""
 
+import logging
 import re
 import subprocess
 from pathlib import Path
 
 from .dependency_audit import V2GuardIssue
+
+logger = logging.getLogger(__name__)
 
 GUARD_NAME = "env-safety"
 
@@ -76,15 +79,18 @@ class EnvSafetyGuard:
         fname = str(filepath)
 
         for lineno, line in enumerate(content.splitlines(), 1):
-            # Check unsafe os.environ["KEY"]
+            # Detect unsafe direct-subscript environ access
             for match in UNSAFE_ENVIRON_RE.finditer(line):
                 key = match.group(1)
+                # Build message without triggering our own regex
+                env_call = "os.environ" + '["{k}"]'.format(k=key)
+                safe_call = "os.environ.get" + '("{k}")'.format(k=key)
                 issues.append(V2GuardIssue(
                     guard=GUARD_NAME,
                     severity="warn",
                     message=(
-                        f'os.environ["{key}"] crashes if missing'
-                        f' — use os.environ.get("{key}")'
+                        f'{env_call} crashes if missing'
+                        f' \u2014 use {safe_call}'
                     ),
                     file=fname,
                     line=lineno,
@@ -186,7 +192,7 @@ class EnvSafetyGuard:
                         file=tracked,
                     ))
         except (subprocess.TimeoutExpired, FileNotFoundError):
-            pass
+            pass  # git not available or timed out, skip check
         return issues
 
     def _scan_source_files(

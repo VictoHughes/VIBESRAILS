@@ -84,8 +84,8 @@ def _parse_args():
     return parser.parse_args()
 
 
-def _handle_standalone_commands(args):
-    """Handle commands that don't need a config file. Returns True if handled."""
+def _handle_info_commands(args) -> None:
+    """Handle stats/info commands. Exits if handled."""
     if args.guardian_stats:
         from .ai_guardian import show_guardian_stats
         show_guardian_stats()
@@ -93,8 +93,7 @@ def _handle_standalone_commands(args):
 
     if args.stats:
         from .metrics import MetricsCollector
-        collector = MetricsCollector()
-        collector.show_stats()
+        MetricsCollector().show_stats()
         sys.exit(0)
 
     if args.fixable:
@@ -107,9 +106,9 @@ def _handle_standalone_commands(args):
         config_path = Path(args.config) if args.config else find_config()
         sys.exit(0 if run_watch_mode(config_path) else 1)
 
-    # V2 Guards (don't need vibesrails.yaml config)
-    dispatch_v2_commands(args)
 
+def _handle_setup_commands(args) -> None:
+    """Handle setup/install commands. Exits if handled."""
     if args.learn:
         from .learn import run_learn_mode
         sys.exit(0 if run_learn_mode() else 1)
@@ -120,12 +119,17 @@ def _handle_standalone_commands(args):
 
     if args.init:
         sys.exit(0 if init_config() else 1)
-
     if args.hook:
         sys.exit(0 if install_hook() else 1)
-
     if args.uninstall:
         sys.exit(0 if uninstall() else 1)
+
+
+def _handle_standalone_commands(args):
+    """Handle commands that don't need a config file. Returns True if handled."""
+    _handle_info_commands(args)
+    dispatch_v2_commands(args)
+    _handle_setup_commands(args)
 
 
 def _handle_config_commands(args, config, files):
@@ -150,7 +154,7 @@ def _handle_config_commands(args, config, files):
     sys.exit(run_scan(config, files))
 
 
-def main():
+def main() -> None:
     """CLI entry point."""
     # Handle learn command (positional argument)
     if len(sys.argv) > 1 and sys.argv[1] == "learn":

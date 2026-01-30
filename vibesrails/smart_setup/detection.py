@@ -4,9 +4,12 @@ vibesrails Smart Setup - Project Detection.
 Functions to detect project type, configs, secrets, and architecture.
 """
 
+import logging
 import re
 import shutil
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # CONSTANTS
@@ -96,6 +99,7 @@ def detect_project_type(project_root: Path) -> list[str]:
                             detected.append(project_type)
                             break
                 except Exception:
+                    logger.debug("Failed to read file during project detection")
                     continue
                 if project_type in detected:
                     break
@@ -133,6 +137,7 @@ def detect_secrets_risk(project_root: Path) -> bool:
                 if re.search(pattern, content, re.IGNORECASE):
                     return True
         except Exception:
+            logger.debug("Failed to read file during secret detection")
             continue
 
     return False

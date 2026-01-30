@@ -4,10 +4,13 @@ vibesrails Smart Setup - Config Generation.
 Functions to generate vibesrails.yaml and .importlinter configs.
 """
 
+import logging
 from pathlib import Path
 
 from .detection import ARCHITECTURE_TOOLS, PROJECT_SIGNATURES
 from .i18n import LANG
+
+logger = logging.getLogger(__name__)
 
 
 def generate_importlinter_config(project_root: Path, layers: list[str]) -> str:

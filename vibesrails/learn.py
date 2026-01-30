@@ -5,6 +5,7 @@ Analyzes codebase and suggests security/quality patterns to add to vibesrails.ya
 Human validates all suggestions before they're added.
 """
 
+import logging
 import random
 from pathlib import Path
 
@@ -17,6 +18,8 @@ except ImportError:
 
 from .rate_limiting import with_rate_limiting
 from .scanner import BLUE, GREEN, NC, RED, YELLOW, get_all_python_files
+
+logger = logging.getLogger(__name__)
 
 LEARN_PROMPT = """You are a security and code quality expert analyzing a Python codebase.
 
@@ -136,6 +139,7 @@ def run_learn_mode() -> bool:
     try:
         result = analyze_with_claude(code_samples)
     except Exception as e:
+        logger.error("Claude API error: %s", e)
         print(f"{RED}Claude API error: {e}{NC}")
         print("Make sure ANTHROPIC_API_KEY is set")
         return False

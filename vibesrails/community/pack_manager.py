@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import json
+import logging
 import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any
 
 import yaml
+
+logger = logging.getLogger(__name__)
 
 PACKS_DIR = ".vibesrails/packs"
 
@@ -94,6 +97,7 @@ class PackManager:
         try:
             content = self._fetch(url)
         except Exception:
+            logger.error("Failed to fetch pack from %s", url)
             return False
 
         if not self.validate_pack(content):
@@ -182,6 +186,6 @@ class PackManager:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _default_fetch(url: str) -> str:  # pragma: no cover
+    def _default_fetch(url: str) -> str:  # pragma: no cover — network I/O, tested via mock injection
         with urllib.request.urlopen(url, timeout=15) as resp:
             return resp.read().decode("utf-8")

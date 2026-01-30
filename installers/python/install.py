@@ -12,7 +12,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 
 
-def main():
+def main() -> None:
     """CLI entry point."""
     target = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path.cwd()
     print(f"=== VibesRails Installer ===")

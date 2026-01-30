@@ -3,6 +3,7 @@
 Orchestrates Semgrep + VibesRails scanning and result merging.
 """
 
+import logging
 import time
 
 from .ai_guardian import (
@@ -17,6 +18,8 @@ from .metrics import ScanTrackingData, track_scan
 from .result_merger import ResultMerger
 from .scanner import BLUE, GREEN, NC, RED, YELLOW, ScanResult, scan_file
 from .semgrep_adapter import SemgrepAdapter
+
+logger = logging.getLogger(__name__)
 
 
 def _setup_semgrep(config: dict) -> tuple[SemgrepAdapter, bool]:
@@ -51,6 +54,16 @@ def _run_vibesrails_scan(config: dict, files: list[str]) -> tuple[list, bool, st
     return results, guardian_active, agent_name
 
 
+def _print_scan_stats(stats: dict) -> None:
+    """Print scan statistics."""
+    print(f"{BLUE}📊 Scan Statistics:{NC}")
+    print(f"   Semgrep:     {stats['semgrep']} issues")
+    print(f"   VibesRails:  {stats['vibesrails']} issues")
+    if stats['duplicates'] > 0:
+        print(f"   Duplicates:  {stats['duplicates']} (merged)")
+    print(f"   Total:       {stats['total']} unique issues\n")
+
+
 def run_scan(config: dict, files: list[str]) -> int:
     """Run scan with Semgrep + VibesRails orchestration and return exit code."""
     start_time = time.time()
@@ -64,25 +77,18 @@ def run_scan(config: dict, files: list[str]) -> int:
     print(f"Scanning {len(files)} file(s)...\n")
 
     semgrep, semgrep_available = _setup_semgrep(config)
-
     semgrep_results = []
     if semgrep_available and semgrep.enabled:
         print("🔍 Running Semgrep scan...")
         semgrep_results = semgrep.scan(files)
         print(f"   Found {len(semgrep_results)} issue(s)")
 
-    vibesrails_results, guardian_active, agent_name = _run_vibesrails_scan(config, files)
-
+    vr_results, guardian_active, agent_name = _run_vibesrails_scan(config, files)
     merger = ResultMerger()
-    unified_results, stats = merger.merge(semgrep_results, vibesrails_results)
+    unified_results, stats = merger.merge(semgrep_results, vr_results)
 
-    if semgrep_results or vibesrails_results:
-        print(f"{BLUE}📊 Scan Statistics:{NC}")
-        print(f"   Semgrep:     {stats['semgrep']} issues")
-        print(f"   VibesRails:  {stats['vibesrails']} issues")
-        if stats['duplicates'] > 0:
-            print(f"   Duplicates:  {stats['duplicates']} (merged)")
-        print(f"   Total:       {stats['total']} unique issues\n")
+    if semgrep_results or vr_results:
+        _print_scan_stats(stats)
 
     blocking = [r for r in unified_results if r.level == "BLOCK"]
     warnings = [r for r in unified_results if r.level == "WARN"]
@@ -91,11 +97,10 @@ def run_scan(config: dict, files: list[str]) -> int:
     print(f"BLOCKING: {len(blocking)} | WARNINGS: {len(warnings)}")
 
     exit_code = 1 if blocking else 0
-    duration_ms = int((time.time() - start_time) * 1000)
     track_scan(data=ScanTrackingData(
-        duration_ms=duration_ms, files_scanned=len(files),
+        duration_ms=int((time.time() - start_time) * 1000), files_scanned=len(files),
         semgrep_enabled=semgrep.enabled and semgrep_available,
-        semgrep_issues=len(semgrep_results), vibesrails_issues=len(vibesrails_results),
+        semgrep_issues=len(semgrep_results), vibesrails_issues=len(vr_results),
         duplicates=stats.get('duplicates', 0), total_issues=len(unified_results),
         blocking_issues=len(blocking), warnings=len(warnings),
         exit_code=exit_code, guardian_active=guardian_active,
@@ -113,55 +118,24 @@ def run_scan(config: dict, files: list[str]) -> int:
 
 def _run_senior_mode_checks(files: list[str]) -> None:
     """Run Senior Mode checks (architecture + guards)."""
-    import subprocess
     from pathlib import Path
 
+    from .cli_setup import _get_cached_diff, _read_file_contents
     from .senior_mode import ArchitectureMapper, SeniorGuards
     from .senior_mode.report import SeniorReport
 
     project_root = Path.cwd()
-
-    # 1. Update architecture map
     print(f"{BLUE}[Senior Mode] Updating ARCHITECTURE.md...{NC}")
-    mapper = ArchitectureMapper(project_root)
-    mapper.save()
+    ArchitectureMapper(project_root).save()
 
-    # 2. Get diff info
-    diff_result = subprocess.run(
-        ["git", "diff", "--cached"],
-        capture_output=True, text=True
+    code_diff = _get_cached_diff()
+    test_diff = _get_cached_diff("--", "tests/")
+    file_contents = _read_file_contents(files)
+
+    issues = SeniorGuards().check_all(
+        code_diff=code_diff, test_diff=test_diff, files=file_contents,
     )
-    code_diff = diff_result.stdout
-
-    test_diff_result = subprocess.run(
-        ["git", "diff", "--cached", "--", "tests/"],
-        capture_output=True, text=True
-    )
-    test_diff = test_diff_result.stdout
-
-    # 3. Run guards
-    guards = SeniorGuards()
-
-    file_contents = []
-    for f in files:
-        try:
-            content = Path(f).read_text()
-            file_contents.append((f, content))
-        except Exception:
-            pass
-
-    issues = guards.check_all(
-        code_diff=code_diff,
-        test_diff=test_diff,
-        files=file_contents,
-    )
-
-    # 4. Generate report (without Claude review for auto mode - too slow)
-    report = SeniorReport(
-        guard_issues=issues,
-        architecture_updated=True,
-    )
-
+    report = SeniorReport(guard_issues=issues, architecture_updated=True)
     print(report.generate())
 
 

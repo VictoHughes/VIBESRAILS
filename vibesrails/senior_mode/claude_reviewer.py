@@ -1,5 +1,6 @@
 """Targeted Claude review for sensitive changes."""
 import json
+import logging
 import re
 from dataclasses import dataclass, field
 
@@ -10,6 +11,8 @@ except ImportError:
     HAS_ANTHROPIC = False
 
 from ..rate_limiting import with_rate_limiting
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -98,6 +101,7 @@ class ClaudeReviewer:
                 suggestions=data.get("suggestions", []),
             )
         except Exception as e:
+            logger.error("Claude review failed: %s", e)
             return ReviewResult(
                 score=0,
                 reviewed=False,
