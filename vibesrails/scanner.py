@@ -450,7 +450,7 @@ def main():
     print(f"BLOCKING: {len(blocking)} | WARNINGS: {len(warnings)}")
 
     if blocking:
-        print(f"\n{RED}Fix blocking issues or use: git commit --no-verify{NC}")
+        print(f"\n{RED}Fix blocking issues before committing.{NC}")
         sys.exit(1)
 
     print(f"\n{GREEN}vibesrails: PASSED{NC}")

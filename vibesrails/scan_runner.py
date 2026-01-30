@@ -115,7 +115,7 @@ def run_scan(config: dict, files: list[str]) -> int:
     )
 
     if blocking:
-        print(f"\n{RED}Fix blocking issues or use: git commit --no-verify{NC}")
+        print(f"\n{RED}Fix blocking issues before committing.{NC}")
         return 1
 
     print(f"\n{GREEN}VibesRails: PASSED{NC}")

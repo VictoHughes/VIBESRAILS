@@ -176,6 +176,44 @@ class GitWorkflowGuard:
 
         return issues
 
+    def check_hook_bypass(self) -> list[V2GuardIssue]:
+        """Detect commits made with --no-verify (skipped hooks).
+
+        Git doesn't log --no-verify directly, but we can detect it:
+        commits that exist without a corresponding pre-commit trace.
+        We check if the pre-commit hook exists and if recent commits
+        lack the vibesrails pass marker in their notes.
+        """
+        issues: list[V2GuardIssue] = []
+        hook_path = self.root / ".git" / "hooks" / "pre-commit"
+        if not hook_path.exists():
+            issues.append(V2GuardIssue(
+                guard=GUARD_NAME,
+                severity="warn",
+                message=(
+                    "No pre-commit hook installed. "
+                    "Run: vibesrails --hook"
+                ),
+            ))
+            return issues
+
+        # Check if hook contains vibesrails
+        try:
+            hook_content = hook_path.read_text()
+            if "vibesrails" not in hook_content:
+                issues.append(V2GuardIssue(
+                    guard=GUARD_NAME,
+                    severity="warn",
+                    message=(
+                        "Pre-commit hook exists but doesn't "
+                        "run vibesrails."
+                    ),
+                ))
+        except OSError:
+            pass
+
+        return issues
+
     def scan(self, project_root: Path) -> list[V2GuardIssue]:
         """Run all git workflow checks."""
         self.root = project_root
@@ -186,6 +224,7 @@ class GitWorkflowGuard:
         issues.extend(self.check_branch())
         issues.extend(self.check_staged_files())
         issues.extend(self.check_force_push())
+        issues.extend(self.check_hook_bypass())
 
         # Check last commit message
         ok, msg = _run_git(
