@@ -14,7 +14,7 @@ CRITICAL_PATTERNS = [
         "Hardcoded secret detected",
     ),
     (
-        r"(?:AKIA|sk-|ghp_|gho_)[A-Za-z0-9]{10,}",
+        r"(?:AKIA|sk-|ghp_|gho_)[A-Za-z0-9_\-]{10,}",
         "API key detected",
     ),
     (
@@ -22,7 +22,7 @@ CRITICAL_PATTERNS = [
         "SQL injection via f-string",
     ),
     (
-        r"\.format\(.*\).*(?:SELECT|INSERT|UPDATE|DELETE)",
+        r"(?:SELECT|INSERT|UPDATE|DELETE)\b.*\.format\s*\(",
         "SQL injection via .format()",
     ),
     (

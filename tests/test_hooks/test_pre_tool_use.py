@@ -128,6 +128,31 @@ def test_skips_vibesrails_ignore():
     assert result.returncode == 0
 
 
+def test_blocks_sql_injection_format():
+    """SQL injection via .format() exits 1."""
+    result = _run_hook({
+        "tool_name": "Write",
+        "tool_input": {
+            "file_path": "db.py",
+            "content": 'query = "SELECT * FROM users WHERE id = {}".format(user_id)\n',
+        },
+    })
+    assert result.returncode == 1
+    assert "SQL injection" in result.stdout
+
+
+def test_blocks_sk_proj_key():
+    """OpenAI sk-proj- keys are blocked."""
+    result = _run_hook({
+        "tool_name": "Write",
+        "tool_input": {
+            "file_path": "config.py",
+            "content": 'key = "sk-proj-abcdefghij1234567890"\n',
+        },
+    })
+    assert result.returncode == 1
+
+
 def test_handles_malformed_json():
     """Malformed input exits 0 gracefully."""
     result = subprocess.run(
