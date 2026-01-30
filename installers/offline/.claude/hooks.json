@@ -26,6 +26,29 @@
         "type": "prompt",
         "prompt": "Si .claude/current-task.md existe et contient des tâches, utilise TaskCreate pour recréer la TaskList à partir de son contenu. Cela restaure l'état après compaction/restart.",
         "description": "Restore TaskList from saved state"
+      },
+      {
+        "type": "command",
+        "command": "python3 -c \"from vibesrails.hooks.queue_processor import format_pending_summary; from pathlib import Path; s=format_pending_summary(Path('.claude/queue.jsonl')); print(s) if s else None\"",
+        "description": "Check for tasks from other sessions"
+      },
+      {
+        "type": "command",
+        "command": "python3 -c \"from vibesrails.hooks.inbox import check_inbox; from pathlib import Path; c=check_inbox(Path('.claude/inbox.md')); print(f'Inbox instructions:\\n{c}') if c else None\"",
+        "description": "Check mobile inbox for async instructions"
+      },
+      {
+        "type": "prompt",
+        "prompt": "Si le message precedent contient 'Inbox instructions:', traite les instructions puis efface l'inbox avec: python3 -c \"from vibesrails.hooks.inbox import clear_inbox; from pathlib import Path; clear_inbox(Path('.claude/inbox.md'))\"",
+        "description": "Process and clear inbox instructions"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "type": "command",
+        "matcher": "Write|Edit",
+        "command": "python3 -m vibesrails.hooks.pre_tool_use",
+        "description": "vibesrails: scan code before writing (blocks secrets, injections)"
       }
     ],
     "PreCompact": [
@@ -53,6 +76,12 @@
         "matcher": "Bash",
         "prompt": "Si le message précédent indique '✅ Nouveau commit détecté!', mets à jour TaskList (marque la tâche completed) et .claude/current-task.md.",
         "description": "Update tasks after detected commit"
+      },
+      {
+        "type": "command",
+        "matcher": "Write|Edit",
+        "command": "python3 -m vibesrails.hooks.post_tool_use",
+        "description": "vibesrails: full scan after write (warn-only)"
       }
     ]
   }

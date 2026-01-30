@@ -4,8 +4,6 @@ import subprocess
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from vibesrails.guards_v2.git_workflow import GitWorkflowGuard, _run_git
 
 
@@ -269,3 +267,53 @@ def test_run_git_real_command(tmp_path: Path):
     ok, out = _run_git(["rev-parse", "--git-dir"], tmp_path)
     assert ok is True
     assert ".git" in out
+
+
+# ── check_tracked_hygiene (real git) ──────────────────────────
+
+
+def test_tracked_hygiene_clean(tmp_path: Path):
+    """Repo with only normal files is clean."""
+    _init_git(tmp_path)
+    guard = GitWorkflowGuard(tmp_path)
+    issues = guard.check_tracked_hygiene()
+    assert issues == []
+
+
+def test_tracked_hygiene_detects_metrics(tmp_path: Path):
+    """Tracked .vibesrails/metrics/ files should warn."""
+    _init_git(tmp_path)
+    metrics_dir = tmp_path / ".vibesrails" / "metrics"
+    metrics_dir.mkdir(parents=True)
+    (metrics_dir / "scans.jsonl").write_text("{}\n")
+    subprocess.run(["git", "add", "-f", ".vibesrails/metrics/scans.jsonl"], cwd=tmp_path, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "feat: add metrics"], cwd=tmp_path, capture_output=True)
+
+    guard = GitWorkflowGuard(tmp_path)
+    issues = guard.check_tracked_hygiene()
+    assert len(issues) == 1
+    assert "vibesrails metrics" in issues[0].message
+
+
+def test_tracked_hygiene_detects_coverage(tmp_path: Path):
+    """Tracked .coverage file should warn."""
+    _init_git(tmp_path)
+    (tmp_path / ".coverage").write_text("data\n")
+    subprocess.run(["git", "add", "-f", ".coverage"], cwd=tmp_path, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "feat: add coverage"], cwd=tmp_path, capture_output=True)
+
+    guard = GitWorkflowGuard(tmp_path)
+    issues = guard.check_tracked_hygiene()
+    assert any(".coverage" in i.file for i in issues)
+
+
+def test_tracked_hygiene_detects_pyc(tmp_path: Path):
+    """Tracked .pyc files should warn."""
+    _init_git(tmp_path)
+    (tmp_path / "module.pyc").write_bytes(b"\x00")
+    subprocess.run(["git", "add", "-f", "module.pyc"], cwd=tmp_path, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "feat: add pyc"], cwd=tmp_path, capture_output=True)
+
+    guard = GitWorkflowGuard(tmp_path)
+    issues = guard.check_tracked_hygiene()
+    assert any("bytecode" in i.message for i in issues)

@@ -81,6 +81,10 @@ def _parse_args():
     parser.add_argument("--mutation-quick", action="store_true",
                         help="Mutation testing on changed functions only")
     parser.add_argument("--senior-v2", action="store_true", help="Run ALL v2 guards (comprehensive scan)")
+
+    # V2 Hooks - inter-session communication
+    parser.add_argument("--queue", metavar="MESSAGE", help="Send a task to other Claude Code sessions")
+    parser.add_argument("--inbox", metavar="MESSAGE", help="Add instruction to mobile inbox")
     return parser.parse_args()
 
 
@@ -125,9 +129,29 @@ def _handle_setup_commands(args) -> None:
         sys.exit(0 if uninstall() else 1)
 
 
+def _handle_hook_commands(args) -> None:
+    """Handle V2 inter-session hook commands. Exits if handled."""
+    if args.queue:
+        from .hooks.queue_processor import add_task
+        queue_file = Path(".claude/queue.jsonl")
+        task_id = add_task(queue_file, args.queue, source="cli")
+        print(f"Task queued [{task_id}]: {args.queue}")
+        sys.exit(0)
+
+    if args.inbox:
+        from .hooks.inbox import create_inbox
+        inbox_file = Path(".claude/inbox.md")
+        create_inbox(inbox_file)
+        with inbox_file.open("a") as f:
+            f.write(args.inbox + "\n")
+        print(f"Added to inbox: {args.inbox}")
+        sys.exit(0)
+
+
 def _handle_standalone_commands(args):
     """Handle commands that don't need a config file. Returns True if handled."""
     _handle_info_commands(args)
+    _handle_hook_commands(args)
     dispatch_v2_commands(args)
     _handle_setup_commands(args)
 

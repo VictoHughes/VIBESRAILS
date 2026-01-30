@@ -26,6 +26,23 @@ CONVENTIONAL_RE = re.compile(
 
 MAX_UNRELATED_DIRS = 3
 
+# Patterns for files/dirs that should never be tracked in git
+# Each entry: (glob pattern for git ls-files matching, description)
+TRACKED_FILE_BLOCKLIST: list[tuple[str, str]] = [
+    (".vibesrails/metrics/", "vibesrails metrics (local state)"),
+    (".vibesrails/guardian.log", "guardian log (local state)"),
+    (".claude/settings.local.json", "Claude local settings"),
+    (".coverage", "coverage data"),
+    ("htmlcov/", "HTML coverage report"),
+    (".pytest_cache/", "pytest cache"),
+    ("__pycache__/", "Python bytecode cache"),
+    ("*.egg-info/", "egg-info build artifact"),
+    ("dist/", "distribution build"),
+    ("build/", "build directory"),
+    (".DS_Store", "macOS metadata"),
+    ("*.pyc", "compiled bytecode"),
+]
+
 
 def _run_git(
     args: list[str],
@@ -218,6 +235,49 @@ class GitWorkflowGuard:
 
         return issues
 
+    def check_tracked_hygiene(self) -> list[V2GuardIssue]:
+        """Detect files tracked by git that should be local-only."""
+        issues: list[V2GuardIssue] = []
+        ok, tracked_output = _run_git(["ls-files"], self.root)
+        if not ok:
+            return issues
+
+        tracked = tracked_output.splitlines()
+        for filepath in tracked:
+            for pattern, desc in TRACKED_FILE_BLOCKLIST:
+                if pattern.endswith("/"):
+                    # Directory prefix match
+                    if filepath.startswith(pattern) or f"/{pattern}" in filepath:
+                        issues.append(V2GuardIssue(
+                            guard=GUARD_NAME,
+                            severity="warn",
+                            message=f"Tracked file should be in .gitignore ({desc}): {filepath}",
+                            file=filepath,
+                        ))
+                        break
+                elif pattern.startswith("*"):
+                    # Suffix match
+                    if filepath.endswith(pattern[1:]):
+                        issues.append(V2GuardIssue(
+                            guard=GUARD_NAME,
+                            severity="warn",
+                            message=f"Tracked file should be in .gitignore ({desc}): {filepath}",
+                            file=filepath,
+                        ))
+                        break
+                else:
+                    # Exact or basename match
+                    if filepath == pattern or filepath.endswith(f"/{pattern}"):
+                        issues.append(V2GuardIssue(
+                            guard=GUARD_NAME,
+                            severity="warn",
+                            message=f"Tracked file should be in .gitignore ({desc}): {filepath}",
+                            file=filepath,
+                        ))
+                        break
+
+        return issues
+
     def scan(self, project_root: Path) -> list[V2GuardIssue]:
         """Run all git workflow checks."""
         self.root = project_root
@@ -229,6 +289,7 @@ class GitWorkflowGuard:
         issues.extend(self.check_staged_files())
         issues.extend(self.check_force_push())
         issues.extend(self.check_hook_bypass())
+        issues.extend(self.check_tracked_hygiene())
 
         # Check last commit message
         ok, msg = _run_git(
