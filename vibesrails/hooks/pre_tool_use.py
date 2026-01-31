@@ -114,7 +114,7 @@ def main() -> None:
 
     # --- Throttle: anti-emballement ---
     try:
-        from vibesrails.hooks.throttle import record_write, record_check, should_block
+        from vibesrails.hooks.throttle import record_check, record_write, should_block
 
         if tool_name in ("Write", "Edit"):
             if should_block(VIBESRAILS_DIR):
