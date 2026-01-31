@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from vibesrails.learner.signature_index import Signature
+from .types import Signature
 
 from .placement_guard import Divergence
 

@@ -4,7 +4,7 @@ from pathlib import Path
 import json
 import pytest
 from vibesrails.guardian.duplication_guard import DuplicationGuard, DuplicationResult
-from vibesrails.learner.signature_index import Signature
+from vibesrails.guardian.types import Signature
 
 
 def test_guard_detects_exact_duplicate():

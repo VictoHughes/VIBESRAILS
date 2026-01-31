@@ -38,7 +38,7 @@ audit = ["pip-audit>=2.6"]
 typing = ["mypy>=1.0"]
 deadcode = ["vulture>=2.7"]
 all = ["watchdog>=3.0", "anthropic>=0.18", "pip-audit>=2.6", "mypy>=1.0", "vulture>=2.7"]
-dev = ["pytest>=7.0", "pytest-timeout>=2.0", "pytest-cov>=4.0", "ruff>=0.1"]
+dev = ["pytest>=7.0", "pytest-timeout>=2.0", "pytest-cov>=4.0", "ruff>=0.1", "import-linter>=2.0"]
 
 [project.scripts]
 vibesrails = "vibesrails.cli:main"
@@ -72,6 +72,27 @@ ignore = ["E501"]
 timeout = 30
 timeout_method = "thread"
 addopts = "-q --tb=short"
+
+[tool.importlinter]
+root_package = "vibesrails"
+
+[[tool.importlinter.contracts]]
+name = "scanner has no internal deps"
+type = "forbidden"
+source_modules = ["vibesrails.scanner"]
+forbidden_modules = ["vibesrails.cli", "vibesrails.smart_setup", "vibesrails.guardian"]
+
+[[tool.importlinter.contracts]]
+name = "config has no cli deps"
+type = "forbidden"
+source_modules = ["vibesrails.config"]
+forbidden_modules = ["vibesrails.cli"]
+
+[[tool.importlinter.contracts]]
+name = "guardian depends only on scanner"
+type = "forbidden"
+source_modules = ["vibesrails.guardian"]
+forbidden_modules = ["vibesrails.cli", "vibesrails.smart_setup", "vibesrails.learner", "vibesrails.ai_guardian"]
 
 [tool.coverage.run]
 # Optimisations coverage (quand utilisé)

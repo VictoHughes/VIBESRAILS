@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import pytest
 
-from vibesrails.guardian import (
+from vibesrails.ai_guardian import (
     AI_ENV_MARKERS,
     is_ai_session,
     get_ai_agent_name,

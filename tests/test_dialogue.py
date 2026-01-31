@@ -3,7 +3,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 from vibesrails.guardian.dialogue import InteractiveDialogue
 from vibesrails.guardian.placement_guard import Divergence
-from vibesrails.learner.signature_index import Signature
+from vibesrails.guardian.types import Signature
 
 
 def test_dialogue_presents_placement_options():

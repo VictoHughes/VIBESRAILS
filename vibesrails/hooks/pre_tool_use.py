@@ -109,7 +109,7 @@ def main() -> None:
         command = tool_input.get("command", "")
         issues = scan_bash_command(command) if command else []
         if issues:
-            sys.stdout.write(f"BLOCKED by VibesRails (secret in command):\n")  # vibesrails: ignore
+            sys.stdout.write(f"\U0001f534 VibesRails BLOCKED (secret in command):\n")  # vibesrails: ignore
             sys.stdout.write("\n".join(issues) + "\n")  # vibesrails: ignore
             sys.stdout.write("\nUse environment variables instead.\n")  # vibesrails: ignore
             sys.exit(1)
@@ -128,11 +128,13 @@ def main() -> None:
 
     issues = scan_content(content)
     if issues:
-        sys.stdout.write(f"BLOCKED by VibesRails ({len(issues)} issue(s) found):\n")  # vibesrails: ignore
+        sys.stdout.write(f"\U0001f534 VibesRails BLOCKED ({len(issues)} issue(s)):\n")  # vibesrails: ignore
         sys.stdout.write("\n".join(issues) + "\n")  # vibesrails: ignore
-        sys.stdout.write("\nAdd '# vibesrails: ignore' to suppress a line.\n")  # vibesrails: ignore
+        sys.stdout.write("\nFix the code. Add '# vibesrails: ignore' to suppress.\n")  # vibesrails: ignore
         sys.exit(1)
 
+    basename = file_path.rsplit("/", 1)[-1] if "/" in file_path else file_path
+    sys.stdout.write(f"\U0001f7e2 VibesRails: {basename} pre-scan clean\n")  # vibesrails: ignore
     sys.exit(0)
 
 

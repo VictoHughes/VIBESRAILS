@@ -3,7 +3,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from vibesrails.learner.signature_index import Signature
+from .types import Signature
 
 
 @dataclass

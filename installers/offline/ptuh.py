@@ -81,7 +81,7 @@ def check_file_path(tool_input):
     for protected in PROTECTED_PATHS:
         if protected in file_path:
             print(
-                f"BLOCKED: Cannot modify protected file: {file_path}\n"
+                f"\U0001f534 BLOCKED: Cannot modify protected file: {file_path}\n"
                 f"Reason: '{protected}' is protected by vibesrails security hook.\n"
                 f"This protection cannot be disabled by Claude Code."
             )
@@ -97,7 +97,7 @@ def check_secrets(text, context):
             found = match.group(0)
             masked = found[:8] + "..." + found[-4:] if len(found) > 16 else found[:6] + "..."
             print(
-                f"BLOCKED: Secret detected in {context}.\n"
+                f"\U0001f534 BLOCKED: Secret detected in {context}.\n"
                 f"Type: {label}\n"
                 f"Found: {masked}\n"
                 f"Never pass secrets in commands or file content.\n"
@@ -112,7 +112,7 @@ def check_bash_command(tool_input):
     for blocked in BLOCKED_COMMANDS:
         if blocked in command:
             print(
-                f"BLOCKED: Dangerous command detected.\n"
+                f"\U0001f534 BLOCKED: Dangerous command detected.\n"
                 f"Pattern: '{blocked}'\n"
                 f"This protection cannot be disabled by Claude Code."
             )

@@ -40,12 +40,15 @@ def main() -> None:
     except Exception:  # noqa: BLE001
         sys.exit(0)
 
+    basename = os.path.basename(file_path)
     if results:
         sys.stdout.write(
-            f"VibesRails: {len(results)} issue(s) in {file_path}:\n"
+            f"\U0001f7e1 VibesRails: {len(results)} issue(s) in {basename}:\n"
         )
         for r in results:
             sys.stdout.write(f"  - L{r.line} [{r.level}] {r.message}\n")
+    else:
+        sys.stdout.write(f"\U0001f7e2 VibesRails: {basename} scanned clean\n")
 
     sys.exit(0)
 

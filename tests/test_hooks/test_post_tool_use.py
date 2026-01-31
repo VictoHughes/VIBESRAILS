@@ -19,7 +19,7 @@ def _run_hook(payload: dict, cwd: str | None = None) -> subprocess.CompletedProc
 
 
 def test_passes_clean_file(tmp_path):
-    """Clean Python file exits 0 with no output."""
+    """Clean Python file exits 0 with green indicator."""
     f = tmp_path / "clean.py"
     f.write_text("import os\n\ndef hello():\n    return 'world'\n")
     result = _run_hook(
@@ -27,7 +27,7 @@ def test_passes_clean_file(tmp_path):
         cwd=str(tmp_path),
     )
     assert result.returncode == 0
-    assert result.stdout == ""
+    assert "scanned clean" in result.stdout
 
 
 def test_warns_on_issues(tmp_path):
