@@ -88,11 +88,29 @@ def _parse_args():
     # V2 Hooks - inter-session communication
     parser.add_argument("--queue", metavar="MESSAGE", help="Send a task to other Claude Code sessions")
     parser.add_argument("--inbox", metavar="MESSAGE", help="Add instruction to mobile inbox")
+
+    # Throttle (anti-emballement)
+    parser.add_argument("--throttle-status", action="store_true",
+                        help="Show write throttle counter (anti-emballement)")
+    parser.add_argument("--throttle-reset", action="store_true",
+                        help="Reset write throttle counter")
     return parser.parse_args()
 
 
 def _handle_info_commands(args) -> None:
     """Handle stats/info commands. Exits if handled."""
+    if args.throttle_status:
+        from .hooks.throttle import get_writes_since_check
+        count = get_writes_since_check(Path(".vibesrails"))
+        logger.info("Writes since last check: %d/5", count)
+        sys.exit(0)
+
+    if args.throttle_reset:
+        from .hooks.throttle import reset_state
+        reset_state(Path(".vibesrails"))
+        logger.info("Throttle reset.")
+        sys.exit(0)
+
     if args.guardian_stats:
         from .ai_guardian import show_guardian_stats
         show_guardian_stats()

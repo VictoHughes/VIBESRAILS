@@ -20,6 +20,10 @@
             "command": "rm -f .claude/.write_reminded 2>/dev/null; mkdir -p .claude; git rev-parse HEAD 2>/dev/null > .claude/.last_commit_hash || true"
           },
           {
+            "type": "command",
+            "command": "python3 -c \"from pathlib import Path; d=Path('.vibesrails'); d.mkdir(exist_ok=True); f=d/'session_throttle.json'; f.write_text('{\\\"writes_since_check\\\": 0}'); print('Throttle reset')\""
+          },
+          {
             "type": "prompt",
             "prompt": "Si .claude/current-task.md existe et contient des taches, utilise TaskCreate pour recreer la TaskList a partir de son contenu. Cela restaure l'etat apres compaction/restart."
           },
