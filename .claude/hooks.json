@@ -9,7 +9,11 @@
           },
           {
             "type": "command",
-            "command": "python3 -c \"from pathlib import Path; plans=sorted(Path('docs/plans').glob('*.md'), key=lambda p: p.stat().st_mtime, reverse=True) if Path('docs/plans').exists() else []; print(f'Plan actif: {plans[0].name}') if plans else None\""
+            "command": "python3 -c \"from pathlib import Path; plans=sorted(Path('docs/plans').glob('*.md'), key=lambda p: p.stat().st_mtime, reverse=True) if Path('docs/plans').exists() else []; p=plans[0] if plans else None; content=p.read_text() if p else ''; has_tasks='### Task' in content if content else False; print(f'PLAN READY: {p.name}') if has_tasks else (print(f'Plan actif: {p.name}') if p else None)\""
+          },
+          {
+            "type": "prompt",
+            "prompt": "Si le message precedent contient 'PLAN READY:', un plan d'implementation est pret. Propose a l'utilisateur: 'Un plan est pret (nom du fichier). Voulez-vous que je l'execute avec executing-plans?'"
           },
           {
             "type": "command",
@@ -22,6 +26,10 @@
           {
             "type": "command",
             "command": "python3 -c \"from pathlib import Path; d=Path('.vibesrails'); d.mkdir(exist_ok=True); f=d/'session_throttle.json'; f.write_text('{\\\"writes_since_check\\\": 0}'); print('Throttle reset')\""
+          },
+          {
+            "type": "command",
+            "command": "python3 -c \"from vibesrails.hooks.session_lock import acquire_lock, check_other_session; from pathlib import Path; d=Path('.vibesrails'); d.mkdir(exist_ok=True); w=check_other_session(d); print(f'WARNING: {w}') if w else None; acquire_lock(d)\""
           },
           {
             "type": "prompt",
@@ -74,6 +82,10 @@
           {
             "type": "command",
             "command": "python3 -m vibesrails.hooks.post_tool_use"
+          },
+          {
+            "type": "prompt",
+            "prompt": "Si le SessionStart a signale 'WARNING: Another session', rappelle a l'utilisateur qu'une autre fenetre Claude Code est active sur ce projet. Risque de conflit."
           }
         ]
       },
@@ -87,6 +99,16 @@
           {
             "type": "prompt",
             "prompt": "Si le message precedent indique 'Nouveau commit detecte!', mets a jour TaskList (marque la tache completed) et .claude/current-task.md."
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"from vibesrails.hooks.session_lock import release_lock; from pathlib import Path; release_lock(Path('.vibesrails'))\""
           }
         ]
       }
