@@ -150,7 +150,7 @@ def log_guardian_block(result: ScanResult, agent_name: str | None = None) -> Non
     except ValueError:
         # Symlink attack detected - log dir points outside cwd
         logger.warning("Guardian log directory is a symlink outside project")
-        print(f"{YELLOW}WARN: Guardian log directory is a symlink outside project{NC}")
+        logger.info(f"{YELLOW}WARN: Guardian log directory is a symlink outside project{NC}")
         return
 
     log_dir_resolved.mkdir(exist_ok=True)
@@ -215,21 +215,21 @@ def show_guardian_stats() -> None:
     """Display guardian statistics."""
     stats = get_guardian_stats()
 
-    print(f"\n{BLUE}=== Guardian Statistics ==={NC}\n")
+    logger.info(f"\n{BLUE}=== Guardian Statistics ==={NC}\n")
 
     if stats["total_blocks"] == 0:
-        print(f"{GREEN}No AI code blocks recorded yet.{NC}")
+        logger.info(f"{GREEN}No AI code blocks recorded yet.{NC}")
         return
 
-    print(f"Total blocks: {stats['total_blocks']}\n")
+    logger.info(f"Total blocks: {stats['total_blocks']}\n")
 
-    print(f"{YELLOW}By Pattern:{NC}")
+    logger.info(f"{YELLOW}By Pattern:{NC}")
     for pattern, count in sorted(stats["by_pattern"].items(), key=lambda x: -x[1]):
-        print(f"  {pattern}: {count}")
+        logger.info(f"  {pattern}: {count}")
 
-    print(f"\n{YELLOW}By Agent:{NC}")
+    logger.info(f"\n{YELLOW}By Agent:{NC}")
     for agent, count in sorted(stats["by_agent"].items(), key=lambda x: -x[1]):
-        print(f"  {agent}: {count}")
+        logger.info(f"  {agent}: {count}")
 
 
 def should_run_senior_mode(config: dict) -> bool:
@@ -253,10 +253,10 @@ def print_guardian_status(config: dict) -> None:
     if should_apply_guardian(config):
         agent = get_ai_agent_name()
         agent_str = f" ({agent})" if agent else ""
-        print(f"{YELLOW}GUARDIAN MODE ACTIVE{agent_str}{NC}")
+        logger.info(f"{YELLOW}GUARDIAN MODE ACTIVE{agent_str}{NC}")
 
         guardian = get_guardian_config(config)
         if guardian.get("warnings_as_blocking"):
-            print("  - Warnings elevated to blocking")
+            logger.info("  - Warnings elevated to blocking")
         if should_run_senior_mode(config):
-            print("  - Senior Mode enabled")
+            logger.info("  - Senior Mode enabled")

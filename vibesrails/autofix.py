@@ -177,9 +177,9 @@ def _fix_single_file(filepath: str, config: dict, dry_run: bool, backup: bool) -
         changes = apply_fix_to_file(filepath, fix, dry_run, backup)
         for line_num, old, new in changes:
             label = f"{YELLOW}WOULD FIX{NC}" if dry_run else f"{GREEN}FIXED{NC}"
-            print(f"{label} {filepath}:{line_num}")
-            print(f"  - {old}")
-            print(f"  + {new}")
+            logger.info(f"{label} {filepath}:{line_num}")
+            logger.info(f"  - {old}")
+            logger.info(f"  + {new}")
             file_fixes += 1
     return file_fixes
 
@@ -193,8 +193,8 @@ def run_autofix(
     """Run auto-fix on files. Returns number of files modified."""
     mode_str = " (dry run)" if dry_run else ""
     backup_str = "" if backup or dry_run else " (no backup)"
-    print(f"{BLUE}vibesrails --fix{mode_str}{backup_str}{NC}")
-    print("=" * 40)
+    logger.info(f"{BLUE}vibesrails --fix{mode_str}{backup_str}{NC}")
+    logger.info("=" * 40)
 
     total_fixes = 0
     files_modified = 0
@@ -206,19 +206,19 @@ def run_autofix(
             if not dry_run:
                 files_modified += 1
 
-    print("=" * 40)
+    logger.info("=" * 40)
     if dry_run:
-        print(f"Would fix {total_fixes} issue(s)")
+        logger.info(f"Would fix {total_fixes} issue(s)")
     else:
-        print(f"Fixed {total_fixes} issue(s) in {files_modified} file(s)")
+        logger.info(f"Fixed {total_fixes} issue(s) in {files_modified} file(s)")
     return files_modified
 
 
 def show_fixable_patterns() -> None:
     """Show all patterns that can be auto-fixed."""
-    print(f"\n{BLUE}=== Auto-fixable Patterns ==={NC}\n")
+    logger.info(f"\n{BLUE}=== Auto-fixable Patterns ==={NC}\n")
 
     for fix in FIXES:
-        print(f"  [{fix.pattern_id}]")
-        print(f"    {fix.description}")
-        print()
+        logger.info(f"  [{fix.pattern_id}]")
+        logger.info(f"    {fix.description}")
+        logger.info("")

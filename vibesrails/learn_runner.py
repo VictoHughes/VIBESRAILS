@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 def _build_signature_index(project_root: Path, cache_dir: Path) -> int:
     """Build and save signature index. Returns count."""
-    print("\n  Building signature index...")
+    logger.info("\n  Building signature index...")
     indexer = SignatureIndexer(project_root)
     signatures = indexer.build_index()
     index_data = [
@@ -32,29 +32,29 @@ def _build_signature_index(project_root: Path, cache_dir: Path) -> int:
 
 def handle_learn_command() -> int:
     """Learn project structure and create pattern rules."""
-    print(f"{BLUE}🧠 Learning project structure...{NC}")
+    logger.info(f"{BLUE}🧠 Learning project structure...{NC}")
 
     project_root = Path.cwd()
     cache_dir = project_root / ".vibesrails"
     cache_dir.mkdir(exist_ok=True)
 
-    print("  Detecting patterns...")
+    logger.info("  Detecting patterns...")
     patterns = PatternDetector(project_root).detect()
 
     if not patterns:
-        print(f"{YELLOW}  No clear patterns detected yet.{NC}")
+        logger.info(f"{YELLOW}  No clear patterns detected yet.{NC}")
         return 0
 
-    print(f"{GREEN}  Detected patterns:{NC}")
+    logger.info(f"{GREEN}  Detected patterns:{NC}")
     for p in patterns:
-        print(f"    - {p.category:12} → {p.location:30} ({p.confidence:.0%} confidence, {p.examples} examples)")
+        logger.info(f"    - {p.category} → {p.location} ({p.confidence * 100:.0f}% confidence, {p.examples} examples)")
 
-    print("\n  Generating structure rules...")
+    logger.info("\n  Generating structure rules...")
     StructureRulesGenerator().save_rules(patterns, cache_dir / "learned_patterns.yaml")
-    print(f"{GREEN}  ✓ Rules saved to .vibesrails/learned_patterns.yaml{NC}")
+    logger.info(f"{GREEN}  ✓ Rules saved to .vibesrails/learned_patterns.yaml{NC}")
 
     sig_count = _build_signature_index(project_root, cache_dir)
-    print(f"{GREEN}  ✓ Indexed {sig_count} signatures{NC}")
-    print(f"\n{GREEN}✓ Learning complete!{NC}")
-    print("  Patterns and signatures cached in .vibesrails/")
+    logger.info(f"{GREEN}  ✓ Indexed {sig_count} signatures{NC}")
+    logger.info(f"\n{GREEN}✓ Learning complete!{NC}")
+    logger.info("  Patterns and signatures cached in .vibesrails/")
     return 0

@@ -213,7 +213,7 @@ def prompt_user(question: str, default: str = "y") -> bool:
             return default.lower() == "y"
         return response in ("y", "yes", "o", "oui")
     except (EOFError, KeyboardInterrupt):
-        print()
+        logger.info("")
         return False
 
 
@@ -223,26 +223,26 @@ def _prompt_secret_protections(found_secrets: dict) -> list[dict]:
 
     if found_secrets:
         total = sum(len(v) for v in found_secrets.values())
-        print(f"\n{RED}⚠️  {msg('found_secrets', count=total)}{NC}")
+        logger.info(f"\n{RED}⚠️  {msg('found_secrets', count=total)}{NC}")
 
         for category, secrets in found_secrets.items():
             cat_name = VIBE_PROTECTIONS[category]["name"]
-            print(f"\n  {YELLOW}{cat_name}:{NC}")
+            logger.info(f"\n  {YELLOW}{cat_name}:{NC}")
             for secret in secrets[:3]:
-                print(f"    • {secret['file']}:{secret['line']} → {secret['preview']}")
+                logger.info(f"    • {secret['file']}:{secret['line']} → {secret['preview']}")
             if len(secrets) > 3:
                 remaining = len(secrets) - 3
                 more = "and" if LANG == "en" else "et"
                 others = "others" if LANG == "en" else "autres"
-                print(f"    ... {more} {remaining} {others}")
+                logger.info(f"    ... {more} {remaining} {others}")
 
-        print()
+        logger.info("")
         if prompt_user(f"{GREEN}{msg('enable_protection')}{NC}", default="y"):
             for category in found_secrets.keys():
                 selected.extend(VIBE_PROTECTIONS[category]["patterns"])
-            print(f"  {GREEN}✓ {msg('protections_enabled')}{NC}")
+            logger.info(f"  {GREEN}✓ {msg('protections_enabled')}{NC}")
     else:
-        print(f"  {GREEN}✓ {msg('no_secrets_found')}{NC}")
+        logger.info(f"  {GREEN}✓ {msg('no_secrets_found')}{NC}")
 
     return selected
 
@@ -250,17 +250,17 @@ def _prompt_secret_protections(found_secrets: dict) -> list[dict]:
 def _prompt_additional_categories(found_secrets: dict) -> list[dict]:
     """Offer additional protection categories not already found."""
     selected = []
-    print(f"\n{YELLOW}{msg('additional_protections')}{NC}")
+    logger.info(f"\n{YELLOW}{msg('additional_protections')}{NC}")
 
     available_categories = [cat for cat in VIBE_PROTECTIONS if cat not in found_secrets]
 
     for i, category in enumerate(available_categories, 1):
         cat_name = VIBE_PROTECTIONS[category]["name"]
-        print(f"  {i}. {cat_name}")
+        logger.info(f"  {i}. {cat_name}")
 
     if available_categories:
-        print(f"  0. {msg('none')}")
-        print()
+        logger.info(f"  0. {msg('none')}")
+        logger.info("")
         choice = input(f"  {msg('add_protections')}: ").strip()
 
         if choice and choice != "0":
@@ -270,7 +270,7 @@ def _prompt_additional_categories(found_secrets: dict) -> list[dict]:
                     if 1 <= idx <= len(available_categories):
                         category = available_categories[idx - 1]
                         selected.extend(VIBE_PROTECTIONS[category]["patterns"])
-                        print(f"  {GREEN}✓ {VIBE_PROTECTIONS[category]['name']}{NC}")
+                        logger.info(f"  {GREEN}✓ {VIBE_PROTECTIONS[category]['name']}{NC}")
             except ValueError:
                 pass  # ignore non-numeric input, re-prompt
 
@@ -280,10 +280,10 @@ def _prompt_additional_categories(found_secrets: dict) -> list[dict]:
 def _prompt_custom_patterns(project_name: str) -> list[dict]:
     """Prompt for natural language custom patterns."""
     selected = []
-    print(f"\n{YELLOW}{msg('custom_protection')}{NC}")
+    logger.info(f"\n{YELLOW}{msg('custom_protection')}{NC}")
     examples = "'mycompany.com', 'project name', '@company.com'" if LANG == "en" else "'mycompany.com', 'le nom du projet', '@entreprise.fr'"
-    print(f"  {msg('examples')}: {examples}")
-    print(f"  {msg('empty_to_finish')}")
+    logger.info(f"  {msg('examples')}: {examples}")
+    logger.info(f"  {msg('empty_to_finish')}")
 
     while True:
         try:
@@ -294,17 +294,17 @@ def _prompt_custom_patterns(project_name: str) -> list[dict]:
             pattern = natural_language_to_pattern(user_input, project_name)
 
             if pattern:
-                print(f"  {BLUE}→ {msg('will_block')}: {pattern['regex']}{NC}")
+                logger.info(f"  {BLUE}→ {msg('will_block')}: {pattern['regex']}{NC}")
                 if prompt_user(f"  {msg('confirm')}", default="y"):
                     selected.append(pattern)
-                    print(f"  {GREEN}✓ {msg('added')}{NC}")
+                    logger.info(f"  {GREEN}✓ {msg('added')}{NC}")
             else:
-                print(f"  {YELLOW}{msg('not_understood')}{NC}")
+                logger.info(f"  {YELLOW}{msg('not_understood')}{NC}")
                 example = '"password123" or "api.mycompany.com"' if LANG == "en" else '"motdepasse123" ou "api.mycompany.com"'
-                print(f"  {msg('example')}: {example}")
+                logger.info(f"  {msg('example')}: {example}")
 
         except (EOFError, KeyboardInterrupt):
-            print()
+            logger.info("")
             break
 
     return selected
@@ -315,9 +315,9 @@ def prompt_vibe_protections(project_root: Path) -> list[dict]:
     selected_patterns = []
     project_name = project_root.name
 
-    print(f"\n{BLUE}{msg('protection_mode')}{NC}")
+    logger.info(f"\n{BLUE}{msg('protection_mode')}{NC}")
 
-    print(f"\n{YELLOW}{msg('analyzing_project')}{NC}")
+    logger.info(f"\n{YELLOW}{msg('analyzing_project')}{NC}")
     found_secrets = scan_for_secrets(project_root)
 
     selected_patterns.extend(_prompt_secret_protections(found_secrets))

@@ -146,28 +146,28 @@ class MetricsCollector:
         stats = self.get_stats()
 
         if stats["total_scans"] == 0:
-            print(f"{YELLOW}No scans recorded yet{NC}")
+            logger.info("%sNo scans recorded yet%s", YELLOW, NC)
             return
 
-        print(f"\n{BLUE}📊 VibesRails Statistics{NC}")
-        print("=" * 50)
-        print(f"Total scans: {stats['total_scans']}")
-        print(f"Average duration: {stats['avg_duration_ms']}ms")
-        print(f"Average issues per scan: {stats['avg_issues_per_scan']}")
-        print(f"Block rate: {stats['block_rate']}%")
-        print()
-        print(f"{BLUE}Integration Usage:{NC}")
-        print(f"  Semgrep: {stats['semgrep_usage_rate']}%")
-        print(f"  Guardian Mode: {stats['guardian_usage_rate']}%")
-        print()
-        print(f"{BLUE}Effectiveness:{NC}")
+        logger.info("\n%s📊 VibesRails Statistics%s", BLUE, NC)
+        logger.info("=" * 50)
+        logger.info("Total scans: %s", stats['total_scans'])
+        logger.info("Average duration: %sms", stats['avg_duration_ms'])
+        logger.info("Average issues per scan: %s", stats['avg_issues_per_scan'])
+        logger.info("Block rate: %s%%", stats['block_rate'])
+        logger.info("")
+        logger.info("%sIntegration Usage:%s", BLUE, NC)
+        logger.info("  Semgrep: %s%%", stats['semgrep_usage_rate'])
+        logger.info("  Guardian Mode: %s%%", stats['guardian_usage_rate'])
+        logger.info("")
+        logger.info("%sEffectiveness:%s", BLUE, NC)
         eff = stats['effectiveness']
-        print(f"  Semgrep avg: {eff['semgrep_avg']:.1f} issues/scan")
-        print(f"  VibesRails avg: {eff['vibesrails_avg']:.1f} issues/scan")
-        print(f"  Duplicates avg: {eff['duplicates_avg']:.1f}/scan")
-        print()
-        print(f"Last scan: {stats['last_scan']}")
-        print("=" * 50)
+        logger.info("  Semgrep avg: %.1f issues/scan", eff['semgrep_avg'])
+        logger.info("  VibesRails avg: %.1f issues/scan", eff['vibesrails_avg'])
+        logger.info("  Duplicates avg: %.1f/scan", eff['duplicates_avg'])
+        logger.info("")
+        logger.info("Last scan: %s", stats['last_scan'])
+        logger.info("=" * 50)
 
 
 @dataclass

@@ -126,9 +126,9 @@ def fetch_remote_config(
     # SSRF protection: validate domain allowlist
     if not is_allowed_remote_domain(url, extra_domains):
         logger.error("BLOCKED: Remote domain not allowed: %s", url)
-        print(f"{RED}BLOCKED: Remote domain not allowed: {url}{NC}")
-        print(f"  Allowed domains: {', '.join(sorted(ALLOWED_REMOTE_DOMAINS))}")
-        print("  Add trusted domains to config: remote_domains: [\"example.com\"]")
+        logger.error(f"{RED}BLOCKED: Remote domain not allowed: {url}{NC}")
+        logger.info(f"  Allowed domains: {', '.join(sorted(ALLOWED_REMOTE_DOMAINS))}")
+        logger.info("  Add trusted domains to config: remote_domains: [\"example.com\"]")
         return None
 
     if url in _remote_cache:
@@ -142,7 +142,7 @@ def fetch_remote_config(
             # Size limit for remote configs
             if len(content) > 500_000:  # 500KB limit
                 logger.warning("Remote config too large, skipping: %s", url)
-                print(f"{YELLOW}WARN: Remote config too large, skipping: {url}{NC}")
+                logger.info(f"{YELLOW}WARN: Remote config too large, skipping: {url}{NC}")
                 return None
 
             config = yaml.safe_load(content)
@@ -151,7 +151,7 @@ def fetch_remote_config(
 
     except (urllib.error.URLError, yaml.YAMLError) as e:
         logger.warning("Failed to fetch remote config %s: %s", url, e)
-        print(f"{YELLOW}WARN: Failed to fetch remote config {url}: {e}{NC}")
+        logger.info(f"{YELLOW}WARN: Failed to fetch remote config {url}: {e}{NC}")
         return None
 
 
@@ -175,7 +175,7 @@ def load_extended_config(
     path_key = str(config_path.resolve())
     if path_key in seen_paths:
         logger.warning("Circular config reference detected: %s", config_path)
-        print(f"{YELLOW}WARN: Circular config reference detected: {config_path}{NC}")
+        logger.info(f"{YELLOW}WARN: Circular config reference detected: {config_path}{NC}")
         return {}
 
     seen_paths.add(path_key)
@@ -214,8 +214,8 @@ def _resolve_pack(ref: str, seen_paths: set[str]) -> dict | None:
     if pack_path:
         return load_extended_config(pack_path, seen_paths.copy())
     logger.warning("Unknown pack: %s", ref)
-    print(f"{YELLOW}WARN: Unknown pack: {ref}{NC}")
-    print(f"  Available packs: {', '.join(BUILTIN_PACKS.keys())}")
+    logger.info(f"{YELLOW}WARN: Unknown pack: {ref}{NC}")
+    logger.info(f"  Available packs: {', '.join(BUILTIN_PACKS.keys())}")
     return None
 
 
@@ -227,7 +227,7 @@ def _resolve_remote(ref: str) -> dict | None:
     extends = remote_config.pop("extends", None)
     if extends:
         logger.warning("Remote config extends not supported: %s", ref)
-        print(f"{YELLOW}WARN: Remote config extends not supported: {ref}{NC}")
+        logger.info(f"{YELLOW}WARN: Remote config extends not supported: {ref}{NC}")
     return remote_config
 
 
@@ -256,10 +256,10 @@ def resolve_extends(
 
     if ref.startswith(("./", "../", "/")):
         logger.warning("Config file not found: %s", local_path)
-        print(f"{YELLOW}WARN: Config file not found: {local_path}{NC}")
+        logger.info(f"{YELLOW}WARN: Config file not found: {local_path}{NC}")
     else:
         logger.warning("Could not resolve extends: %s", ref)
-        print(f"{YELLOW}WARN: Could not resolve extends: {ref}{NC}")
+        logger.info(f"{YELLOW}WARN: Could not resolve extends: {ref}{NC}")
     return None
 
 

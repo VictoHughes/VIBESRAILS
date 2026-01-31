@@ -95,7 +95,7 @@ def test_pytest_high_coverage_passes(mock_run, guard, project):
 
 def test_blocking_todo_critical(guard, project):
     src = project / "mypkg" / "foo.py"
-    src.write_text("# TODO CRITICAL: fix before release\n")
+    src.write_text("# TODO CRITICAL: fix before release\n")  # vibesrails: ignore
     issues = guard._check_blocking_todos(project)
     assert len(issues) >= 1
     assert issues[0].severity == "block"
@@ -110,7 +110,7 @@ def test_blocking_todo_block_keyword(guard, project):
 
 def test_normal_todo_ignored(guard, project):
     src = project / "mypkg" / "foo.py"
-    src.write_text("# TODO: refactor later\n")
+    src.write_text("# TODO: refactor later\n")  # vibesrails: ignore
     issues = guard._check_blocking_todos(project)
     assert len(issues) == 0
 

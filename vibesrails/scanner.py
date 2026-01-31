@@ -63,12 +63,12 @@ def load_config(config_path: Path | str | None = None) -> dict:
     config_path = Path(config_path) if config_path else None
 
     if not config_path or not config_path.exists():
-        print(f"{RED}ERROR: No vibesrails.yaml found{NC}")
+        logger.error("No vibesrails.yaml found")
         sys.exit(1)
 
     # YAML bomb protection - limit config file size
     if config_path.stat().st_size > 1_000_000:  # 1MB limit
-        print(f"{RED}ERROR: Config file too large (max 1MB){NC}")
+        logger.error("Config file too large (max 1MB)")
         sys.exit(1)
 
     # Use config loader with extends support
@@ -312,14 +312,14 @@ def scan_file(filepath: str, config: dict) -> list[ScanResult]:
     results = []
 
     if not is_path_safe(filepath):
-        print(f"{YELLOW}SKIP{NC} {filepath} (outside project directory)")
+        logger.warning("SKIP %s (outside project directory)", filepath)
         return results
 
     try:
         content = Path(filepath).read_text()
         lines = content.split("\n")
     except (OSError, UnicodeDecodeError) as e:
-        print(f"{YELLOW}SKIP{NC} {filepath} (read error: {e})")
+        logger.warning("SKIP %s (read error: %s)", filepath, e)
         return results
 
     # Check file length
@@ -350,27 +350,26 @@ def _show_section_patterns(patterns: list[dict]) -> None:
     """Display patterns for a pro-coding section."""
     for p in patterns:
         level = p.get("level", "WARN")
-        color = RED if level == "BLOCK" else YELLOW
         scope = f" [scope: {p['scope']}]" if p.get("scope") else ""
         skip = " (skip tests)" if p.get("skip_in_tests") else ""
-        print(f"  {color}[{level}]{NC} [{p['id']}] {p['name']}{scope}{skip}")
-        print(f"    {p['message']}")
+        logger.info(f"  [{level}] [{p['id']}] {p['name']}{scope}{skip}")
+        logger.info(f"    {p['message']}")
 
 
 def show_patterns(config: dict) -> None:
     """Display all configured patterns."""
-    print(f"\n{BLUE}=== vibesrails patterns ==={NC}\n")
+    logger.info("=== vibesrails patterns ===")
 
-    print(f"{RED}🔒 SECURITY (BLOCKING):{NC}")
+    logger.info("SECURITY (BLOCKING):")
     for p in config.get("blocking", []):
-        print(f"  [{p['id']}] {p['name']}")
-        print(f"    {p['message']}")
+        logger.info(f"  [{p['id']}] {p['name']}")
+        logger.info(f"    {p['message']}")
 
-    print(f"\n{YELLOW}⚠️  SECURITY (WARNINGS):{NC}")
+    logger.info("SECURITY (WARNINGS):")
     for p in config.get("warning", []):
         skip = " (skip tests)" if p.get("skip_in_tests") else ""
-        print(f"  [{p['id']}] {p['name']}{skip}")
-        print(f"    {p['message']}")
+        logger.info(f"  [{p['id']}] {p['name']}{skip}")
+        logger.info(f"    {p['message']}")
 
     for section, emoji, title in [
         ("bugs", "🐛", "BUGS SILENCIEUX"),
@@ -379,14 +378,14 @@ def show_patterns(config: dict) -> None:
     ]:
         patterns = config.get(section, [])
         if patterns:
-            print(f"\n{BLUE}{emoji} {title}:{NC}")
+            logger.info(f"{emoji} {title}:")
             _show_section_patterns(patterns)
 
-    print(f"\n{GREEN}✅ EXCEPTIONS:{NC}")
+    logger.info("EXCEPTIONS:")
     for name, exc in config.get("exceptions", {}).items():
-        print(f"  {name}: {exc.get('reason', '')}")
-        print(f"    files: {exc['patterns']}")
-        print(f"    allowed: {exc['allowed']}")
+        logger.info(f"  {name}: {exc.get('reason', '')}")
+        logger.info(f"    files: {exc['patterns']}")
+        logger.info(f"    allowed: {exc['allowed']}")
 
 
 def validate_config(config: dict) -> bool:
@@ -416,12 +415,12 @@ def validate_config(config: dict) -> bool:
             errors.append(f"blocking[{i}]: invalid regex: {e}")
 
     if errors:
-        print(f"{RED}Validation errors:{NC}")
+        logger.info("Validation errors:")
         for e in errors:
-            print(f"  - {e}")
+            logger.info(f"  - {e}")
         return False
 
-    print(f"{GREEN}vibesrails.yaml is valid{NC}")
+    logger.info("vibesrails.yaml is valid")
     return True
 
 
@@ -451,19 +450,19 @@ def _report_results(all_results: list[ScanResult]) -> int:
     warnings = [r for r in all_results if r.level == "WARN"]
 
     for r in blocking:
-        print(f"{RED}BLOCK{NC} {r.file}:{r.line}")
-        print(f"  [{r.pattern_id}] {r.message}")
+        logger.info(f"BLOCK {r.file}:{r.line}")
+        logger.info(f"  [{r.pattern_id}] {r.message}")
     for r in warnings:
-        print(f"{YELLOW}WARN{NC} {r.file}:{r.line}")
-        print(f"  [{r.pattern_id}] {r.message}")
+        logger.info(f"WARN {r.file}:{r.line}")
+        logger.info(f"  [{r.pattern_id}] {r.message}")
 
-    print("=" * 30)
-    print(f"BLOCKING: {len(blocking)} | WARNINGS: {len(warnings)}")
+    logger.info("=" * 30)
+    logger.info(f"BLOCKING: {len(blocking)} | WARNINGS: {len(warnings)}")
 
     if blocking:
-        print(f"\n{RED}Fix blocking issues before committing.{NC}")
+        logger.info("Fix blocking issues before committing.")
         return 1
-    print(f"\n{GREEN}vibesrails: PASSED{NC}")
+    logger.info("vibesrails: PASSED")
     return 0
 
 
@@ -487,13 +486,13 @@ def main() -> None:
         sys.exit(0)
 
     files = _determine_files(args)
-    print(f"{BLUE}vibesrails - Security Scan{NC}")
-    print("=" * 30)
+    logger.info("vibesrails - Security Scan")
+    logger.info("=" * 30)
 
     if not files:
-        print(f"{GREEN}No Python files to scan{NC}")
+        logger.info("No Python files to scan")
         sys.exit(0)
-    print(f"Scanning {len(files)} file(s)...\n")
+    logger.info(f"Scanning {len(files)} file(s)...")
 
     all_results = []
     for filepath in files:

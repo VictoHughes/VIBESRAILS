@@ -109,7 +109,7 @@ def main() -> None:
         command = tool_input.get("command", "")
         issues = scan_bash_command(command) if command else []
         if issues:
-            sys.stdout.write(f"\U0001f534 VibesRails BLOCKED (secret in command):\n")  # vibesrails: ignore
+            sys.stdout.write("\U0001f534 VibesRails BLOCKED (secret in command):\n")  # vibesrails: ignore
             sys.stdout.write("\n".join(issues) + "\n")  # vibesrails: ignore
             sys.stdout.write("\nUse environment variables instead.\n")  # vibesrails: ignore
             sys.exit(1)

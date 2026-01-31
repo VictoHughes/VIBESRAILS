@@ -34,20 +34,20 @@ def get_default_config_path() -> Path:
 def init_config(target: Path = Path("vibesrails.yaml")) -> bool:
     """Initialize vibesrails.yaml in current project."""
     if target.exists():
-        print(f"{YELLOW}vibesrails.yaml already exists{NC}")
+        logger.info(f"{YELLOW}vibesrails.yaml already exists{NC}")
         return False
 
     default_config = get_default_config_path()
     if not default_config.exists():
-        print(f"{RED}ERROR: Default config not found at {default_config}{NC}")
+        logger.error(f"{RED}ERROR: Default config not found at {default_config}{NC}")
         return False
 
     shutil.copy(default_config, target)
-    print(f"{GREEN}Created {target}{NC}")
-    print("\nNext steps:")
-    print(f"  1. Edit {target} to customize patterns")
-    print("  2. Run: vibesrails --hook  (install git pre-commit)")
-    print("  3. Code freely - vibesrails runs on every commit")
+    logger.info(f"{GREEN}Created {target}{NC}")
+    logger.info("Next steps:")
+    logger.info(f"  1. Edit {target} to customize patterns")
+    logger.info("  2. Run: vibesrails --hook  (install git pre-commit)")
+    logger.info("  3. Code freely - vibesrails runs on every commit")
     return True
 
 
@@ -68,7 +68,7 @@ def uninstall() -> bool:
 
             if new_content and new_content != "#!/bin/bash":
                 hook_path.write_text(new_content)
-                print(f"{YELLOW}Removed vibesrails from pre-commit hook{NC}")
+                logger.info(f"{YELLOW}Removed vibesrails from pre-commit hook{NC}")
             else:
                 hook_path.unlink()
                 removed.append(str(hook_path))
@@ -78,13 +78,13 @@ def uninstall() -> bool:
         removed.append(str(vibesrails_dir))
 
     if removed:
-        print(f"{GREEN}Removed:{NC}")
+        logger.info(f"{GREEN}Removed:{NC}")
         for f in removed:
-            print(f"  - {f}")
-        print(f"\n{GREEN}vibesrails uninstalled from this project{NC}")
-        print("To uninstall the package: pip uninstall vibesrails")
+            logger.info(f"  - {f}")
+        logger.info(f"{GREEN}vibesrails uninstalled from this project{NC}")
+        logger.info("To uninstall the package: pip uninstall vibesrails")
     else:
-        print(f"{YELLOW}Nothing to uninstall{NC}")
+        logger.info(f"{YELLOW}Nothing to uninstall{NC}")
 
     return True
 
@@ -112,7 +112,7 @@ def run_senior_mode(files: list[str]) -> int:
     from .senior_mode import ArchitectureMapper, ClaudeReviewer, SeniorGuards
     from .senior_mode.report import SeniorReport
 
-    print(f"{BLUE}Updating ARCHITECTURE.md...{NC}")
+    logger.info(f"{BLUE}Updating ARCHITECTURE.md...{NC}")
     ArchitectureMapper(Path.cwd()).save()
 
     code_diff = _get_cached_diff()
@@ -127,14 +127,14 @@ def run_senior_mode(files: list[str]) -> int:
     review_result = None
     for filepath, content in file_contents:
         if reviewer.should_review(filepath, code_diff):
-            print(f"{BLUE}Running Claude review on {filepath}...{NC}")
+            logger.info(f"{BLUE}Running Claude review on {filepath}...{NC}")
             review_result = reviewer.review(content, filepath)
             break
 
     report = SeniorReport(
         guard_issues=issues, review_result=review_result, architecture_updated=True,
     )
-    print(report.generate())
+    logger.info(report.generate())
     return 1 if report.has_blocking_issues() else 0
 
 
@@ -154,9 +154,9 @@ def _update_existing_hook(hook_path: Path, architecture_enabled: bool) -> bool:
         return False
     if architecture_enabled and "lint-imports" not in content:
         hook_path.write_text(content.rstrip() + "\n" + _ARCH_CHECK)
-        print(f"{YELLOW}Updated pre-commit hook with architecture check{NC}")
+        logger.info(f"{YELLOW}Updated pre-commit hook with architecture check{NC}")
     else:
-        print(f"{YELLOW}VibesRails hook already installed{NC}")
+        logger.info(f"{YELLOW}VibesRails hook already installed{NC}")
     return True
 
 
@@ -164,7 +164,7 @@ def install_hook(architecture_enabled: bool = False) -> bool:
     """Install git pre-commit hook."""
     git_dir = Path(".git")
     if not git_dir.exists():
-        print(f"{RED}ERROR: Not a git repository{NC}")
+        logger.error(f"{RED}ERROR: Not a git repository{NC}")
         return False
 
     hooks_dir = git_dir / "hooks"
@@ -175,7 +175,7 @@ def install_hook(architecture_enabled: bool = False) -> bool:
     if hook_path.exists():
         if _update_existing_hook(hook_path, architecture_enabled):
             return True
-        print(f"{YELLOW}Appending to existing pre-commit hook{NC}")
+        logger.info(f"{YELLOW}Appending to existing pre-commit hook{NC}")
         with open(hook_path, "a") as f:
             f.write("\n\n# vibesrails security check\nvibesrails\n")
             if architecture_enabled:
@@ -192,5 +192,5 @@ def install_hook(architecture_enabled: bool = False) -> bool:
         )
         hook_path.chmod(0o755)
 
-    print(f"{GREEN}Git hook installed at {hook_path}{NC}")
+    logger.info(f"{GREEN}Git hook installed at {hook_path}{NC}")
     return True

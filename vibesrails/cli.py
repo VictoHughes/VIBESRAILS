@@ -8,8 +8,11 @@ V2 guard handlers are in cli_v2.py.
 """
 
 import argparse
+import logging
 import sys
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 from . import __version__
 from .cli_setup import (
@@ -135,7 +138,7 @@ def _handle_hook_commands(args) -> None:
         from .hooks.queue_processor import add_task
         queue_file = Path(".claude/queue.jsonl")
         task_id = add_task(queue_file, args.queue, source="cli")
-        print(f"Task queued [{task_id}]: {args.queue}")
+        logger.info("Task queued [%s]: %s", task_id, args.queue)
         sys.exit(0)
 
     if args.inbox:
@@ -144,7 +147,7 @@ def _handle_hook_commands(args) -> None:
         create_inbox(inbox_file)
         with inbox_file.open("a") as f:
             f.write(args.inbox + "\n")
-        print(f"Added to inbox: {args.inbox}")
+        logger.info("Added to inbox: %s", args.inbox)
         sys.exit(0)
 
 
@@ -173,13 +176,14 @@ def _handle_config_commands(args, config, files):
         run_autofix(config, files, dry_run=args.dry_run, backup=not args.no_backup)
         if args.dry_run:
             sys.exit(0)
-        print()
+        logger.info("")
 
     sys.exit(run_scan(config, files))
 
 
 def main() -> None:
     """CLI entry point."""
+    logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stdout)
     # Handle learn command (positional argument)
     if len(sys.argv) > 1 and sys.argv[1] == "learn":
         sys.exit(handle_learn_command())
@@ -195,8 +199,8 @@ def main() -> None:
         config_path = find_config()
 
     if not config_path or not config_path.exists():
-        print(f"{RED}ERROR: No vibesrails.yaml found{NC}")
-        print("\nRun: vibesrails --init")
+        logger.error("%sERROR: No vibesrails.yaml found%s", RED, NC)
+        logger.info("Run: vibesrails --init")
         sys.exit(1)
 
     config = load_config(config_path)

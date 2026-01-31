@@ -71,13 +71,13 @@ def validate_and_preview_regex(pattern: str, project_root: Path) -> tuple[bool, 
 def _show_preview(preview: list[str]) -> None:
     """Display pattern match preview."""
     if preview:
-        print(f"  {YELLOW}Apercu des matches ({len(preview)} trouve(s)):{NC}")
+        logger.info(f"  {YELLOW}Apercu des matches ({len(preview)} trouve(s)):{NC}")
         for match in preview[:5]:
-            print(f"  {match}")
+            logger.info(f"  {match}")
         if len(preview) > 5:
-            print(f"  ... et {len(preview) - 5} autres")
+            logger.info(f"  ... et {len(preview) - 5} autres")
     else:
-        print(f"  {YELLOW}Aucun match trouve dans le projet actuel{NC}")
+        logger.info(f"  {YELLOW}Aucun match trouve dans le projet actuel{NC}")
 
 
 def _prompt_single_pattern(project_root: Path, index: int) -> dict | None:
@@ -88,17 +88,17 @@ def _prompt_single_pattern(project_root: Path, index: int) -> dict | None:
 
     is_valid, preview = validate_and_preview_regex(pattern_input, project_root)
     if not is_valid:
-        print(f"  {RED}{preview[0]}{NC}")
+        logger.error(f"  {RED}{preview[0]}{NC}")
         return ...  # sentinel: invalid but continue
 
     _show_preview(preview)
     confirm = input("  Ajouter ce pattern? [O/n]: ").strip().lower()
     if confirm in ("n", "no", "non"):
-        print(f"  {YELLOW}Pattern ignore{NC}")
+        logger.info(f"  {YELLOW}Pattern ignore{NC}")
         return ...
 
     message = input("  Message d'erreur: ").strip() or f"Pattern interdit: {pattern_input}"
-    print(f"  {GREEN}+ Ajoute: {pattern_input}{NC}")
+    logger.info("  %s+ Ajoute: %s%s", GREEN, pattern_input, NC)
     return {"id": f"custom_{index}", "regex": pattern_input, "message": message}
 
 
@@ -108,9 +108,9 @@ def prompt_extra_patterns(project_root: Path | None = None) -> list[dict]:
         project_root = Path.cwd()
 
     extra_patterns = []
-    print(f"\n{YELLOW}Patterns additionnels?{NC}")
-    print("  Exemples: nom de projet, API keys specifiques, etc.")
-    print("  (Entree vide pour continuer)")
+    logger.info("\n%sPatterns additionnels?%s", YELLOW, NC)
+    logger.info("  Exemples: nom de projet, API keys specifiques, etc.")
+    logger.info("  (Entree vide pour continuer)")
 
     while True:
         try:
@@ -120,7 +120,7 @@ def prompt_extra_patterns(project_root: Path | None = None) -> list[dict]:
             if result is not ...:
                 extra_patterns.append(result)
         except (EOFError, KeyboardInterrupt):
-            print()
+            logger.info("")
             break
 
     return extra_patterns

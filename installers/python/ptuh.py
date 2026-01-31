@@ -14,6 +14,10 @@ It blocks modifications to:
 import json
 import re
 import sys
+import logging
+
+logger = logging.getLogger("vibesrails.ptuh")
+logging.basicConfig(level=logging.ERROR)
 
 # Secret patterns — block commands and file content containing secrets
 SECRET_PATTERNS = [
@@ -80,7 +84,7 @@ def check_file_path(tool_input):
     file_path = tool_input.get("file_path", "")
     for protected in PROTECTED_PATHS:
         if protected in file_path:
-            print(
+            logger.error(
                 f"\U0001f534 BLOCKED: Cannot modify protected file: {file_path}\n"
                 f"Reason: '{protected}' is protected by vibesrails security hook.\n"
                 f"This protection cannot be disabled by Claude Code."
@@ -96,7 +100,7 @@ def check_secrets(text, context):
             # Mask the secret for display
             found = match.group(0)
             masked = found[:8] + "..." + found[-4:] if len(found) > 16 else found[:6] + "..."
-            print(
+            logger.error(
                 f"\U0001f534 BLOCKED: Secret detected in {context}.\n"
                 f"Type: {label}\n"
                 f"Found: {masked}\n"
@@ -111,7 +115,7 @@ def check_bash_command(tool_input):
     command = tool_input.get("command", "")
     for blocked in BLOCKED_COMMANDS:
         if blocked in command:
-            print(
+            logger.error(
                 f"\U0001f534 BLOCKED: Dangerous command detected.\n"
                 f"Pattern: '{blocked}'\n"
                 f"This protection cannot be disabled by Claude Code."

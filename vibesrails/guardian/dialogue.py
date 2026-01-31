@@ -4,9 +4,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .types import Signature
-
 from .placement_guard import Divergence
+from .types import Signature
 
 
 class InteractiveDialogue:

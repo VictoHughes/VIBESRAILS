@@ -74,39 +74,39 @@ class VibesRailsHandler(FileSystemEventHandler):
         results = scan_file(filepath, self.config)
 
         if not results:
-            print(f"{GREEN}✓{NC} {rel_path}")
+            logger.info(f"{GREEN}✓{NC} {rel_path}")
             return
 
         blocking = [r for r in results if r.level == "BLOCK"]
         warnings = [r for r in results if r.level == "WARN"]
 
         if blocking:
-            print(f"\n{RED}✗ {rel_path}{NC}")
+            logger.info(f"\n{RED}✗ {rel_path}{NC}")
             for r in blocking:
-                print(f"  {RED}BLOCK{NC} :{r.line} [{r.pattern_id}] {r.message}")
+                logger.info(f"  {RED}BLOCK{NC} :{r.line} [{r.pattern_id}] {r.message}")
         elif warnings:
-            print(f"\n{YELLOW}! {rel_path}{NC}")
+            logger.info(f"\n{YELLOW}! {rel_path}{NC}")
 
         for r in warnings:
-            print(f"  {YELLOW}WARN{NC} :{r.line} [{r.pattern_id}] {r.message}")
+            logger.info(f"  {YELLOW}WARN{NC} :{r.line} [{r.pattern_id}] {r.message}")
 
 
 def run_watch_mode(config_path: Path | None = None) -> bool:
     """Run watch mode to scan files on save."""
-    print(f"\n{BLUE}vibesrails --watch{NC}")
-    print("=" * 40)
-    print("Live scanning mode\n")
+    logger.info(f"\n{BLUE}vibesrails --watch{NC}")
+    logger.info("=" * 40)
+    logger.info("Live scanning mode\n")
 
     if not HAS_WATCHDOG:
-        print(f"{RED}ERROR: watchdog package not installed{NC}")
-        print("Install with: pip install vibesrails[watch]")
+        logger.error(f"{RED}ERROR: watchdog package not installed{NC}")
+        logger.error("Install with: pip install vibesrails[watch]")
         return False
 
     # Load config
     config = load_config(config_path)
 
-    print(f"{GREEN}Watching for changes...{NC}")
-    print("Press Ctrl+C to stop\n")
+    logger.info(f"{GREEN}Watching for changes...{NC}")
+    logger.info("Press Ctrl+C to stop\n")
 
     # Set up observer
     handler = VibesRailsHandler(config)
@@ -118,9 +118,9 @@ def run_watch_mode(config_path: Path | None = None) -> bool:
         while True:
             time.sleep(1)  # vibesrails: ignore — file watcher polling loop
     except KeyboardInterrupt:
-        print(f"\n{YELLOW}Stopping watch mode...{NC}")
+        logger.info(f"\n{YELLOW}Stopping watch mode...{NC}")
         observer.stop()
 
     observer.join()
-    print(f"{GREEN}Watch mode stopped{NC}")
+    logger.info(f"{GREEN}Watch mode stopped{NC}")
     return True

@@ -36,12 +36,12 @@ def _detect_and_report(project_root: Path) -> dict:
     env_files = detect_env_files(project_root)
     arch_info = detect_architecture_complexity(project_root)
 
-    print(f"{YELLOW}{msg('project_analysis')}{NC}")
+    logger.info(f"{YELLOW}{msg('project_analysis')}{NC}")
 
     if project_types:
-        print(f"  {msg('detected_types')}: {', '.join(project_types)}")
+        logger.info(f"  {msg('detected_types')}: {', '.join(project_types)}")
     else:
-        print(f"  Type: {msg('generic_python')}")
+        logger.info(f"  Type: {msg('generic_python')}")
 
     packs_to_use = ["@vibesrails/security-pack"]
     for proj_type in project_types:
@@ -49,21 +49,21 @@ def _detect_and_report(project_root: Path) -> dict:
         if pack and pack not in packs_to_use:
             packs_to_use.append(pack)
 
-    print(f"  {msg('packs_to_include')}: {', '.join(packs_to_use)}")
+    logger.info(f"  {msg('packs_to_include')}: {', '.join(packs_to_use)}")
 
     if existing_configs:
-        print(f"  {msg('existing_configs')}: {', '.join(existing_configs.keys())}")
+        logger.info(f"  {msg('existing_configs')}: {', '.join(existing_configs.keys())}")
     if has_secrets:
-        print(f"  {RED}{msg('secret_patterns_detected')}{NC}")
+        logger.error(f"  {RED}{msg('secret_patterns_detected')}{NC}")
     if env_files:
-        print(f"  {msg('env_files')}: {', '.join(f.name for f in env_files)}")
+        logger.info(f"  {msg('env_files')}: {', '.join(f.name for f in env_files)}")
 
     if arch_info["needs_arch"]:
-        print(f"  {BLUE}{msg('arch_detected')}: {len(arch_info['layers'])} {msg('arch_layers')}{NC}")
+        logger.info(f"  {BLUE}{msg('arch_detected')}: {len(arch_info['layers'])} {msg('arch_layers')}{NC}")
         for layer in arch_info["layers"][:5]:
-            print(f"    • {layer}")
+            logger.info(f"    • {layer}")
     else:
-        print(f"  {msg('arch_simple_project')}")
+        logger.info(f"  {msg('arch_simple_project')}")
 
     return {
         "project_types": project_types,
@@ -78,10 +78,10 @@ def _prompt_user_config(project_root: Path, dry_run: bool, interactive: bool, ar
     """Prompt for extra patterns and architecture config. Returns (extra_patterns, architecture_config)."""
     extra_patterns = []
     if interactive and not dry_run:
-        print(f"\n{YELLOW}{msg('config_mode')}{NC}")
-        print(f"  1. {msg('mode_simple')}")
-        print(f"  2. {msg('mode_advanced')}")
-        print(f"  3. {msg('mode_skip')}")
+        logger.info(f"\n{YELLOW}{msg('config_mode')}{NC}")
+        logger.info(f"  1. {msg('mode_simple')}")
+        logger.info(f"  2. {msg('mode_advanced')}")
+        logger.info(f"  3. {msg('mode_skip')}")
 
         mode = input(f"\n  {msg('choice')} [1/2/3]: ").strip()
 
@@ -92,7 +92,7 @@ def _prompt_user_config(project_root: Path, dry_run: bool, interactive: bool, ar
 
     architecture_config = None
     if arch_info["needs_arch"] and interactive and not dry_run:
-        print()
+        logger.info("")
         if prompt_user(f"{BLUE}{msg('arch_suggest')}{NC}", default="y"):
             architecture_config = {
                 "enabled": True,
@@ -100,8 +100,8 @@ def _prompt_user_config(project_root: Path, dry_run: bool, interactive: bool, ar
                 "layers": arch_info["layers"],
             }
             tool_info = ARCHITECTURE_TOOLS.get(arch_info["language"], {})
-            print(f"  {GREEN}✓ {msg('arch_will_check')}{NC}")
-            print(f"  {msg('arch_install_cmd')}: {tool_info.get('install', 'pip install import-linter')}")
+            logger.info(f"  {GREEN}✓ {msg('arch_will_check')}{NC}")
+            logger.info(f"  {msg('arch_install_cmd')}: {tool_info.get('install', 'pip install import-linter')}")
 
     return extra_patterns, architecture_config
 
@@ -112,7 +112,7 @@ def _create_config_files(project_root: Path, config_content: str, architecture_c
 
     config_path = project_root / "vibesrails.yaml"
     config_path.write_text(config_content)
-    print(f"\n{GREEN}{msg('created')}: vibesrails.yaml{NC}")
+    logger.info(f"\n{GREEN}{msg('created')}: vibesrails.yaml{NC}")
     result["created"] = True
 
     # Architecture config
@@ -125,7 +125,7 @@ def _create_config_files(project_root: Path, config_content: str, architecture_c
                     project_root, architecture_config.get("layers", [])
                 )
                 importlinter_path.write_text(importlinter_content)
-                print(f"{GREEN}{msg('created')}: .importlinter ({msg('arch_config_created')}){NC}")
+                logger.info(f"{GREEN}{msg('created')}: .importlinter ({msg('arch_config_created')}){NC}")
         result["architecture_config_created"] = True
 
     # Install hook
@@ -140,29 +140,29 @@ def _create_config_files(project_root: Path, config_content: str, architecture_c
         existing_content = claude_md_path.read_text()
         if "vibesrails" not in existing_content.lower():
             claude_md_path.write_text(existing_content + "\n\n" + claude_md_content)
-            print(f"{GREEN}{msg('updated')}: CLAUDE.md ({msg('claude_instructions')}){NC}")
+            logger.info(f"{GREEN}{msg('updated')}: CLAUDE.md ({msg('claude_instructions')}){NC}")
         else:
             existing_msg = "CLAUDE.md already has vibesrails instructions" if LANG == "en" else "CLAUDE.md existe deja avec instructions vibesrails"
-            print(f"{YELLOW}{existing_msg}{NC}")
+            logger.info(f"{YELLOW}{existing_msg}{NC}")
     else:
         claude_md_path.write_text(claude_md_content)
-        print(f"{GREEN}{msg('created')}: CLAUDE.md ({msg('claude_instructions')}){NC}")
+        logger.info(f"{GREEN}{msg('created')}: CLAUDE.md ({msg('claude_instructions')}){NC}")
 
     result["claude_md_created"] = True
 
     # Claude Code hooks
     result["hooks_installed"] = False
     if interactive:
-        print()
+        logger.info("")
         if prompt_user(f"{BLUE}{msg('install_hooks')}{NC}", default="y"):
             if install_claude_hooks(project_root):
-                print(f"{GREEN}{msg('created')}: .claude/hooks.json ({msg('claude_hooks')}){NC}")
+                logger.info(f"{GREEN}{msg('created')}: .claude/hooks.json ({msg('claude_hooks')}){NC}")
                 result["hooks_installed"] = True
             else:
-                print(f"{YELLOW}{msg('hooks_not_available')}{NC}")
+                logger.info(f"{YELLOW}{msg('hooks_not_available')}{NC}")
     else:
         if install_claude_hooks(project_root):
-            print(f"{GREEN}{msg('created')}: .claude/hooks.json ({msg('claude_hooks')}){NC}")
+            logger.info(f"{GREEN}{msg('created')}: .claude/hooks.json ({msg('claude_hooks')}){NC}")
             result["hooks_installed"] = True
 
     return result
@@ -180,23 +180,23 @@ def smart_setup(
 
     project_root = Path(project_root).resolve()
 
-    print(f"{BLUE}{msg('smart_setup')}{NC}")
-    print("=" * 40)
-    print(f"{msg('analyzing')}: {project_root.name}/")
-    print()
+    logger.info(f"{BLUE}{msg('smart_setup')}{NC}")
+    logger.info("=" * 40)
+    logger.info(f"{msg('analyzing')}: {project_root.name}/")
+    logger.info("")
 
     findings = _detect_and_report(project_root)
 
     # Check if config already exists
     config_path = project_root / "vibesrails.yaml"
     if config_path.exists() and not force:
-        print(f"\n{YELLOW}{msg('config_exists')}{NC}")
+        logger.info(f"\n{YELLOW}{msg('config_exists')}{NC}")
         if interactive:
             if not prompt_user(msg('overwrite_config'), default="n"):
-                print(f"{YELLOW}{msg('setup_cancelled')}{NC}")
+                logger.info(f"{YELLOW}{msg('setup_cancelled')}{NC}")
                 return {"created": False, "reason": "exists"}
         else:
-            print(msg('use_force'))
+            logger.info(msg('use_force'))
             return {"created": False, "reason": "exists"}
 
     extra_patterns, architecture_config = _prompt_user_config(
@@ -211,10 +211,10 @@ def smart_setup(
     )
 
     # Show preview
-    print(f"\n{YELLOW}{msg('proposed_config')}{NC}")
-    print("-" * 40)
-    print(config_content)
-    print("-" * 40)
+    logger.info(f"\n{YELLOW}{msg('proposed_config')}{NC}")
+    logger.info("-" * 40)
+    logger.info(config_content)
+    logger.info("-" * 40)
 
     result = {
         "project_root": str(project_root),
@@ -229,32 +229,32 @@ def smart_setup(
 
     if dry_run:
         dry_run_msg = "(Dry-run mode - no files created)" if LANG == "en" else "(Mode dry-run - aucun fichier cree)"
-        print(f"\n{YELLOW}{dry_run_msg}{NC}")
+        logger.info(f"\n{YELLOW}{dry_run_msg}{NC}")
         result["created"] = False
         return result
 
     if interactive:
-        print()
+        logger.info("")
         if not prompt_user(f"{GREEN}{msg('create_config')}{NC}"):
-            print(f"{YELLOW}{msg('setup_cancelled')}{NC}")
+            logger.info(f"{YELLOW}{msg('setup_cancelled')}{NC}")
             result["created"] = False
             return result
 
     file_result = _create_config_files(project_root, config_content, architecture_config, interactive)
     result.update(file_result)
 
-    print()
-    print(f"{GREEN}{msg('setup_complete')}{NC}")
-    print(f"\n{msg('files_created')}:")
-    print(f"  - vibesrails.yaml ({msg('config_file')})")
-    print(f"  - .git/hooks/pre-commit ({msg('auto_scan')})")
-    print(f"  - CLAUDE.md ({msg('claude_instructions')})")
+    logger.info("")
+    logger.info(f"{GREEN}{msg('setup_complete')}{NC}")
+    logger.info(f"\n{msg('files_created')}:")
+    logger.info(f"  - vibesrails.yaml ({msg('config_file')})")
+    logger.info(f"  - .git/hooks/pre-commit ({msg('auto_scan')})")
+    logger.info(f"  - CLAUDE.md ({msg('claude_instructions')})")
     if result.get("hooks_installed"):
-        print(f"  - .claude/hooks.json ({msg('claude_hooks')})")
-    print(f"\n{msg('next_steps')}:")
-    print(f"  1. {msg('commit_normally')}")
-    print(f"  2. {msg('scan_all')}: vibesrails --all")
-    print(f"\n{BLUE}A.B.H.A.M.H{NC}")
+        logger.info(f"  - .claude/hooks.json ({msg('claude_hooks')})")
+    logger.info(f"\n{msg('next_steps')}:")
+    logger.info(f"  1. {msg('commit_normally')}")
+    logger.info(f"  2. {msg('scan_all')}: vibesrails --all")
+    logger.info(f"\n{BLUE}A.B.H.A.M.H{NC}")
 
     return result
 
@@ -273,5 +273,5 @@ def run_smart_setup_cli(force: bool = False, dry_run: bool = False) -> bool:
         return result.get("created", False) or dry_run
     except Exception as e:
         logger.error("Smart setup failed: %s", e)
-        print(f"{RED}Error: {e}{NC}")
+        logger.error(f"{RED}Error: {e}{NC}")
         return False

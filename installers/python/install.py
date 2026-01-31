@@ -4,10 +4,14 @@
 Usage: python install.py /path/to/project
 """
 import json
+import logging
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+logger = logging.getLogger("vibesrails.installer")
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 
@@ -15,28 +19,28 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 def main() -> None:
     """CLI entry point."""
     target = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path.cwd()
-    print(f"=== VibesRails Installer ===")
-    print(f"Target: {target}")
+    logger.info(f"=== VibesRails Installer ===")
+    logger.info(f"Target: {target}")
 
     # 1. Install vibesrails
-    print("\n[1/4] Installing vibesrails...")
+    logger.info("\n[1/4] Installing vibesrails...")
     subprocess.run([sys.executable, "-m", "pip", "install", "vibesrails"], check=True)
 
     # 2. Copy config files
-    print("\n[2/4] Copying configuration files...")
+    logger.info("\n[2/4] Copying configuration files...")
     shutil.copy2(SCRIPT_DIR / "vibesrails.yaml", target / "vibesrails.yaml")
-    print("  -> vibesrails.yaml")
+    logger.info("  -> vibesrails.yaml")
 
     shutil.copy2(SCRIPT_DIR / "CLAUDE.md", target / "CLAUDE.md")
-    print("  -> CLAUDE.md")
+    logger.info("  -> CLAUDE.md")
 
     claude_dir = target / ".claude"
     claude_dir.mkdir(exist_ok=True)
     shutil.copy2(SCRIPT_DIR / ".claude" / "hooks.json", claude_dir / "hooks.json")
-    print("  -> .claude/hooks.json")
+    logger.info("  -> .claude/hooks.json")
 
     # 3. Git pre-commit hook
-    print("\n[3/4] Installing git pre-commit hook...")
+    logger.info("\n[3/4] Installing git pre-commit hook...")
     git_dir = target / ".git"
     if git_dir.is_dir():
         hooks_dir = git_dir / "hooks"
@@ -57,21 +61,21 @@ def main() -> None:
             'fi\n'
         )
         hook.chmod(0o755)
-        print("  -> .git/hooks/pre-commit")
+        logger.info("  -> .git/hooks/pre-commit")
     else:
-        print("  (no .git directory found, skipping hook)")
+        logger.info("  (no .git directory found, skipping hook)")
 
     # 4. Install AI self-protection hook
-    print("\n[4/4] Installing AI self-protection hook...")
+    logger.info("\n[4/4] Installing AI self-protection hook...")
     claude_hooks_dir = Path.home() / ".claude" / "hooks"
     claude_hooks_dir.mkdir(parents=True, exist_ok=True)
 
     ptuh_source = SCRIPT_DIR / "ptuh.py"
     if ptuh_source.exists():
         shutil.copy2(ptuh_source, claude_hooks_dir / "ptuh.py")
-        print("  -> ~/.claude/hooks/ptuh.py")
+        logger.info("  -> ~/.claude/hooks/ptuh.py")
     else:
-        print(f"  (ptuh.py not found at {ptuh_source}, skipping hook file copy)")
+        logger.info(f"  (ptuh.py not found at {ptuh_source}, skipping hook file copy)")
 
     settings_path = Path.home() / ".claude" / "settings.json"
     settings = {}
@@ -87,13 +91,13 @@ def main() -> None:
         ptu.append(matcher_entry)
 
     settings_path.write_text(json.dumps(settings, indent=2))
-    print("  -> ~/.claude/settings.json (hook registered)")
+    logger.info("  -> ~/.claude/settings.json (hook registered)")
 
-    print("\n=== Done! ===")
-    print("Commands:")
-    print("  vibesrails --all    # Scan project")
-    print("  vibesrails --setup  # Reconfigure (interactive)")
-    print("  vibesrails --show   # Show patterns")
+    logger.info("\n=== Done! ===")
+    logger.info("Commands:")
+    logger.info("  vibesrails --all    # Scan project")
+    logger.info("  vibesrails --setup  # Reconfigure (interactive)")
+    logger.info("  vibesrails --show   # Show patterns")
 
 
 if __name__ == "__main__":

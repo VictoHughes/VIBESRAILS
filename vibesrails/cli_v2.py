@@ -17,24 +17,24 @@ logger = logging.getLogger(__name__)
 
 def _print_v2_issues(title: str, issues: list) -> None:
     """Print v2 guard issues in a formatted way."""
-    print(f"\n{BLUE}VibesRails v2 — {title}{NC}")
-    print("=" * 50)
+    logger.info(f"\n{BLUE}VibesRails v2 — {title}{NC}")
+    logger.info("=" * 50)
     if not issues:
-        print(f"{GREEN}✅ No issues found{NC}")
+        logger.info(f"{GREEN}✅ No issues found{NC}")
         return
     blocks = [i for i in issues if i.severity == "block"]
     warns = [i for i in issues if i.severity == "warn"]
     infos = [i for i in issues if i.severity == "info"]
     for issue in blocks:
         loc = f" ({issue.file}:{issue.line})" if issue.file else ""
-        print(f"{RED}🚫 [BLOCK]{loc} {issue.message}{NC}")
+        logger.error(f"{RED}🚫 [BLOCK]{loc} {issue.message}{NC}")
     for issue in warns:
         loc = f" ({issue.file}:{issue.line})" if issue.file else ""
-        print(f"{YELLOW}⚠️  [WARN]{loc} {issue.message}{NC}")
+        logger.warning(f"{YELLOW}⚠️  [WARN]{loc} {issue.message}{NC}")
     for issue in infos:
         loc = f" ({issue.file}:{issue.line})" if issue.file else ""
-        print(f"ℹ️  [INFO]{loc} {issue.message}")
-    print(f"\n{len(blocks)} blocking | {len(warns)} warnings | {len(infos)} info")
+        logger.info(f"ℹ️  [INFO]{loc} {issue.message}")
+    logger.info(f"\n{len(blocks)} blocking | {len(warns)} warnings | {len(infos)} info")
 
 
 def _get_staged_diff() -> str:
@@ -72,11 +72,11 @@ def _print_guard_status(name: str, issues: list) -> None:
     blocks = sum(1 for i in issues if i.severity == "block")
     warns = sum(1 for i in issues if i.severity == "warn")
     if blocks:
-        print(f"{RED}🚫 {name}: {blocks} blocking, {warns} warnings{NC}")
+        logger.error(f"{RED}🚫 {name}: {blocks} blocking, {warns} warnings{NC}")
     elif warns:
-        print(f"{YELLOW}⚠️  {name}: {warns} warnings{NC}")
+        logger.warning(f"{YELLOW}⚠️  {name}: {warns} warnings{NC}")
     else:
-        print(f"{GREEN}✅ {name}: clean{NC}")
+        logger.info(f"{GREEN}✅ {name}: clean{NC}")
 
 
 def _get_v2_guards() -> list[tuple[str, object]]:
@@ -119,15 +119,15 @@ def _run_senior_v2() -> int:
     root = Path.cwd()
     all_issues = []
 
-    print(f"\n{BLUE}╔══════════════════════════════════════════════╗{NC}")
-    print(f"{BLUE}║     🎓 VIBESRAILS v2 — SENIOR SCAN          ║{NC}")
-    print(f"{BLUE}╚══════════════════════════════════════════════╝{NC}\n")
+    logger.info(f"\n{BLUE}╔══════════════════════════════════════════════╗{NC}")
+    logger.info(f"{BLUE}║     🎓 VIBESRAILS v2 — SENIOR SCAN          ║{NC}")
+    logger.info(f"{BLUE}╚══════════════════════════════════════════════╝{NC}\n")
 
-    print(f"{BLUE}── V1 Guards (Senior Mode) ──{NC}")
+    logger.info(f"{BLUE}── V1 Guards (Senior Mode) ──{NC}")
     v1_issues = SeniorGuards().check_all(code_diff="", files=_collect_v1_files(root))
     _print_guard_status("Senior Guards", v1_issues)
 
-    print(f"\n{BLUE}── V2 Guards ──{NC}")
+    logger.info(f"\n{BLUE}── V2 Guards ──{NC}")
     for name, guard in _get_v2_guards():
         issues = guard.scan(root)
         all_issues.extend(issues)
@@ -135,16 +135,16 @@ def _run_senior_v2() -> int:
 
     total_blocks = sum(1 for i in all_issues if i.severity == "block")
     total_warns = sum(1 for i in all_issues if i.severity == "warn")
-    print(f"\n{'=' * 46}")
-    print(f"Total: {total_blocks} blocking | {total_warns} warnings")
+    logger.info(f"\n{'=' * 46}")
+    logger.info(f"Total: {total_blocks} blocking | {total_warns} warnings")
 
     if total_blocks:
-        print(f"\n{RED}🚫 BLOCKED — Fix blocking issues before shipping{NC}")
+        logger.error(f"\n{RED}🚫 BLOCKED — Fix blocking issues before shipping{NC}")
         return 1
     if total_warns:
-        print(f"\n{YELLOW}⚠️  Warnings found — review before shipping{NC}")
+        logger.warning(f"\n{YELLOW}⚠️  Warnings found — review before shipping{NC}")
     else:
-        print(f"\n{GREEN}✅ All clear — ship it!{NC}")
+        logger.info(f"\n{GREEN}✅ All clear — ship it!{NC}")
     return 0
 
 
@@ -177,19 +177,19 @@ def _dispatch_single_guard(args) -> None:
         from .guards_v2.pr_checklist import PRChecklistGuard
         guard = PRChecklistGuard()
         guard.scan(Path.cwd())
-        print(guard.generate_checklist(_get_staged_diff()))
+        logger.info(guard.generate_checklist(_get_staged_diff()))
         sys.exit(0)
 
     if args.pre_deploy:
         from .guards_v2.pre_deploy import PreDeployGuard
         guard = PreDeployGuard()
         issues = guard.run_all(Path.cwd())
-        print(guard.generate_report(issues))
+        logger.info(guard.generate_report(issues))
         sys.exit(1 if any(i.severity == "block" for i in issues) else 0)
 
     if args.upgrade:
         from .advisors.upgrade_advisor import UpgradeAdvisor
-        print(UpgradeAdvisor().generate_report(Path.cwd()))
+        logger.info(UpgradeAdvisor().generate_report(Path.cwd()))
         sys.exit(0)
 
 
@@ -210,14 +210,14 @@ def _dispatch_pack_commands(args) -> None:
         mgr = PackManager()
         installed = mgr.list_installed(Path.cwd())
         available = mgr.list_available()
-        print(f"{BLUE}Installed packs:{NC}")
+        logger.info(f"{BLUE}Installed packs:{NC}")
         for p in installed:
-            print(f"  - {p.get('pack_id', '?')}")
+            logger.info(f"  - {p.get('pack_id', '?')}")
         if not installed:
-            print("  (none)")
-        print(f"\n{BLUE}Available official packs:{NC}")
+            logger.info("  (none)")
+        logger.info(f"\n{BLUE}Available official packs:{NC}")
         for p in available:
-            print(f"  - {p['id']}: {p['description']}")
+            logger.info(f"  - {p['id']}: {p['description']}")
         sys.exit(0)
 
 
@@ -232,7 +232,7 @@ def _dispatch_test_mutation(args) -> None:
     if args.mutation:
         from .guards_v2.mutation import MutationGuard
         guard = MutationGuard()
-        print(guard.generate_report(Path.cwd()))
+        logger.info(guard.generate_report(Path.cwd()))
         issues = guard.scan(Path.cwd())
         _print_v2_issues("Mutation Testing", issues)
         sys.exit(1 if any(i.severity == "block" for i in issues) else 0)

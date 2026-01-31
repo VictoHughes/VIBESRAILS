@@ -115,45 +115,45 @@ def analyze_with_claude(code_samples: str) -> str:
 
 def run_learn_mode() -> bool:
     """Run learn mode to discover new patterns."""
-    print(f"\n{BLUE}vibesrails --learn{NC}")
-    print("=" * 40)
-    print("Claude-powered pattern discovery\n")
+    logger.info(f"\n{BLUE}vibesrails --learn{NC}")
+    logger.info("=" * 40)
+    logger.info("Claude-powered pattern discovery\n")
 
     if not HAS_ANTHROPIC:
-        print(f"{RED}ERROR: anthropic package not installed{NC}")
-        print("Install with: pip install vibesrails[claude]")
+        logger.error(f"{RED}ERROR: anthropic package not installed{NC}")
+        logger.info("Install with: pip install vibesrails[claude]")
         return False
 
     # Sample codebase
-    print(f"{YELLOW}Sampling codebase...{NC}")
+    logger.info(f"{YELLOW}Sampling codebase...{NC}")
     code_samples = sample_codebase()
 
     if not code_samples:
-        print(f"{RED}No Python files found to analyze{NC}")
+        logger.error(f"{RED}No Python files found to analyze{NC}")
         return False
 
-    print("Collected samples from codebase\n")
+    logger.info("Collected samples from codebase\n")
 
     # Analyze with Claude
-    print(f"{YELLOW}Analyzing with Claude...{NC}")
+    logger.info(f"{YELLOW}Analyzing with Claude...{NC}")
     try:
         result = analyze_with_claude(code_samples)
     except Exception as e:
         logger.error("Claude API error: %s", e)
-        print(f"{RED}Claude API error: {e}{NC}")
-        print("Make sure ANTHROPIC_API_KEY is set")
+        logger.error(f"{RED}Claude API error: {e}{NC}")
+        logger.info("Make sure ANTHROPIC_API_KEY is set")
         return False
 
     if not result:
-        print(f"{RED}No response from Claude{NC}")
+        logger.error(f"{RED}No response from Claude{NC}")
         return False
 
     # Display results
-    print(f"\n{GREEN}=== Suggested Patterns ==={NC}\n")
-    print(result)
-    print(f"\n{GREEN}==========================={NC}")
-    print(f"\n{YELLOW}Review suggestions above.{NC}")
-    print("Copy useful patterns to your vibesrails.yaml")
-    print("(Human validation required before adding)")
+    logger.info(f"\n{GREEN}=== Suggested Patterns ==={NC}\n")
+    logger.info(result)
+    logger.info(f"\n{GREEN}==========================={NC}")
+    logger.info(f"\n{YELLOW}Review suggestions above.{NC}")
+    logger.info("Copy useful patterns to your vibesrails.yaml")
+    logger.info("(Human validation required before adding)")
 
     return True

@@ -1024,7 +1024,7 @@ def test_scan_file_case_insensitive_flag(tmp_path):
 
     try:
         test_file = tmp_path / "code.py"
-        test_file.write_text("# todo: fix this\n# TODO: and this\n")
+        test_file.write_text("# todo: fix this\n# TODO: and this\n")  # vibesrails: ignore
 
         results = scan_file(str(test_file), config)
         assert len(results) == 2
