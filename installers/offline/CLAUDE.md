@@ -30,6 +30,20 @@ vibesrails --all       # Scanner tout le projet
 vibesrails --watch     # Mode surveillance continue
 ```
 
+## Testing (MANDATORY)
+
+<testing_discipline>
+Before ANY commit, verify tests exist and pass. Follow this workflow:
+
+1. CHECK: Does this project have tests? Look for tests/, test_*, *_test.py, pytest.ini, or test commands in package.json/Makefile/pyproject.toml.
+2. CREATE: If no tests exist for the code you changed, write them FIRST. Minimum: happy path + edge case + error case per function.
+3. RUN: Run tests after every change. Never commit untested code. Never claim "it works" without running the tests.
+4. COVERAGE: If a coverage tool is configured, verify coverage does not decrease.
+
+If you write code without tests, you are not done. Tests are not optional.
+Test commands to try (in order): pytest, npm test, make test, cargo test, go test ./...
+</testing_discipline>
+
 ## Rules
 
 - Ne jamais commiter de secrets (passwords, API keys, tokens)
