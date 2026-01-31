@@ -4,7 +4,19 @@ import json
 import subprocess
 import sys
 
+import pytest
+
 HOOK_CMD = [sys.executable, "-m", "vibesrails.hooks.pre_tool_use"]
+
+
+@pytest.fixture(autouse=True)
+def _reset_throttle():
+    """Reset throttle before each test to prevent cross-test blocking."""
+    from pathlib import Path
+    from vibesrails.hooks.throttle import reset_state
+    state_dir = Path("~/Dev/vibesrails/.vibesrails")
+    state_dir.mkdir(exist_ok=True)
+    reset_state(state_dir)
 
 
 def _run_hook(payload: dict) -> subprocess.CompletedProcess:

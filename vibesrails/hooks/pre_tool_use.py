@@ -8,6 +8,13 @@ Run as: python3 -m vibesrails.hooks.pre_tool_use
 import json
 import re
 import sys
+from pathlib import Path
+
+# Throttle state directory
+VIBESRAILS_DIR = Path.cwd() / ".vibesrails"
+
+# Commands that count as "verification" — resets the write counter
+CHECK_COMMANDS = ["pytest", "ruff", "vibesrails", "lint-imports", "bandit", "mypy"]
 
 CRITICAL_PATTERNS = [
     (
@@ -104,6 +111,26 @@ def main() -> None:
 
     tool_name = data.get("tool_name", "")
     tool_input = data.get("tool_input", {})
+
+    # --- Throttle: anti-emballement ---
+    try:
+        from vibesrails.hooks.throttle import record_write, record_check, should_block
+
+        if tool_name in ("Write", "Edit"):
+            if should_block(VIBESRAILS_DIR):
+                sys.stdout.write(
+                    "\U0001f6d1 VibesRails THROTTLE: Too many writes without verification.\n"  # vibesrails: ignore
+                    "Run pytest, ruff, or vibesrails --all before continuing.\n"
+                )
+                sys.exit(1)
+            record_write(VIBESRAILS_DIR)
+
+        if tool_name == "Bash":
+            command = tool_input.get("command", "")
+            if any(cmd in command for cmd in CHECK_COMMANDS):
+                record_check(VIBESRAILS_DIR)
+    except ImportError:
+        pass  # throttle module not installed, skip gracefully
 
     if tool_name == "Bash":
         command = tool_input.get("command", "")
