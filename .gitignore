@@ -36,6 +36,8 @@ htmlcov/
 .vibesrails/signature_index.json
 .claude/.last_commit_hash
 .claude/.write_reminded
+.vibesrails/session_throttle.json
+.vibesrails/session.lock
 
 # Generated
 ARCHITECTURE.md

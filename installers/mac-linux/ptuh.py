@@ -41,6 +41,10 @@ PROTECTED_PATHS = [
     ".claude/settings.json",
     ".claude/hooks/",
     ".claude/hooks/ptuh.py",
+    "vibesrails/hooks/throttle.py",
+    "vibesrails/hooks/session_lock.py",
+    ".vibesrails/session_throttle.json",
+    ".vibesrails/session.lock",
 ]
 
 # Block dangerous bash commands

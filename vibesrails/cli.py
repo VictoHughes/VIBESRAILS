@@ -12,8 +12,6 @@ import logging
 import sys
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
-
 from . import __version__
 from .cli_setup import (
     find_config,
@@ -35,6 +33,8 @@ from .scanner import (
     show_patterns,
     validate_config,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _parse_args():
