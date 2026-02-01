@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -c \"import sys; from pathlib import Path; p=Path('vibesrails.yaml'); sys.exit(0 if p.exists() else 1)\" || echo 'vibesrails: Run vibesrails --setup for auto-security setup'"
+            "command": "python3 -c \"import sys; from pathlib import Path; y=Path('vibesrails.yaml'); h=Path('.claude/hooks.json'); t=Path('vibesrails/hooks/throttle.py') if Path('vibesrails').exists() else None; ok=y.exists(); layers=['PreToolUse','PostToolUse','Pre-commit','ptuh.py']; extras=[]; extras.append('throttle') if t and t.exists() else None; extras.append('session-lock') if Path('vibesrails/hooks/session_lock.py').exists() else None; print(f'VibesRails ACTIVE | {len(layers)}+{len(extras)} protections | yaml:{y.exists()} hooks:{h.exists()}') if ok else None; sys.exit(0 if ok else 1)\" || echo 'vibesrails: Run vibesrails --setup for auto-security setup'"
           },
           {
             "type": "command",
