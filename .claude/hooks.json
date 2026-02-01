@@ -8,6 +8,10 @@
             "command": "python3 -c \"import sys; from pathlib import Path; y=Path('vibesrails.yaml'); h=Path('.claude/hooks.json'); t=Path('vibesrails/hooks/throttle.py') if Path('vibesrails').exists() else None; ok=y.exists(); layers=['PreToolUse','PostToolUse','Pre-commit','ptuh.py']; extras=[]; extras.append('throttle') if t and t.exists() else None; extras.append('session-lock') if Path('vibesrails/hooks/session_lock.py').exists() else None; print(f'VibesRails ACTIVE | {len(layers)}+{len(extras)} protections | yaml:{y.exists()} hooks:{h.exists()}') if ok else None; sys.exit(0 if ok else 1)\" || echo 'vibesrails: Run vibesrails --setup for auto-security setup'"
           },
           {
+            "type": "prompt",
+            "prompt": "DISCIPLINE DE SESSION: 1) ARCHITECTURE — Avant de creer ou modifier un fichier, verifie les regles d'architecture dans pyproject.toml [tool.importlinter]. Ne jamais introduire d'import interdit (scanner->cli, guardian->learner, etc.). Si tu doutes, lis pyproject.toml. 2) ZERO DUPLICATION — Avant d'ecrire du code, verifie qu'il n'existe pas deja dans le codebase (Grep/Explore). Reutilise les modules existants. Ne jamais copier-coller de la logique. 3) METHODE STRUCTUREE — Pour toute tache non-triviale: plan d'abord (brainstorming/writing-plans), puis execution (executing-plans). Pas de code sans plan. Pas de plan sans exploration. 4) VERIFICATION — Apres chaque modification: pytest, ruff, vibesrails --all. Ne jamais dire 'c'est fait' sans avoir lance les tests."
+          },
+          {
             "type": "command",
             "command": "python3 -c \"from pathlib import Path; plans=sorted(Path('docs/plans').glob('*.md'), key=lambda p: p.stat().st_mtime, reverse=True) if Path('docs/plans').exists() else []; p=plans[0] if plans else None; content=p.read_text() if p else ''; has_tasks='### Task' in content if content else False; print(f'PLAN READY: {p.name}') if has_tasks else (print(f'Plan actif: {p.name}') if p else None)\""
           },
