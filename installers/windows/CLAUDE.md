@@ -78,3 +78,45 @@ Si tu perds le contexte:
 1. Lis le plan actif: `docs/plans/YYYY-MM-DD-*.md`
 2. Verifie les taches: `TaskList`
 3. Lis le memo: `.claude/current-task.md`
+
+## Session Continuity (persistent plans)
+
+Les todos en memoire ne survivent pas aux crashes. Toujours persister la marche en avant dans des fichiers.
+
+**Workflow obligatoire :**
+1. **Debut de session** → ecrire/relire le plan dans `docs/plans/YYYY-MM-DD-<sujet>.md`
+2. **Pendant le travail** → cocher les etapes terminees dans le fichier plan
+3. **Nouvelle session / crash** → relire `docs/plans/` pour reprendre ou on en etait
+
+Format du fichier plan :
+```markdown
+# Plan: <sujet>
+Date: YYYY-MM-DD
+
+## Etapes
+- [x] Etape terminee
+- [ ] Etape en cours
+- [ ] Etape a faire
+
+## Notes
+(decisions prises, blocages, contexte important)
+```
+
+Ne jamais se fier uniquement aux todos en memoire. Le fichier dans `docs/plans/` est la source de verite.
+
+## Project Tree (persistent snapshot)
+
+Maintenir un fichier `docs/PROJECT_TREE.md` avec l'arbre complet du projet.
+
+**Mise a jour obligatoire :**
+- Avant chaque commit/push
+- En fin de session
+
+**Commande pour generer :**
+```bash
+tree -I '__pycache__|*.pyc|.git|*.egg-info|node_modules|.ruff_cache|dist|build|.pytest_cache' --dirsfirst > docs/PROJECT_TREE.md
+```
+
+**En debut de session** → lire `docs/PROJECT_TREE.md` pour comprendre la structure actuelle du projet.
+
+Ce fichier est commite dans git et fait partie du repo.
