@@ -54,7 +54,7 @@ Test commands to try (in order): pytest, npm test, make test, cargo test, go tes
 ## Security Hooks (4-layer protection)
 
 1. **PreToolUse** — blocks secrets, SQL injection, eval/exec in Write/Edit/Bash BEFORE execution
-2. **PostToolUse** — warns after write (full vibesrails scan, non-blocking)
+2. **PostToolUse** — warns after write: V1 scanner (regex) + V2 guards AST (DeadCode, Observability, Complexity, Performance, TypeSafety, APIDesign)
 3. **Pre-commit** — blocks commits with issues
 4. **ptuh.py** — self-protection (prevents hook deletion, config weakening)
 

@@ -105,6 +105,10 @@
             "command": "python3 -c \"from pathlib import Path; import subprocess; d=Path('.claude'); d.mkdir(exist_ok=True); f=d/'.last_commit_hash'; old=f.read_text().strip() if f.exists() else ''; new=subprocess.run(['git','rev-parse','HEAD'],capture_output=True,text=True).stdout.strip() if Path('.git').exists() else ''; changed=old and new and old!=new; f.write_text(new) if new else None; print('Nouveau commit detecte!') if changed else None\""
           },
           {
+            "type": "command",
+            "command": "python3 -m vibesrails.hooks.post_tool_use"
+          },
+          {
             "type": "prompt",
             "prompt": "Si le message precedent indique 'Nouveau commit detecte!', mets a jour TaskList (marque la tache completed) et .claude/current-task.md."
           }
