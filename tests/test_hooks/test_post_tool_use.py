@@ -21,7 +21,7 @@ def _run_hook(payload: dict, cwd: str | None = None) -> subprocess.CompletedProc
 def test_passes_clean_file(tmp_path):
     """Clean Python file exits 0 with green indicator."""
     f = tmp_path / "clean.py"
-    f.write_text("import os\n\ndef hello():\n    return 'world'\n")
+    f.write_text("def hello() -> str:\n    return 'world'\n")
     result = _run_hook(
         {"tool_name": "Write", "tool_input": {"file_path": str(f)}},
         cwd=str(tmp_path),
