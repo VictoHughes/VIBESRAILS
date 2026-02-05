@@ -254,3 +254,103 @@ def test_full_scan_real_project(guard: EnvSafetyGuard, tmp_path: Path):
     severities = {i.severity for i in issues}
     assert "block" in severities
     assert "warn" in severities
+
+
+# ── Secret leak in __repr__ detection ─────────────────────────
+
+
+def test_settings_class_without_repr_blocks(guard: EnvSafetyGuard, tmp_path: Path):
+    """Block Settings class with secret fields but no __repr__."""
+    f = tmp_path / "config.py"
+    f.write_text(textwrap.dedent("""\
+        class Settings:
+            openai_api_key: str = ""
+            database_url: str = ""
+            debug: bool = False
+    """))
+    issues = guard.scan_file(f, f.read_text())
+    assert any(
+        "__repr__" in i.message and "Settings" in i.message
+        for i in issues
+    )
+    # Settings class should block
+    assert any(i.severity == "block" for i in issues)
+
+
+def test_config_class_without_repr_blocks(guard: EnvSafetyGuard, tmp_path: Path):
+    """Block Config class with secret fields but no __repr__."""
+    f = tmp_path / "app_config.py"
+    f.write_text(textwrap.dedent("""\
+        class AppConfig:
+            api_key: str
+            secret_key: str
+    """))
+    issues = guard.scan_file(f, f.read_text())
+    assert any("__repr__" in i.message for i in issues)
+
+
+def test_class_with_repr_no_issue(guard: EnvSafetyGuard, tmp_path: Path):
+    """No issue if Settings class has __repr__."""
+    f = tmp_path / "config.py"
+    f.write_text(textwrap.dedent("""\
+        class Settings:
+            openai_api_key: str = ""
+
+            def __repr__(self):
+                return "Settings(openai_api_key='***')"
+    """))
+    issues = guard.scan_file(f, f.read_text())
+    assert not any("__repr__" in i.message for i in issues)
+
+
+def test_class_with_str_no_issue(guard: EnvSafetyGuard, tmp_path: Path):
+    """No issue if class has __str__ (also prevents leak)."""
+    f = tmp_path / "config.py"
+    f.write_text(textwrap.dedent("""\
+        class Settings:
+            password: str = ""
+
+            def __str__(self):
+                return "Settings(password='***')"
+    """))
+    issues = guard.scan_file(f, f.read_text())
+    assert not any("__repr__" in i.message for i in issues)
+
+
+def test_class_with_init_secret_fields(guard: EnvSafetyGuard, tmp_path: Path):
+    """Detect secret fields set in __init__ (self.api_key = ...)."""
+    f = tmp_path / "service.py"
+    f.write_text(textwrap.dedent("""\
+        class ServiceConfig:
+            def __init__(self, api_key: str):
+                self.api_key = api_key
+                self.secret_token = "default"
+    """))
+    issues = guard.scan_file(f, f.read_text())
+    assert any("__repr__" in i.message for i in issues)
+
+
+def test_non_config_class_warns_not_blocks(guard: EnvSafetyGuard, tmp_path: Path):
+    """Non-settings class with secrets warns instead of blocks."""
+    f = tmp_path / "handler.py"
+    f.write_text(textwrap.dedent("""\
+        class APIHandler:
+            api_key: str = ""
+    """))
+    issues = guard.scan_file(f, f.read_text())
+    repr_issues = [i for i in issues if "__repr__" in i.message]
+    assert len(repr_issues) == 1
+    assert repr_issues[0].severity == "warn"
+
+
+def test_class_without_secrets_no_issue(guard: EnvSafetyGuard, tmp_path: Path):
+    """Class without secret fields should not trigger."""
+    f = tmp_path / "model.py"
+    f.write_text(textwrap.dedent("""\
+        class User:
+            name: str
+            email: str
+            age: int
+    """))
+    issues = guard.scan_file(f, f.read_text())
+    assert not any("__repr__" in i.message for i in issues)

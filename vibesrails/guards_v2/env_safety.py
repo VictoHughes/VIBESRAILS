@@ -1,5 +1,6 @@
 """Env Safety Guard — Detects environment variable misuse and secret leaks."""
 
+import ast
 import logging
 import re
 import subprocess
@@ -29,6 +30,20 @@ SECRET_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
         ),
     ),
 ]
+
+# Field names that should be masked in __repr__/__str__
+SECRET_FIELD_NAMES: set[str] = {
+    "api_key", "apikey", "api_secret", "apisecret",
+    "openai_api_key", "anthropic_api_key", "google_api_key",
+    "secret", "secret_key", "secretkey",
+    "password", "passwd", "pwd",
+    "token", "access_token", "refresh_token", "auth_token",
+    "private_key", "privatekey",
+    "aws_secret_access_key", "aws_access_key_id",
+    "database_url", "db_password", "db_url",
+    "smtp_password", "email_password",
+    "encryption_key", "signing_key",
+}
 
 # File extensions that should never be tracked in git
 SECRET_FILE_EXTS: set[str] = {".pem", ".key", ".p12"}
@@ -106,6 +121,87 @@ class EnvSafetyGuard:
                         file=fname,
                         line=lineno,
                     ))
+
+        # Check for Settings/Config classes that may leak secrets in __repr__
+        issues.extend(self._check_secret_leak_in_repr(filepath, content))
+
+        return issues
+
+    def _check_secret_leak_in_repr(
+        self, filepath: Path, content: str
+    ) -> list[V2GuardIssue]:
+        """Detect Settings/Config classes with secret fields that lack masked __repr__.
+
+        If a class has fields like 'api_key', 'password', 'secret', etc. but no
+        __repr__ or __str__ override, pytest/logs can leak secrets in output.
+        """
+        issues: list[V2GuardIssue] = []
+        fname = str(filepath)
+
+        try:
+            tree = ast.parse(content)
+        except SyntaxError:
+            return []
+
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ClassDef):
+                continue
+
+            # Check if class name suggests it holds config/secrets
+            class_name = node.name.lower()
+            is_config_class = any(
+                kw in class_name
+                for kw in ("settings", "config", "credentials", "secrets")
+            )
+
+            # Find secret-like field names in class
+            secret_fields: list[str] = []
+            for child in ast.walk(node):
+                # Check class-level assignments: field_name = ...
+                if isinstance(child, ast.AnnAssign) and isinstance(child.target, ast.Name):
+                    field = child.target.id.lower()
+                    if field in SECRET_FIELD_NAMES or any(
+                        s in field for s in ("key", "secret", "password", "token")
+                    ):
+                        secret_fields.append(child.target.id)
+                # Check __init__ assignments: self.field_name = ...
+                elif isinstance(child, ast.Assign):
+                    for target in child.targets:
+                        if isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name):
+                            if target.value.id == "self":
+                                field = target.attr.lower()
+                                if field in SECRET_FIELD_NAMES or any(
+                                    s in field for s in ("key", "secret", "password", "token")
+                                ):
+                                    secret_fields.append(target.attr)
+
+            if not secret_fields:
+                continue
+
+            # Check if __repr__ or __str__ exists
+            has_repr = False
+            has_str = False
+            for child in node.body:
+                if isinstance(child, ast.FunctionDef):
+                    if child.name == "__repr__":
+                        has_repr = True
+                    elif child.name == "__str__":
+                        has_str = True
+
+            # If has secret fields but no __repr__, it can leak in logs/pytest output
+            if not has_repr and not has_str:
+                severity = "block" if is_config_class else "warn"
+                issues.append(V2GuardIssue(
+                    guard=GUARD_NAME,
+                    severity=severity,
+                    message=(
+                        f"Class '{node.name}' has secret fields ({', '.join(secret_fields[:3])}) "
+                        f"but no __repr__ — secrets can leak in logs/pytest output. "
+                        f"Add __repr__ that masks sensitive values."
+                    ),
+                    file=fname,
+                    line=node.lineno,
+                ))
 
         return issues
 
