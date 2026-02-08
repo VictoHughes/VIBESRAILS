@@ -12,7 +12,7 @@ Regexes are compiled with re.IGNORECASE by consumers.
 SECRET_PATTERN_DEFS: list[tuple[str, str]] = [
     # Cloud providers
     (r"AKIA[0-9A-Z]{16}", "AWS Access Key"),
-    (r"(?:sk-|sk-proj-)[a-zA-Z0-9]{20,}", "OpenAI/Anthropic API Key"),
+    (r"(?:sk-|sk-proj-)[a-zA-Z0-9\-]{20,}", "OpenAI/Anthropic API Key"),
     (r"AIza[0-9A-Za-z\-_]{35}", "Google API Key"),
 
     # Git platforms

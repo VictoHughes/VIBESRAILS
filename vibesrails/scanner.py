@@ -442,7 +442,11 @@ def validate_config(config: dict) -> bool:
 
 def get_all_python_files() -> list[str]:
     """Get all Python files in project (excluding venv, archive, cache)."""
-    exclude = [".venv", "venv", "__pycache__", "_archive", "archive", "node_modules", ".git"]
+    exclude = [
+        ".venv", "venv", "__pycache__", "_archive", "archive",
+        "node_modules", ".git", "build", "dist", ".egg-info",
+        ".mypy_cache", ".ruff_cache", ".pytest_cache",
+    ]
     files = []
     for p in Path(".").rglob("*.py"):
         path_str = str(p)

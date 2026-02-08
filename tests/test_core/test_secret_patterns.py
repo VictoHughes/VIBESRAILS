@@ -29,6 +29,10 @@ class TestSecretPatternCoverage:
     def test_openai_proj_key(self):
         assert "OpenAI/Anthropic API Key" in _match("sk-proj-abcdefghij1234567890")
 
+    def test_anthropic_key(self):
+        """Anthropic keys have hyphens: sk-ant-api03-xxx."""
+        assert "OpenAI/Anthropic API Key" in _match("sk-ant-api03-fake1234567890abcdef")
+
     def test_google_api_key(self):
         assert "Google API Key" in _match("AIzaSyA1234567890abcdefghijklmnopqrstuv")
 

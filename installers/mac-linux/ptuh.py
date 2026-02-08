@@ -27,7 +27,7 @@ except ImportError:
     # Standalone deployment — keep inline copy synced with core/secret_patterns.py
     SECRET_PATTERNS = [
         (r"AKIA[0-9A-Z]{16}", "AWS Access Key"),
-        (r"(?:sk-|sk-proj-)[a-zA-Z0-9]{20,}", "OpenAI/Anthropic API Key"),
+        (r"(?:sk-|sk-proj-)[a-zA-Z0-9\-]{20,}", "OpenAI/Anthropic API Key"),
         (r"AIza[0-9A-Za-z\-_]{35}", "Google API Key"),
         (r"ghp_[a-zA-Z0-9]{36}", "GitHub Personal Access Token"),
         (r"gho_[a-zA-Z0-9]{36}", "GitHub OAuth Token"),
