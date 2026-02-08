@@ -1,14 +1,9 @@
 """Tests for vibesrails learn mode."""
 
 import os
-import sys
-from pathlib import Path
 from unittest import mock
 
-import pytest
-
 import vibesrails.learn as learn_module
-
 
 # ============================================
 # HAS_ANTHROPIC Flag Tests

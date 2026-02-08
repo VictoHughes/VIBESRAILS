@@ -1,9 +1,15 @@
 """Shared test fixtures for vibesrails tests."""
 
 import logging
+import os
 import sys
 
 import pytest
+
+# Disable rate limiting for all tests by default.
+# Individual tests that need to test rate limiting should
+# monkeypatch this back to None or "1".
+os.environ.setdefault("VIBESRAILS_RATE_LIMIT", "0")
 
 
 class _StdoutHandler(logging.Handler):

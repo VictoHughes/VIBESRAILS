@@ -10,13 +10,14 @@ Tests the complete workflow:
 5. Clean up
 """
 
+import os
 import subprocess
 import sys
-from pathlib import Path
 import tempfile
-import os
+from pathlib import Path
 
 from vibesrails.e2e_semgrep import SemgrepAdapter  # noqa: F401
+
 
 def _setup_git_repo(tmpdir):
     """Initialize a git repo in tmpdir."""

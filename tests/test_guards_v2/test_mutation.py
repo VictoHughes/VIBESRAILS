@@ -1,16 +1,12 @@
 """Tests for MutationGuard — mutation testing engine."""
 
 import ast
-import subprocess
-import sys
 import textwrap
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from vibesrails.guards_v2.mutation import (
-    MUTATION_TYPES,
     MutationGuard,
     _count_targets,
 )

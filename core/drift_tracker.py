@@ -231,7 +231,7 @@ class DriftTracker:
         now = datetime.now(timezone.utc).isoformat()
 
         # Store in SQLite
-        conn = sqlite3.connect(str(self._db_path))
+        conn = sqlite3.connect(str(self._db_path), timeout=10)
         try:
             conn.execute(
                 "INSERT INTO drift_snapshots (session_id, file_path, timestamp, metrics) "
@@ -254,7 +254,7 @@ class DriftTracker:
 
         Returns None if fewer than 2 snapshots exist.
         """
-        conn = sqlite3.connect(str(self._db_path))
+        conn = sqlite3.connect(str(self._db_path), timeout=10)
         try:
             cursor = conn.execute(
                 "SELECT metrics, timestamp FROM drift_snapshots "
@@ -311,7 +311,7 @@ class DriftTracker:
 
     def _compute_trend(self, project_path: str, current_velocity: float) -> str:
         """Determine trend by comparing with previous velocity."""
-        conn = sqlite3.connect(str(self._db_path))
+        conn = sqlite3.connect(str(self._db_path), timeout=10)
         try:
             cursor = conn.execute(
                 "SELECT metrics FROM drift_snapshots "
@@ -355,7 +355,7 @@ class DriftTracker:
 
         Works backward from most recent, counting pairs with >10% drift.
         """
-        conn = sqlite3.connect(str(self._db_path))
+        conn = sqlite3.connect(str(self._db_path), timeout=10)
         try:
             cursor = conn.execute(
                 "SELECT metrics FROM drift_snapshots "
@@ -397,7 +397,7 @@ class DriftTracker:
 
     def get_snapshot_count(self, project_path: str) -> int:
         """Get the number of snapshots for a project."""
-        conn = sqlite3.connect(str(self._db_path))
+        conn = sqlite3.connect(str(self._db_path), timeout=10)
         try:
             cursor = conn.execute(
                 "SELECT COUNT(*) FROM drift_snapshots WHERE file_path = ?",

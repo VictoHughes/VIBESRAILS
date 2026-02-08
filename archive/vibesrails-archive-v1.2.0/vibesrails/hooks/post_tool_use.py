@@ -13,7 +13,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 # ── V2 guards (per-file, AST-based) ──────────────────────────────
 # Heavy guards (mutation, dependency_audit, vulture, git_workflow, pre_deploy,
 # pr_checklist, env_safety) are left for --senior-v2 CLI.

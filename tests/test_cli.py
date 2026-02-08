@@ -8,8 +8,6 @@ import stat
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from vibesrails.cli import (
     find_config,
     get_default_config_path,
@@ -17,7 +15,6 @@ from vibesrails.cli import (
     install_hook,
     uninstall,
 )
-
 
 # ============================================
 # Tests for find_config()

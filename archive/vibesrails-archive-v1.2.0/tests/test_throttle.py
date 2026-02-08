@@ -1,14 +1,13 @@
 """Tests for write throttle — anti-emballement."""
-import json
 import pytest
-from pathlib import Path
+
 from vibesrails.hooks.throttle import (
-    record_write,
-    record_check,
-    get_writes_since_check,
-    should_block,
-    reset_state,
     STATE_FILE_NAME,
+    get_writes_since_check,
+    record_check,
+    record_write,
+    reset_state,
+    should_block,
 )
 
 

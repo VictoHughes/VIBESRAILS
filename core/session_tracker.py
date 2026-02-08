@@ -89,7 +89,7 @@ class SessionTracker:
         migrate(self._db_path)
 
     def _connect(self) -> sqlite3.Connection:
-        return sqlite3.connect(str(self._db_path))
+        return sqlite3.connect(str(self._db_path), timeout=10)
 
     def start_session(
         self, project_path: str, ai_tool: str | None = None

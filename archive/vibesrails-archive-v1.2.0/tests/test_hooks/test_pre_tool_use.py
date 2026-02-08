@@ -13,6 +13,7 @@ HOOK_CMD = [sys.executable, "-m", "vibesrails.hooks.pre_tool_use"]
 def _reset_throttle():
     """Reset throttle before each test to prevent cross-test blocking."""
     from pathlib import Path
+
     from vibesrails.hooks.throttle import reset_state
     state_dir = Path("~/Dev/vibesrails/.vibesrails")
     state_dir.mkdir(exist_ok=True)

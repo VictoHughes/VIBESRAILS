@@ -1,7 +1,5 @@
 """Tests for throttle CLI commands."""
-import pytest
-from pathlib import Path
-from vibesrails.hooks.throttle import record_write, reset_state, get_writes_since_check
+from vibesrails.hooks.throttle import get_writes_since_check, record_write, reset_state
 
 
 class TestThrottleCLI:

@@ -3,14 +3,12 @@
 import os
 import re
 import subprocess
-import tempfile
-from io import StringIO
 from pathlib import Path
 from unittest import mock
 
 import pytest
 
-from vibesrails import scan_file, load_config, ScanResult
+from vibesrails import ScanResult, load_config, scan_file
 
 
 @pytest.fixture
@@ -327,7 +325,7 @@ blocking:
 
     # Create child config that extends base
     child_config = tmp_path / "child.yaml"
-    child_config.write_text(f'''
+    child_config.write_text('''
 extends: "./base.yaml"
 version: "1.0"
 blocking:

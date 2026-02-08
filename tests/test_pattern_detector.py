@@ -1,8 +1,8 @@
 """Tests for pattern detection."""
 import tempfile
 from pathlib import Path
-import pytest
-from vibesrails.learner.pattern_detector import PatternDetector, DetectedPattern
+
+from vibesrails.learner.pattern_detector import PatternDetector
 
 
 def test_detector_finds_test_pattern():

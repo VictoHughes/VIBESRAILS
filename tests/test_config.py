@@ -10,12 +10,10 @@ Tests cover:
 - load_config_with_extends: Main entry point
 """
 
-import tempfile
 from pathlib import Path
 from unittest import mock
 
 import pytest
-import yaml
 
 from vibesrails.config import (
     ALLOWED_REMOTE_DOMAINS,
@@ -29,7 +27,6 @@ from vibesrails.config import (
     resolve_extends,
     resolve_pack_path,
 )
-
 
 # ============================================
 # Fixtures

@@ -1,20 +1,18 @@
 """Tests for vibesrails autofix module."""
 
 import os
-from pathlib import Path
 
 import pytest
 
 from vibesrails.autofix import (
-    Fix,
     FIXES,
-    get_fix_for_pattern,
-    apply_fix_to_line,
-    is_path_safe_for_fix,
+    Fix,
     apply_fix_to_file,
+    apply_fix_to_line,
+    get_fix_for_pattern,
+    is_path_safe_for_fix,
     show_fixable_patterns,
 )
-
 
 # ============================================
 # Fix Dataclass Tests

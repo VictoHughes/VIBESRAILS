@@ -1,11 +1,12 @@
 """End-to-end integration tests for learning and validation."""
+import json
+import subprocess
 import tempfile
 from pathlib import Path
-import subprocess
-import json
-import pytest
 
-from vibesrails.integration_learning import PatternDetector  # noqa: F401  # ensures test imports source
+from vibesrails.integration_learning import (
+    PatternDetector,  # noqa: F401  # ensures test imports source
+)
 
 
 def test_full_learning_and_validation_flow():

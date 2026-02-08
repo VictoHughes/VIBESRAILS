@@ -12,9 +12,9 @@ It blocks modifications to:
 """
 
 import json
+import logging
 import re
 import sys
-import logging
 
 logger = logging.getLogger("vibesrails.ptuh")
 logging.basicConfig(level=logging.ERROR)

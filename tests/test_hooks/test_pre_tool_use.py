@@ -3,18 +3,19 @@
 import json
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
 HOOK_CMD = [sys.executable, "-m", "vibesrails.hooks.pre_tool_use"]
+PROJECT_ROOT = str(Path(__file__).resolve().parents[2])
 
 
 @pytest.fixture(autouse=True)
 def _reset_throttle():
     """Reset throttle before each test to prevent cross-test blocking."""
-    from pathlib import Path
     from vibesrails.hooks.throttle import reset_state
-    state_dir = Path("~/Dev/vibesrails/.vibesrails")
+    state_dir = Path(PROJECT_ROOT) / ".vibesrails"
     state_dir.mkdir(exist_ok=True)
     reset_state(state_dir)
 
@@ -26,7 +27,7 @@ def _run_hook(payload: dict) -> subprocess.CompletedProcess:
         capture_output=True,
         text=True,
         timeout=10,
-        cwd="~/Dev/vibesrails",
+        cwd=PROJECT_ROOT,
     )
 
 
@@ -219,6 +220,6 @@ def test_handles_malformed_json():
         capture_output=True,
         text=True,
         timeout=10,
-        cwd="~/Dev/vibesrails",
+        cwd=PROJECT_ROOT,
     )
     assert result.returncode == 0

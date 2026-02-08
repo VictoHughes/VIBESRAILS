@@ -1,7 +1,6 @@
 """Tests for PR Checklist Guard — real diff strings, no mocking except git subprocess."""
 
 import subprocess
-from pathlib import Path
 from unittest.mock import patch
 
 from vibesrails.guards_v2.pr_checklist import PRChecklistGuard

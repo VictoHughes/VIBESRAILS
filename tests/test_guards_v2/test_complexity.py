@@ -7,12 +7,6 @@ import pytest
 
 from vibesrails.guards_v2.complexity import (
     ComplexityGuard,
-    CYCLOMATIC_WARN,
-    NESTING_WARN,
-    PARAM_WARN,
-    PARAM_BLOCK,
-    LENGTH_WARN,
-    RETURN_WARN,
 )
 
 

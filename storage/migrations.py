@@ -120,7 +120,7 @@ def migrate(db_path: str | Path | None = None) -> None:
     db_path = Path(db_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
-    conn = sqlite3.connect(str(db_path))
+    conn = sqlite3.connect(str(db_path), timeout=10)
     try:
         # WAL mode: allows concurrent reads during writes
         conn.execute("PRAGMA journal_mode=WAL")

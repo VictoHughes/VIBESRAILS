@@ -1,10 +1,9 @@
 """Tests for duplication detection."""
+import json
 import tempfile
 from pathlib import Path
-import json
-import pytest
-from vibesrails.guardian.duplication_guard import DuplicationGuard, DuplicationResult
-from vibesrails.guardian.types import Signature
+
+from vibesrails.guardian.duplication_guard import DuplicationGuard
 
 
 def test_guard_detects_exact_duplicate():

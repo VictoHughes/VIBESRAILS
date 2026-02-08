@@ -29,6 +29,8 @@ def test_wal_mode_enabled(tmp_path):
 def test_concurrent_writes_no_crash(tmp_path):
     """Two threads writing simultaneously shouldn't crash."""
     db = str(tmp_path / "test.db")
+    # Pre-migrate (matches real server: lifespan runs migrate() once at startup)
+    migrate(db_path=db)
     errors: list[Exception] = []
 
     def writer(thread_id: int) -> None:

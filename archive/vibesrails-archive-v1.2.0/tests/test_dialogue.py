@@ -1,6 +1,4 @@
 """Tests for interactive dialogue."""
-import pytest
-from unittest.mock import patch, MagicMock
 from vibesrails.guardian.dialogue import InteractiveDialogue
 from vibesrails.guardian.placement_guard import Divergence
 from vibesrails.guardian.types import Signature

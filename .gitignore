@@ -30,20 +30,18 @@ vibesrails.yaml
 htmlcov/
 .pytest_cache/
 
+# Linting
+.ruff_cache/
+.import_linter_cache/
+.mypy_cache/
+
 # Local state (machine-specific)
-.vibesrails/metrics/
-.vibesrails/learned_patterns.yaml
-.vibesrails/signature_index.json
-.claude/.last_commit_hash
-.claude/.write_reminded
-.vibesrails/session_throttle.json
-.vibesrails/session.lock
+.vibesrails/
+*.db
 
 # Generated
-ARCHITECTURE.md
 *.html
 *.pdf
 
 # OS
 .DS_Store
-*.command

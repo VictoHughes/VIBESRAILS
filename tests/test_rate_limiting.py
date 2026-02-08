@@ -1,5 +1,6 @@
 """Tests for rate limiting in VibesRails."""
 import time
+
 import pytest
 
 from vibesrails.rate_limiting import (
@@ -7,8 +8,8 @@ from vibesrails.rate_limiting import (
     RateLimitConfig,
     RequestThrottler,
     ResponseCache,
-    with_rate_limiting,
     reset_rate_limiting,
+    with_rate_limiting,
 )
 
 

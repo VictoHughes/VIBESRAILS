@@ -2,15 +2,14 @@
 
 import json
 import textwrap
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from vibesrails.guards_v2.architecture_drift import (
     ArchitectureDriftGuard,
-    _layer_for_dir,
     _allowed_deps,
+    _layer_for_dir,
 )
 
 

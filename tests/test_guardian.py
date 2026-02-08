@@ -5,26 +5,22 @@ Tests AI session detection, guardian configuration, and rule application.
 
 import json
 import os
-from pathlib import Path
 from unittest.mock import patch
-
-import pytest
 
 from vibesrails.ai_guardian import (
     AI_ENV_MARKERS,
-    is_ai_session,
+    apply_guardian_rules,
     get_ai_agent_name,
     get_guardian_config,
-    should_apply_guardian,
-    get_stricter_patterns,
-    apply_guardian_rules,
-    log_guardian_block,
     get_guardian_stats,
-    show_guardian_stats,
+    get_stricter_patterns,
+    is_ai_session,
+    log_guardian_block,
     print_guardian_status,
+    should_apply_guardian,
+    show_guardian_stats,
 )
 from vibesrails.scanner import ScanResult
-
 
 # ============================================
 # Tests for is_ai_session()

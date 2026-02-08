@@ -1,8 +1,9 @@
 """Tests for structure rule generation."""
 import tempfile
 from pathlib import Path
-import pytest
+
 import yaml
+
 from vibesrails.learner.pattern_detector import DetectedPattern
 from vibesrails.learner.structure_rules import StructureRulesGenerator
 

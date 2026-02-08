@@ -311,7 +311,7 @@ class BriefEnforcer:
     ) -> int:
         """Store a brief evaluation in history. Returns the row ID."""
         now = datetime.now(timezone.utc).isoformat()
-        conn = sqlite3.connect(str(self._db_path))
+        conn = sqlite3.connect(str(self._db_path), timeout=10)
         try:
             cursor = conn.execute(
                 "INSERT INTO brief_history "
@@ -326,7 +326,7 @@ class BriefEnforcer:
 
     def get_history(self, session_id: str | None = None) -> list[dict]:
         """Retrieve brief history, optionally filtered by session."""
-        conn = sqlite3.connect(str(self._db_path))
+        conn = sqlite3.connect(str(self._db_path), timeout=10)
         try:
             if session_id:
                 cursor = conn.execute(

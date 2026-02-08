@@ -6,12 +6,17 @@ Transport: stdio (default).
 
 from __future__ import annotations
 
-import logging
-import sys
 from contextlib import asynccontextmanager
 
 from mcp.server.fastmcp import FastMCP
 
+from core.logger import (
+    log_rate_limit,
+    log_server_start,
+    log_tool_call,
+    tool_timer,
+)
+from core.rate_limiter import RateLimiter
 from storage.migrations import migrate
 from tools.check_config import check_config as _check_config_impl
 from tools.check_drift import check_drift as _check_drift_impl
@@ -26,27 +31,36 @@ from tools.scan_senior import scan_senior as _scan_senior_impl
 from tools.shield_prompt import shield_prompt as _shield_prompt_impl
 
 # ---------------------------------------------------------------------------
-# Logging → stderr (MCP protocol uses stdout)
-# ---------------------------------------------------------------------------
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    stream=sys.stderr,
-)
-logger = logging.getLogger("vibesrails-mcp")
-
-# ---------------------------------------------------------------------------
 # Server lifecycle
 # ---------------------------------------------------------------------------
 VERSION = "0.1.0"
+
+# ---------------------------------------------------------------------------
+# Rate limiter (in-memory, resets on restart)
+# Disable with VIBESRAILS_RATE_LIMIT=0
+# ---------------------------------------------------------------------------
+_limiter = RateLimiter()
+
+
+def _check_rate_limit(tool_name: str) -> dict | None:
+    """Return rate limit error dict, or None if allowed."""
+    if not _limiter.check(tool_name):
+        retry = _limiter.retry_after(tool_name)
+        log_rate_limit(tool_name, retry)
+        return {
+            "status": "error",
+            "error": "rate_limited",
+            "message": "Too many requests. Max 60 calls/minute per tool.",
+            "retry_after_seconds": retry,
+        }
+    return None
 
 
 @asynccontextmanager
 async def lifespan(server: FastMCP):
     """Run database migrations at startup."""
-    logger.info("vibesrails-mcp v%s starting — running migrations", VERSION)
     migrate()
-    logger.info("Migrations complete")
+    log_server_start(VERSION, tools_count=12)
     yield
 
 
@@ -71,7 +85,12 @@ mcp = FastMCP(
 @mcp.tool()
 def ping() -> dict:
     """Health check — returns server status and version."""
-    return {"status": "ok", "version": VERSION}
+    if limited := _check_rate_limit("ping"):
+        return limited
+    with tool_timer() as t:
+        result = {"status": "ok", "version": VERSION}
+    log_tool_call("ping", {}, result["status"], t.ms)
+    return result
 
 
 @mcp.tool()
@@ -92,9 +111,15 @@ def scan_code(
     pr_checklist, database_safety, api_design, pre_deploy, test_integrity,
     mutation, architecture_drift.
     """
-    return _scan_code_impl(
-        file_path=file_path, project_path=project_path, guards=guards
-    )
+    if limited := _check_rate_limit("scan_code"):
+        return limited
+    args = {"file_path": file_path, "project_path": project_path, "guards": guards}
+    with tool_timer() as t:
+        result = _scan_code_impl(
+            file_path=file_path, project_path=project_path, guards=guards
+        )
+    log_tool_call("scan_code", args, result.get("status", "unknown"), t.ms)
+    return result
 
 
 @mcp.tool()
@@ -115,9 +140,15 @@ def scan_senior(
 
     Available guards: error_handling, hallucination, lazy_code, bypass, resilience.
     """
-    return _scan_senior_impl(
-        file_path=file_path, project_path=project_path, guards=guards
-    )
+    if limited := _check_rate_limit("scan_senior"):
+        return limited
+    args = {"file_path": file_path, "project_path": project_path, "guards": guards}
+    with tool_timer() as t:
+        result = _scan_senior_impl(
+            file_path=file_path, project_path=project_path, guards=guards
+        )
+    log_tool_call("scan_senior", args, result.get("status", "unknown"), t.ms)
+    return result
 
 
 @mcp.tool()
@@ -128,7 +159,12 @@ def check_session() -> dict:
     (Claude Code, Cursor, Copilot, Aider, Continue, Cody).
     Returns detection result, agent name, and guardian block statistics.
     """
-    return _check_session_impl()
+    if limited := _check_rate_limit("check_session"):
+        return limited
+    with tool_timer() as t:
+        result = _check_session_impl()
+    log_tool_call("check_session", {}, result.get("status", "unknown"), t.ms)
+    return result
 
 
 @mcp.tool()
@@ -145,7 +181,13 @@ def scan_semgrep(
         file_path: Path to the file to scan.
         rules: "auto" for default rules, or path to a custom .yaml rules file.
     """
-    return _scan_semgrep_impl(file_path=file_path, rules=rules)
+    if limited := _check_rate_limit("scan_semgrep"):
+        return limited
+    args = {"file_path": file_path, "rules": rules}
+    with tool_timer() as t:
+        result = _scan_semgrep_impl(file_path=file_path, rules=rules)
+    log_tool_call("scan_semgrep", args, result.get("status", "unknown"), t.ms)
+    return result
 
 
 @mcp.tool()
@@ -170,14 +212,23 @@ def monitor_entropy(
         changes_loc: Lines of code changed (for "update").
         violations: Number of violations detected (for "update").
     """
-    return _monitor_entropy_impl(
-        action=action,
-        project_path=project_path,
-        session_id=session_id,
-        files_modified=files_modified,
-        changes_loc=changes_loc,
-        violations=violations,
-    )
+    if limited := _check_rate_limit("monitor_entropy"):
+        return limited
+    args = {
+        "action": action, "project_path": project_path,
+        "session_id": session_id, "changes_loc": changes_loc,
+    }
+    with tool_timer() as t:
+        result = _monitor_entropy_impl(
+            action=action,
+            project_path=project_path,
+            session_id=session_id,
+            files_modified=files_modified,
+            changes_loc=changes_loc,
+            violations=violations,
+        )
+    log_tool_call("monitor_entropy", args, result.get("status", "unknown"), t.ms)
+    return result
 
 
 @mcp.tool()
@@ -199,9 +250,15 @@ def deep_hallucination(
         max_level: Maximum verification level (1-4, default 2).
         ecosystem: Package ecosystem ("pypi").
     """
-    return _deep_hallucination_impl(
-        file_path=file_path, max_level=max_level, ecosystem=ecosystem,
-    )
+    if limited := _check_rate_limit("deep_hallucination"):
+        return limited
+    args = {"file_path": file_path, "max_level": max_level, "ecosystem": ecosystem}
+    with tool_timer() as t:
+        result = _deep_hallucination_impl(
+            file_path=file_path, max_level=max_level, ecosystem=ecosystem,
+        )
+    log_tool_call("deep_hallucination", args, result.get("status", "unknown"), t.ms)
+    return result
 
 
 @mcp.tool()
@@ -222,9 +279,15 @@ def check_drift(
         project_path: Path to the project directory.
         session_id: Optional session ID to associate with this snapshot.
     """
-    return _check_drift_impl(
-        project_path=project_path, session_id=session_id,
-    )
+    if limited := _check_rate_limit("check_drift"):
+        return limited
+    args = {"project_path": project_path, "session_id": session_id}
+    with tool_timer() as t:
+        result = _check_drift_impl(
+            project_path=project_path, session_id=session_id,
+        )
+    log_tool_call("check_drift", args, result.get("status", "unknown"), t.ms)
+    return result
 
 
 @mcp.tool()
@@ -247,9 +310,15 @@ def enforce_brief(
         session_id: Optional session ID for tracking brief quality over time.
         strict: If True, block if score < 60. Default False (block only if < 20).
     """
-    return _enforce_brief_impl(
-        brief=brief, session_id=session_id, strict=strict,
-    )
+    if limited := _check_rate_limit("enforce_brief"):
+        return limited
+    args = {"brief": brief, "session_id": session_id, "strict": strict}
+    with tool_timer() as t:
+        result = _enforce_brief_impl(
+            brief=brief, session_id=session_id, strict=strict,
+        )
+    log_tool_call("enforce_brief", args, result.get("status", "unknown"), t.ms)
+    return result
 
 
 @mcp.tool()
@@ -272,10 +341,16 @@ def shield_prompt(
         tool_name: MCP tool name (requires arguments).
         arguments: MCP tool arguments dict (requires tool_name).
     """
-    return _shield_prompt_impl(
-        text=text, file_path=file_path,
-        tool_name=tool_name, arguments=arguments,
-    )
+    if limited := _check_rate_limit("shield_prompt"):
+        return limited
+    args = {"text": text, "file_path": file_path, "tool_name": tool_name}
+    with tool_timer() as t:
+        result = _shield_prompt_impl(
+            text=text, file_path=file_path,
+            tool_name=tool_name, arguments=arguments,
+        )
+    log_tool_call("shield_prompt", args, result.get("status", "unknown"), t.ms)
+    return result
 
 
 @mcp.tool()
@@ -289,7 +364,13 @@ def check_config(project_path: str) -> dict:
     Args:
         project_path: Path to the project directory to scan.
     """
-    return _check_config_impl(project_path=project_path)
+    if limited := _check_rate_limit("check_config"):
+        return limited
+    args = {"project_path": project_path}
+    with tool_timer() as t:
+        result = _check_config_impl(project_path=project_path)
+    log_tool_call("check_config", args, result.get("status", "unknown"), t.ms)
+    return result
 
 
 @mcp.tool()
@@ -313,10 +394,16 @@ def get_learning(
             drift, hallucination, config_issue, injection.
         event_data: Required for "record". Event payload dict.
     """
-    return _get_learning_impl(
-        action=action, session_id=session_id,
-        event_type=event_type, event_data=event_data,
-    )
+    if limited := _check_rate_limit("get_learning"):
+        return limited
+    args = {"action": action, "session_id": session_id, "event_type": event_type}
+    with tool_timer() as t:
+        result = _get_learning_impl(
+            action=action, session_id=session_id,
+            event_type=event_type, event_data=event_data,
+        )
+    log_tool_call("get_learning", args, result.get("status", "unknown"), t.ms)
+    return result
 
 
 # ---------------------------------------------------------------------------

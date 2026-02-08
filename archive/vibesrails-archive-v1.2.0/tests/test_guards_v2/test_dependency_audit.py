@@ -1,7 +1,6 @@
 """Tests for DependencyAuditGuard — real files, real parsing, only mock network."""
 
 import json
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest

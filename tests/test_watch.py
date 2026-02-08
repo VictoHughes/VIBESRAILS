@@ -3,13 +3,9 @@
 import os
 import sys
 import time
-from pathlib import Path
 from unittest import mock
 
-import pytest
-
 import vibesrails.watch as watch_mod
-
 
 # ============================================
 # HAS_WATCHDOG Flag Tests

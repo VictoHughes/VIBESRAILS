@@ -1,8 +1,8 @@
 """Tests for signature indexing."""
 import tempfile
 from pathlib import Path
-import pytest
-from vibesrails.learner.signature_index import SignatureIndexer, Signature
+
+from vibesrails.learner.signature_index import SignatureIndexer
 
 
 def test_indexer_finds_functions():

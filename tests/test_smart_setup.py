@@ -12,15 +12,12 @@ Tests cover:
 
 import json
 import os
-import tempfile
-from io import StringIO
 from pathlib import Path
 from unittest import mock
 
 import pytest
 
 import vibesrails.smart_setup.core as _core_mod
-
 
 # ============================================
 # i18n Module Tests
@@ -1376,10 +1373,10 @@ class TestIntegration:
     def test_full_detection_flow(self, realistic_project):
         """Test full detection on realistic project."""
         from vibesrails.smart_setup.detection import (
-            detect_project_type,
-            detect_existing_configs,
-            detect_env_files,
             detect_architecture_complexity,
+            detect_env_files,
+            detect_existing_configs,
+            detect_project_type,
         )
 
         # Detect project type
@@ -1403,9 +1400,9 @@ class TestIntegration:
         """Test full config generation on realistic project."""
         from vibesrails.smart_setup.config_gen import generate_config_with_extras
         from vibesrails.smart_setup.detection import (
-            detect_project_type,
             detect_env_files,
             detect_existing_configs,
+            detect_project_type,
         )
 
         types = detect_project_type(realistic_project)
@@ -1429,31 +1426,11 @@ class TestIntegration:
     def test_imports_from_package(self):
         """Test all public imports work from package."""
         from vibesrails.smart_setup import (
-            # Core
-            smart_setup,
-            run_smart_setup_cli,
-            # Detection
-            detect_project_type,
-            detect_existing_configs,
-            detect_secrets_risk,
-            detect_env_files,
-            detect_project_language,
-            detect_architecture_complexity,
+            MESSAGES,
             # Constants
             PROJECT_SIGNATURES,
-            SECRET_INDICATORS,
-            ARCHITECTURE_TOOLS,
-            VIBE_PROTECTIONS,
-            # i18n
-            LANG,
-            MESSAGES,
-            msg,
-            detect_language,
-            # Vibe mode
-            scan_for_secrets,
-            natural_language_to_pattern,
-            prompt_user,
-            prompt_vibe_protections,
+            detect_project_type,
+            smart_setup,
         )
 
         # All imports should work
@@ -1497,11 +1474,11 @@ class TestEdgeCases:
     def test_empty_project_handling(self, tmp_path):
         """All functions handle empty projects."""
         from vibesrails.smart_setup.detection import (
-            detect_project_type,
-            detect_existing_configs,
-            detect_secrets_risk,
-            detect_env_files,
             detect_architecture_complexity,
+            detect_env_files,
+            detect_existing_configs,
+            detect_project_type,
+            detect_secrets_risk,
         )
 
         assert detect_project_type(tmp_path) == []
@@ -1950,7 +1927,7 @@ class TestScanSecretsExtended:
 
     def test_scan_handles_regex_error(self, tmp_path):
         """scan_for_secrets handles regex errors gracefully."""
-        from vibesrails.smart_setup.vibe_mode import scan_for_secrets, VIBE_PROTECTIONS
+        from vibesrails.smart_setup.vibe_mode import VIBE_PROTECTIONS, scan_for_secrets
 
         # Create file
         (tmp_path / "test.py").write_text("normal code")

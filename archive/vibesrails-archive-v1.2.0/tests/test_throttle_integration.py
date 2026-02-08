@@ -1,14 +1,9 @@
 """Integration test: throttle wired into pre_tool_use."""
-import json
-import sys
-import pytest
-from pathlib import Path
-from unittest.mock import patch
 from vibesrails.hooks.throttle import (
-    record_write,
-    record_check,
-    reset_state,
     get_writes_since_check,
+    record_check,
+    record_write,
+    reset_state,
 )
 
 

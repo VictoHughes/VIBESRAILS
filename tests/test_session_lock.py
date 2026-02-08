@@ -1,13 +1,14 @@
 """Tests for session lock — multi-window sync (PID-based)."""
 import json
 import os
+
 import pytest
-from pathlib import Path
+
 from vibesrails.hooks.session_lock import (
-    acquire_lock,
-    release_lock,
-    check_other_session,
     LOCK_FILE_NAME,
+    acquire_lock,
+    check_other_session,
+    release_lock,
 )
 
 

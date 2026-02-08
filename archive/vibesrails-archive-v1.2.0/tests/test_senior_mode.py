@@ -1,6 +1,4 @@
 """Tests for Senior Mode."""
-import pytest
-from pathlib import Path
 
 
 class TestArchitectureMapper:
@@ -284,8 +282,8 @@ class TestSeniorReport:
 
     def test_generate_report_includes_guards(self):
         """Report includes guard issues."""
-        from vibesrails.senior_mode.report import SeniorReport
         from vibesrails.senior_mode.guards import GuardIssue
+        from vibesrails.senior_mode.report import SeniorReport
 
         issues = [
             GuardIssue(guard="TestGuard", severity="warn", message="Test warning"),
@@ -299,8 +297,8 @@ class TestSeniorReport:
 
     def test_generate_report_includes_review(self):
         """Report includes Claude review when present."""
-        from vibesrails.senior_mode.report import SeniorReport
         from vibesrails.senior_mode.claude_reviewer import ReviewResult
+        from vibesrails.senior_mode.report import SeniorReport
 
         review = ReviewResult(score=8, issues=["minor issue"], strengths=["clean"])
 
@@ -312,8 +310,8 @@ class TestSeniorReport:
 
     def test_has_blocking_issues(self):
         """has_blocking_issues() returns True when blocking issues exist."""
-        from vibesrails.senior_mode.report import SeniorReport
         from vibesrails.senior_mode.guards import GuardIssue
+        from vibesrails.senior_mode.report import SeniorReport
 
         blocking = [GuardIssue(guard="Test", severity="block", message="Critical")]
         warning = [GuardIssue(guard="Test", severity="warn", message="Minor")]
@@ -365,10 +363,8 @@ def login(user, password):
         """All Senior Mode components can be imported."""
         from vibesrails.senior_mode import (
             ArchitectureMapper,
-            SeniorGuards,
             ClaudeReviewer,
-            ReviewResult,
-            GuardIssue,
+            SeniorGuards,
         )
         from vibesrails.senior_mode.report import SeniorReport
 

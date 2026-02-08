@@ -3,8 +3,10 @@
 import json
 import subprocess
 import sys
+from pathlib import Path
 
 HOOK_CMD = [sys.executable, "-m", "vibesrails.hooks.post_tool_use"]
+PROJECT_ROOT = str(Path(__file__).resolve().parents[2])
 
 
 def _run_hook(payload: dict, cwd: str | None = None) -> subprocess.CompletedProcess:
@@ -14,7 +16,7 @@ def _run_hook(payload: dict, cwd: str | None = None) -> subprocess.CompletedProc
         capture_output=True,
         text=True,
         timeout=10,
-        cwd=cwd or "~/Dev/vibesrails",
+        cwd=cwd or PROJECT_ROOT,
     )
 
 

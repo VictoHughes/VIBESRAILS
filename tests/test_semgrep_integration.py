@@ -7,8 +7,6 @@ Tests SemgrepAdapter, ResultMerger, and CLI orchestration.
 import json
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from vibesrails.result_merger import ResultMerger, UnifiedResult
 from vibesrails.scanner import ScanResult
 from vibesrails.semgrep_adapter import SemgrepAdapter, SemgrepResult

@@ -41,7 +41,7 @@ class LearningEngine:
         migrate(db_path)
 
     def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self._db_path)
+        conn = sqlite3.connect(self._db_path, timeout=10)
         conn.row_factory = sqlite3.Row
         return conn
 

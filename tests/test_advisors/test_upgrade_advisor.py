@@ -1,15 +1,13 @@
 """Tests for UpgradeAdvisor — real file parsing, mock only PyPI network."""
 
-import json
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
 from vibesrails.advisors.upgrade_advisor import (
     UpgradeAdvisor,
-    _parse_version,
     _classify_update,
+    _parse_version,
 )
 
 

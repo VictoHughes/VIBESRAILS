@@ -196,7 +196,7 @@ class DeepHallucinationChecker:
                 pass
 
         # Fallback: packages from cache
-        conn = sqlite3.connect(str(self._db_path))
+        conn = sqlite3.connect(str(self._db_path), timeout=10)
         try:
             cursor = conn.execute(
                 "SELECT package_name FROM package_cache "
@@ -310,7 +310,7 @@ class DeepHallucinationChecker:
         self, package_name: str, ecosystem: str, check_type: str
     ) -> bool | None:
         """Get cached existence result. Returns None if expired or missing."""
-        conn = sqlite3.connect(str(self._db_path))
+        conn = sqlite3.connect(str(self._db_path), timeout=10)
         try:
             cursor = conn.execute(
                 "SELECT exists_flag, cached_at FROM package_cache "
@@ -340,7 +340,7 @@ class DeepHallucinationChecker:
     ) -> None:
         """Write to package_cache."""
         now = datetime.now(timezone.utc).isoformat()
-        conn = sqlite3.connect(str(self._db_path))
+        conn = sqlite3.connect(str(self._db_path), timeout=10)
         try:
             conn.execute(
                 "INSERT OR REPLACE INTO package_cache "

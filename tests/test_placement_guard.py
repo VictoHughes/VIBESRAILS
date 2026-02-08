@@ -1,8 +1,8 @@
 """Tests for placement validation."""
 import tempfile
 from pathlib import Path
-import pytest
-from vibesrails.guardian.placement_guard import PlacementGuard, PlacementResult
+
+from vibesrails.guardian.placement_guard import PlacementGuard
 
 
 def test_guard_validates_correct_placement():
