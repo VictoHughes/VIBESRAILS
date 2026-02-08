@@ -346,6 +346,96 @@ class TestApplyGuardianRules:
             new_results = apply_guardian_rules([], config, "test.py")
         assert new_results == []
 
+    def test_applies_stricter_patterns_to_file(self, tmp_path):
+        """Apply stricter_patterns regex to file content."""
+        target = tmp_path / "code.py"
+        target.write_text("x = 1\n# TODO fix later\ny = 2\n")
+        config = {
+            "guardian": {
+                "enabled": True,
+                "force": True,
+                "stricter_patterns": [
+                    {"id": "no_todo", "regex": "TODO", "message": "No TODOs allowed"},
+                ],
+            }
+        }
+        with patch.dict(os.environ, {}, clear=True):
+            results = apply_guardian_rules([], config, str(target))
+        assert len(results) == 1
+        assert results[0].pattern_id == "no_todo"
+        assert results[0].line == 2
+        assert results[0].level == "BLOCK"
+        assert "[GUARDIAN]" in results[0].message
+
+    def test_stricter_patterns_custom_level(self, tmp_path):
+        """Stricter patterns can specify custom severity level."""
+        target = tmp_path / "code.py"
+        target.write_text("# FIXME something\n")
+        config = {
+            "guardian": {
+                "enabled": True,
+                "force": True,
+                "stricter_patterns": [
+                    {"id": "no_fixme", "regex": "FIXME", "message": "No FIXMEs", "level": "WARN"},
+                ],
+            }
+        }
+        with patch.dict(os.environ, {}, clear=True):
+            results = apply_guardian_rules([], config, str(target))
+        assert len(results) == 1
+        assert results[0].level == "WARN"
+
+    def test_stricter_patterns_invalid_regex_skipped(self, tmp_path):
+        """Skip patterns with invalid regex gracefully."""
+        target = tmp_path / "code.py"
+        target.write_text("hello\n")
+        config = {
+            "guardian": {
+                "enabled": True,
+                "force": True,
+                "stricter_patterns": [
+                    {"id": "bad", "regex": "[invalid(", "message": "Bad regex"},
+                    {"id": "good", "regex": "hello", "message": "Found hello"},
+                ],
+            }
+        }
+        with patch.dict(os.environ, {}, clear=True):
+            results = apply_guardian_rules([], config, str(target))
+        assert len(results) == 1
+        assert results[0].pattern_id == "good"
+
+    def test_stricter_patterns_nonexistent_file(self):
+        """Handle nonexistent file gracefully."""
+        config = {
+            "guardian": {
+                "enabled": True,
+                "force": True,
+                "stricter_patterns": [
+                    {"id": "p1", "regex": "TODO", "message": "No TODOs"},
+                ],
+            }
+        }
+        with patch.dict(os.environ, {}, clear=True):
+            results = apply_guardian_rules([], config, "/nonexistent/path.py")
+        assert results == []
+
+    def test_stricter_patterns_empty_regex_skipped(self, tmp_path):
+        """Skip patterns with empty regex."""
+        target = tmp_path / "code.py"
+        target.write_text("hello\n")
+        config = {
+            "guardian": {
+                "enabled": True,
+                "force": True,
+                "stricter_patterns": [
+                    {"id": "empty", "regex": "", "message": "Empty"},
+                ],
+            }
+        }
+        with patch.dict(os.environ, {}, clear=True):
+            results = apply_guardian_rules([], config, str(target))
+        assert results == []
+
 
 # ============================================
 # Tests for log_guardian_block()

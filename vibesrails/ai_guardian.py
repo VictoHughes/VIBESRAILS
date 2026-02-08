@@ -8,6 +8,7 @@ Tracks patterns that AI agents commonly violate.
 import json
 import logging
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -133,6 +134,36 @@ def apply_guardian_rules(
             )
             for r in results
         ]
+
+    # Apply stricter patterns from config
+    stricter = get_stricter_patterns(config)
+    if stricter and filepath:
+        try:
+            content = Path(filepath).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            content = ""
+        for pattern_def in stricter:
+            pat_id = pattern_def.get("id", "custom")
+            regex = pattern_def.get("regex", "")
+            msg = pattern_def.get("message", f"Guardian pattern: {pat_id}")
+            level = pattern_def.get("level", "BLOCK")
+            if not regex:
+                continue
+            try:
+                compiled = re.compile(regex)
+            except re.error:
+                continue
+            for line_num, line in enumerate(content.splitlines(), 1):
+                if compiled.search(line):
+                    results.append(
+                        ScanResult(
+                            file=filepath,
+                            line=line_num,
+                            pattern_id=pat_id,
+                            message=f"[GUARDIAN] {msg}",
+                            level=level,
+                        )
+                    )
 
     return results
 
