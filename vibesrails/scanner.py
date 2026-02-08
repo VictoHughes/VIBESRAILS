@@ -77,8 +77,24 @@ def load_config(config_path: Path | str | None = None) -> dict:
         return load_config_with_extends(config_path)
     except ImportError:
         # Fallback to simple load if config module not available
-        with open(config_path) as f:
-            return yaml.safe_load(f)
+        try:
+            with open(config_path) as f:
+                return yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            mark = getattr(e, "problem_mark", None)
+            if mark:
+                logger.error(
+                    "%sError: %s is malformed (line %d, column %d). "
+                    "Run 'vibesrails --init' to generate a valid config.%s",
+                    RED, config_path, mark.line + 1, mark.column + 1, NC,
+                )
+            else:
+                logger.error(
+                    "%sError: %s is malformed. "
+                    "Run 'vibesrails --init' to generate a valid config.%s",
+                    RED, config_path, NC,
+                )
+            sys.exit(1)
 
 
 def is_git_repo() -> bool:

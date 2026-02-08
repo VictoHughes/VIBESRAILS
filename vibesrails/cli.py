@@ -239,7 +239,11 @@ def main() -> None:
         logger.info("Run: vibesrails --init")
         sys.exit(1)
 
-    config = load_config(config_path)
+    try:
+        config = load_config(config_path)
+    except ValueError as e:
+        logger.error("%s%s%s", RED, e, NC)
+        sys.exit(1)
 
     # Determine files to scan
     if args.file:

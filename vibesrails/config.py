@@ -181,8 +181,23 @@ def load_extended_config(
     seen_paths.add(path_key)
 
     # Load the config file
-    with open(config_path) as f:
-        config = yaml.safe_load(f) or {}
+    try:
+        with open(config_path) as f:
+            config = yaml.safe_load(f) or {}
+    except yaml.YAMLError as e:
+        mark = getattr(e, "problem_mark", None)
+        if mark:
+            msg = (
+                f"Error: {config_path} is malformed "
+                f"(line {mark.line + 1}, column {mark.column + 1}). "
+                f"Run 'vibesrails --init' to generate a valid config."
+            )
+        else:
+            msg = (
+                f"Error: {config_path} is malformed. "
+                f"Run 'vibesrails --init' to generate a valid config."
+            )
+        raise ValueError(msg) from None
 
     # Check for extends
     extends = config.pop("extends", None)

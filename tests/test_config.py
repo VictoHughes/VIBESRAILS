@@ -907,3 +907,55 @@ settings:
         assert result["settings"]["nested"]["a"] == 1  # preserved
         assert result["settings"]["nested"]["b"] == 3  # overridden
         assert result["settings"]["nested"]["c"] == 4  # added
+
+
+class TestMalformedYaml:
+    """Tests for graceful handling of malformed YAML config files."""
+
+    def test_malformed_yaml_raises_valueerror(self, tmp_path):
+        """Malformed YAML produces ValueError, not raw yaml.YAMLError."""
+        bad_yaml = tmp_path / "bad.yaml"
+        bad_yaml.write_text("{invalid yaml content")
+
+        with pytest.raises(ValueError, match="is malformed"):
+            load_extended_config(bad_yaml)
+
+    def test_malformed_yaml_includes_line_info(self, tmp_path):
+        """Error message includes line and column when available."""
+        bad_yaml = tmp_path / "bad.yaml"
+        bad_yaml.write_text("{invalid yaml content")
+
+        with pytest.raises(ValueError, match=r"line \d+, column \d+"):
+            load_extended_config(bad_yaml)
+
+    def test_malformed_yaml_suggests_init(self, tmp_path):
+        """Error message suggests running vibesrails --init."""
+        bad_yaml = tmp_path / "bad.yaml"
+        bad_yaml.write_text("{invalid yaml content")
+
+        with pytest.raises(ValueError, match="vibesrails --init"):
+            load_extended_config(bad_yaml)
+
+    def test_malformed_yaml_no_stack_trace_via_entrypoint(self, tmp_path):
+        """load_config_with_extends wraps the error cleanly."""
+        bad_yaml = tmp_path / "bad.yaml"
+        bad_yaml.write_text(":\n  - [invalid\n  broken: {")
+
+        with pytest.raises(ValueError, match="is malformed"):
+            load_config_with_extends(bad_yaml)
+
+    def test_empty_yaml_is_valid(self, tmp_path):
+        """An empty YAML file is valid and returns empty dict."""
+        empty_yaml = tmp_path / "empty.yaml"
+        empty_yaml.write_text("")
+
+        result = load_extended_config(empty_yaml)
+        assert result == {}
+
+    def test_valid_yaml_still_works(self, tmp_path):
+        """Normal YAML loading is not broken by the error handling."""
+        good_yaml = tmp_path / "good.yaml"
+        good_yaml.write_text("patterns:\n  - name: test\n    severity: warning\n")
+
+        result = load_extended_config(good_yaml)
+        assert result["patterns"][0]["name"] == "test"
