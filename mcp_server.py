@@ -411,8 +411,35 @@ def get_learning(
 # ---------------------------------------------------------------------------
 
 
+TOOLS = [
+    "ping", "scan_code", "scan_senior", "check_session",
+    "scan_semgrep", "monitor_entropy", "check_config",
+    "deep_hallucination", "check_drift", "enforce_brief",
+    "shield_prompt", "get_learning",
+]
+
+
 def main():
     """Entry point for vibesrails-mcp CLI."""
+    import sys
+
+    if "--help" in sys.argv or "-h" in sys.argv:
+        print(f"VibesRails MCP Server v{VERSION}")
+        print("Security scanner for AI-assisted coding (Model Context Protocol)")
+        print()
+        print("Usage: vibesrails-mcp          Start MCP server (stdio transport)")
+        print("       vibesrails-mcp --help    Show this help")
+        print("       vibesrails-mcp --version Show version")
+        print()
+        print(f"Available tools ({len(TOOLS)}):")
+        for tool in TOOLS:
+            print(f"  - {tool}")
+        sys.exit(0)
+
+    if "--version" in sys.argv or "-v" in sys.argv:
+        print(f"vibesrails-mcp {VERSION}")
+        sys.exit(0)
+
     mcp.run(transport="stdio")
 
 

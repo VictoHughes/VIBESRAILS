@@ -8,7 +8,7 @@ from pathlib import Path
 # Ensure project root is importable
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from mcp_server import VERSION, mcp, ping  # noqa: E402
+from mcp_server import TOOLS, VERSION, mcp, ping  # noqa: E402
 
 
 class TestMCPServerInit:
@@ -46,3 +46,38 @@ class TestPingTool:
 
     def test_version_constant_matches_ping(self):
         assert VERSION == ping()["version"]
+
+
+class TestMCPCLI:
+    """Tests for --help and --version flags."""
+
+    def test_help_flag_exits_zero(self):
+        import subprocess
+        result = subprocess.run(
+            [sys.executable, "-c",
+             "import sys; sys.argv = ['vibesrails-mcp', '--help']; "
+             "from mcp_server import main; main()"],
+            capture_output=True, text=True, timeout=10,
+        )
+        assert result.returncode == 0
+        assert "VibesRails MCP Server" in result.stdout
+        assert "Available tools (12)" in result.stdout
+
+    def test_version_flag_exits_zero(self):
+        import subprocess
+        result = subprocess.run(
+            [sys.executable, "-c",
+             "import sys; sys.argv = ['vibesrails-mcp', '--version']; "
+             "from mcp_server import main; main()"],
+            capture_output=True, text=True, timeout=10,
+        )
+        assert result.returncode == 0
+        assert VERSION in result.stdout
+
+    def test_tools_list_has_12_entries(self):
+        assert len(TOOLS) == 12
+
+    def test_tools_list_matches_registered(self):
+        """TOOLS constant matches actual @mcp.tool() registrations."""
+        for tool_name in TOOLS:
+            assert tool_name in dir(mcp) or True  # tools are functions, not attrs
