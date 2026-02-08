@@ -100,9 +100,25 @@ vibesrails --setup
 
 This copies `hooks.json` to `.claude/` and generates a `CLAUDE.md` with project-specific rules.
 
+## CLI Reference
+
+VibesRails CLI provides 38 commands organized in 7 categories:
+
+| Category | Key Commands | Count |
+|----------|-------------|-------|
+| Setup & Config | `--init`, `--setup`, `--hook`, `--validate` | 7 |
+| Scanning | `--all`, `--file`, `--senior`, `--senior-v2` | 7 |
+| Auto-fix | `--fix`, `--dry-run`, `--no-backup` | 3 |
+| Specialized Guards | `--audit-deps`, `--complexity`, `--mutation` | 9 |
+| Community | `--install-pack`, `--learn`, `--upgrade` | 5 |
+| Session Management | `--watch`, `--queue`, `--inbox` | 5 |
+| Guardian | `--guardian-stats` | 1 |
+
+Run `vibesrails --help` for full details.
+
 ## Security
 
-1729 tests including 96 security tests. Path traversal protection,
+1734 tests including 96 security tests. Path traversal protection,
 SQL injection prevention, ReDoS verification, filesystem sandbox,
 rate limiting, structured logging with data redaction.
 

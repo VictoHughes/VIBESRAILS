@@ -41,59 +41,77 @@ def _parse_args():
     """Parse command-line arguments and return the parsed args."""
     parser = argparse.ArgumentParser(
         description="VibesRails - Scale up your vibe coding safely | From KIONOS™",
-        epilog="Examples: vibesrails --all | --show | --stats | --learn | --watch"
+        epilog="Examples: vibesrails --all | --show | --stats | --learn | --watch",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--version", "-v", action="version",
                         version=f"VibesRails {__version__} - From KIONOS™ (free tools) - Developed by SM")
-    parser.add_argument("--init", action="store_true", help="Initialize vibesrails.yaml")
-    parser.add_argument("--hook", action="store_true", help="Install git pre-commit hook")
-    parser.add_argument("--uninstall", action="store_true", help="Remove vibesrails from project")
-    parser.add_argument("--setup", action="store_true", help="Smart auto-setup (analyzes project)")
-    parser.add_argument("--force", action="store_true", help="Force overwrite existing config")
-    parser.add_argument("--validate", action="store_true", help="Validate YAML config")
-    parser.add_argument("--show", action="store_true", help="Show all patterns")
-    parser.add_argument("--all", action="store_true", help="Scan all Python files")
-    parser.add_argument("--file", "-f", help="Scan specific file")
-    parser.add_argument("--config", "-c", help="Path to vibesrails.yaml")
-    parser.add_argument("--learn", action="store_true", help="Claude-powered pattern discovery")
-    parser.add_argument("--watch", action="store_true", help="Live scanning on file save")
-    parser.add_argument("--guardian-stats", action="store_true", help="Show AI coding block statistics")
-    parser.add_argument("--stats", action="store_true", help="Show scan statistics and metrics")
-    parser.add_argument("--fix", action="store_true", help="Auto-fix simple patterns")
-    parser.add_argument("--dry-run", action="store_true", help="Show what --fix would change")
-    parser.add_argument("--no-backup", action="store_true", help="Don't create .bak files with --fix")
-    parser.add_argument("--fixable", action="store_true", help="Show auto-fixable patterns")
-    parser.add_argument("--senior", action="store_true",
+
+    # --- Setup & Config ---
+    g_setup = parser.add_argument_group("Setup & Config")
+    g_setup.add_argument("--init", action="store_true", help="Initialize vibesrails.yaml")
+    g_setup.add_argument("--setup", action="store_true", help="Smart auto-setup (analyzes project)")
+    g_setup.add_argument("--hook", action="store_true", help="Install git pre-commit hook")
+    g_setup.add_argument("--uninstall", action="store_true", help="Remove vibesrails from project")
+    g_setup.add_argument("--force", action="store_true", help="Force overwrite existing config")
+    g_setup.add_argument("--config", "-c", help="Path to vibesrails.yaml")
+    g_setup.add_argument("--validate", action="store_true", help="Validate YAML config")
+
+    # --- Scanning ---
+    g_scan = parser.add_argument_group("Scanning")
+    g_scan.add_argument("--all", action="store_true", help="Scan all Python files")
+    g_scan.add_argument("--file", "-f", help="Scan specific file")
+    g_scan.add_argument("--senior", action="store_true",
                         help="Run Senior Mode (architecture + guards + review)")
+    g_scan.add_argument("--senior-v2", action="store_true", help="Run ALL v2 guards (comprehensive scan)")
+    g_scan.add_argument("--show", action="store_true", help="Show all active patterns")
+    g_scan.add_argument("--stats", action="store_true", help="Show scan statistics and metrics")
+    g_scan.add_argument("--fixable", action="store_true", help="Show auto-fixable patterns")
 
-    # V2 Guards
-    parser.add_argument("--audit-deps", action="store_true", help="Audit dependencies for CVEs and risks")
-    parser.add_argument("--complexity", action="store_true", help="Analyze code complexity")
-    parser.add_argument("--dead-code", action="store_true", help="Detect unused code")
-    parser.add_argument("--env-check", action="store_true", help="Check environment safety")
-    parser.add_argument("--pr-check", action="store_true", help="Generate PR review checklist")
-    parser.add_argument("--pre-deploy", action="store_true", help="Pre-deployment verification")
-    parser.add_argument("--upgrade", action="store_true", help="Check for dependency upgrades")
-    parser.add_argument("--install-pack", metavar="PACK", help="Install community pack (@user/repo)")
-    parser.add_argument("--remove-pack", metavar="PACK", help="Remove installed pack")
-    parser.add_argument("--list-packs", action="store_true", help="List installed and available packs")
-    parser.add_argument("--test-integrity", action="store_true",
-                        help="Detect fake/lazy tests (over-mocking, no assertions)")
-    parser.add_argument("--mutation", action="store_true",
-                        help="Mutation testing — scientifically verify tests are real")
-    parser.add_argument("--mutation-quick", action="store_true",
-                        help="Mutation testing on changed functions only")
-    parser.add_argument("--senior-v2", action="store_true", help="Run ALL v2 guards (comprehensive scan)")
+    # --- Auto-fix ---
+    g_fix = parser.add_argument_group("Auto-fix")
+    g_fix.add_argument("--fix", action="store_true", help="Auto-fix simple patterns")
+    g_fix.add_argument("--dry-run", action="store_true", help="Show what --fix would change")
+    g_fix.add_argument("--no-backup", action="store_true", help="Don't create .bak files with --fix")
 
-    # V2 Hooks - inter-session communication
-    parser.add_argument("--queue", metavar="MESSAGE", help="Send a task to other Claude Code sessions")
-    parser.add_argument("--inbox", metavar="MESSAGE", help="Add instruction to mobile inbox")
+    # --- Specialized Guards ---
+    g_guards = parser.add_argument_group("Specialized Guards")
+    g_guards.add_argument("--audit-deps", action="store_true", help="Audit dependencies for CVEs and risks")
+    g_guards.add_argument("--complexity", action="store_true", help="Analyze code complexity")
+    g_guards.add_argument("--dead-code", action="store_true", help="Detect unused code")
+    g_guards.add_argument("--env-check", action="store_true", help="Check environment safety")
+    g_guards.add_argument("--test-integrity", action="store_true",
+                          help="Detect fake/lazy tests (over-mocking, no assertions)")
+    g_guards.add_argument("--mutation", action="store_true",
+                          help="Mutation testing -- verify tests catch real bugs")
+    g_guards.add_argument("--mutation-quick", action="store_true",
+                          help="Mutation testing on changed functions only")
+    g_guards.add_argument("--pr-check", action="store_true", help="Generate PR review checklist")
+    g_guards.add_argument("--pre-deploy", action="store_true", help="Pre-deployment verification")
 
-    # Throttle (anti-emballement)
-    parser.add_argument("--throttle-status", action="store_true",
-                        help="Show write throttle counter (anti-emballement)")
-    parser.add_argument("--throttle-reset", action="store_true",
-                        help="Reset write throttle counter")
+    # --- Community & Extensions ---
+    g_community = parser.add_argument_group("Community & Extensions")
+    g_community.add_argument("--install-pack", metavar="PACK", help="Install community pack (@user/repo)")
+    g_community.add_argument("--remove-pack", metavar="PACK", help="Remove installed pack")
+    g_community.add_argument("--list-packs", action="store_true", help="List installed and available packs")
+    g_community.add_argument("--upgrade", action="store_true", help="Check for dependency upgrades")
+    g_community.add_argument("--learn", action="store_true", help="Claude-powered pattern discovery")
+
+    # --- Session Management ---
+    g_session = parser.add_argument_group("Session Management")
+    g_session.add_argument("--watch", action="store_true", help="Live scanning on file save")
+    g_session.add_argument("--queue", metavar="MSG", help="Send a task to other Claude Code sessions")
+    g_session.add_argument("--inbox", metavar="MSG", help="Add instruction to mobile inbox")
+    g_session.add_argument("--throttle-status", action="store_true",
+                           help="Show write throttle counter")
+    g_session.add_argument("--throttle-reset", action="store_true",
+                           help="Reset write throttle counter")
+
+    # --- Guardian ---
+    g_guardian = parser.add_argument_group("Guardian (AI mode)")
+    g_guardian.add_argument("--guardian-stats", action="store_true",
+                            help="Show AI coding block statistics")
+
     return parser.parse_args()
 
 
