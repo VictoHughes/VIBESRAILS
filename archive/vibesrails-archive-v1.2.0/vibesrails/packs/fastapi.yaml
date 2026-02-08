@@ -1,0 +1,62 @@
+# @vibesrails/fastapi-pack
+# FastAPI-specific security and quality patterns
+# Usage: extends: "@vibesrails/fastapi-pack"
+
+version: "1.0"
+
+blocking:
+  # Authentication
+  - id: fastapi_oauth2_no_https
+    name: "OAuth2 Without HTTPS"
+    regex: "OAuth2PasswordBearer\\([^)]*http://"
+    message: "OAuth2 must use HTTPS in production"
+
+  # Input Validation
+  - id: fastapi_raw_body
+    name: "Raw Request Body"
+    regex: "request\\.body\\(\\)|await request\\.json\\(\\)"
+    message: "Use Pydantic models for automatic validation"
+
+  # CORS
+  - id: fastapi_cors_all
+    name: "CORS Allow All"
+    regex: "allow_origins\\s*=\\s*\\[\\s*[\"']\\*[\"']\\s*\\]"
+    message: "Don't allow all origins in production"
+
+warning:
+  # Security Headers (moved to warning - hard to detect across lines)
+  - id: fastapi_no_trusted_host
+    name: "Missing Trusted Host Middleware"
+    regex: "app\\s*=\\s*FastAPI\\("
+    exclude_regex: "TrustedHostMiddleware|# ?vibesrails"
+    message: "Consider adding TrustedHostMiddleware for host validation"
+
+  # Response Security
+  - id: fastapi_return_dict
+    name: "Return Dict Instead of Model"
+    regex: "return\\s+\\{[^}]+\\}"
+    message: "Return Pydantic models for consistent serialization"
+    skip_in_tests: true
+    scope: ["**/api/**/*.py", "**/routes/**/*.py"]
+
+  # Database
+  - id: fastapi_sync_db
+    name: "Synchronous DB in Async"
+    regex: "def\\s+\\w+\\([^)]*db:\\s*Session"
+    exclude_regex: "async\\s+def"
+    message: "Use async database operations in async endpoints"
+    scope: ["**/api/**/*.py"]
+
+  # Logging
+  - id: fastapi_print_debug
+    name: "Print Instead of Logger"
+    regex: "^\\s*print\\("
+    message: "Use logging module instead of print"
+    skip_in_tests: true
+
+  # Background Tasks
+  - id: fastapi_background_exception
+    name: "Background Task Without Error Handling"
+    regex: "background_tasks\\.add_task\\([^)]+\\)"
+    exclude_regex: "try:|except:"
+    message: "Background tasks should handle exceptions"

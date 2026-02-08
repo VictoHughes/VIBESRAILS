@@ -1,0 +1,133 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"import sys; from pathlib import Path; y=Path('vibesrails.yaml'); h=Path('.claude/hooks.json'); t=Path('vibesrails/hooks/throttle.py') if Path('vibesrails').exists() else None; ok=y.exists(); layers=['PreToolUse','PostToolUse','Pre-commit','ptuh.py']; extras=[]; extras.append('throttle') if t and t.exists() else None; extras.append('session-lock') if Path('vibesrails/hooks/session_lock.py').exists() else None; print(f'VibesRails ACTIVE | {len(layers)}+{len(extras)} protections | yaml:{y.exists()} hooks:{h.exists()}') if ok else None; sys.exit(0 if ok else 1)\" || echo 'vibesrails: Run vibesrails --setup for auto-security setup'"
+          },
+          {
+            "type": "command",
+            "command": "python3 -m vibesrails.hooks.session_scan"
+          },
+          {
+            "type": "prompt",
+            "prompt": "IMPORTANT: Annonce a l'utilisateur au debut de ta reponse que VibesRails est actif sur ce projet. Inclus le resultat du session scan (nombre de fichiers, blocking, warnings). Si des issues BLOCKING sont listees, signale-les en priorite.'"
+          },
+          {
+            "type": "prompt",
+            "prompt": "DISCIPLINE DE SESSION: 1) ARCHITECTURE — Avant de creer ou modifier un fichier, verifie les regles d'architecture dans pyproject.toml [tool.importlinter]. Ne jamais introduire d'import interdit (scanner->cli, guardian->learner, etc.). Si tu doutes, lis pyproject.toml. 2) ZERO DUPLICATION — Avant d'ecrire du code, verifie qu'il n'existe pas deja dans le codebase (Grep/Explore). Reutilise les modules existants. Ne jamais copier-coller de la logique. 3) METHODE STRUCTUREE — Pour toute tache non-triviale: plan d'abord (brainstorming/writing-plans), puis execution (executing-plans). Pas de code sans plan. Pas de plan sans exploration. 4) VERIFICATION — Apres chaque modification: pytest, ruff, vibesrails --all. Ne jamais dire 'c'est fait' sans avoir lance les tests."
+          },
+          {
+            "type": "command",
+            "command": "python3 -c \"from pathlib import Path; plans=sorted(Path('docs/plans').glob('*.md'), key=lambda p: p.stat().st_mtime, reverse=True) if Path('docs/plans').exists() else []; p=plans[0] if plans else None; content=p.read_text() if p else ''; has_tasks='### Task' in content if content else False; print(f'PLAN READY: {p.name}') if has_tasks else (print(f'Plan actif: {p.name}') if p else None)\""
+          },
+          {
+            "type": "prompt",
+            "prompt": "Si le message precedent contient 'PLAN READY:', un plan d'implementation est pret. Propose a l'utilisateur: 'Un plan est pret (nom du fichier). Voulez-vous que je l'execute avec executing-plans?'"
+          },
+          {
+            "type": "command",
+            "command": "python3 -c \"from pathlib import Path; p=Path('.claude/current-task.md'); print(f'Tache en cours: {p.read_text().strip()[:80]}...') if p.exists() and p.read_text().strip() else None\""
+          },
+          {
+            "type": "command",
+            "command": "rm -f .claude/.write_reminded 2>/dev/null; mkdir -p .claude; git rev-parse HEAD 2>/dev/null > .claude/.last_commit_hash || true"
+          },
+          {
+            "type": "command",
+            "command": "python3 -c \"from pathlib import Path; d=Path('.vibesrails'); d.mkdir(exist_ok=True); f=d/'session_throttle.json'; f.write_text('{\\\"writes_since_check\\\": 0}'); print('Throttle reset')\""
+          },
+          {
+            "type": "command",
+            "command": "python3 -c \"from vibesrails.hooks.session_lock import acquire_lock, check_other_session; from pathlib import Path; d=Path('.vibesrails'); d.mkdir(exist_ok=True); w=check_other_session(d); print(f'WARNING: {w}') if w else None; acquire_lock(d)\""
+          },
+          {
+            "type": "prompt",
+            "prompt": "Si .claude/current-task.md existe et contient des taches, utilise TaskCreate pour recreer la TaskList a partir de son contenu. Cela restaure l'etat apres compaction/restart."
+          },
+          {
+            "type": "command",
+            "command": "python3 -c \"from vibesrails.hooks.queue_processor import format_pending_summary; from pathlib import Path; s=format_pending_summary(Path('.claude/queue.jsonl')); print(s) if s else None\""
+          },
+          {
+            "type": "command",
+            "command": "python3 -c \"from vibesrails.hooks.inbox import check_inbox; from pathlib import Path; c=check_inbox(Path('.claude/inbox.md')); print(f'Inbox instructions:\\n{c}') if c else None\""
+          },
+          {
+            "type": "prompt",
+            "prompt": "Si le message precedent contient 'Inbox instructions:', traite les instructions puis efface l'inbox avec: python3 -c \"from vibesrails.hooks.inbox import clear_inbox; from pathlib import Path; clear_inbox(Path('.claude/inbox.md'))\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -m vibesrails.hooks.pre_tool_use"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "AVANT COMPACTION: Sauvegarde automatique de l'etat. Ecris un resume de la tache en cours dans .claude/current-task.md avec: 1) Le plan actif (docs/plans/*.md), 2) L'etape actuelle, 3) Les prochaines actions, 4) Liste des taches TaskList avec leur status. Format: markdown court."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"from pathlib import Path; d=Path('.claude'); d.mkdir(exist_ok=True); f=d/'.write_reminded'; showed=(print('vibesrails: Code will be scanned on commit') or True) if not f.exists() and Path('vibesrails.yaml').exists() else False; f.touch() if showed else None\""
+          },
+          {
+            "type": "command",
+            "command": "python3 -m vibesrails.hooks.post_tool_use"
+          },
+          {
+            "type": "prompt",
+            "prompt": "Si le SessionStart a signale 'WARNING: Another session', rappelle a l'utilisateur qu'une autre fenetre Claude Code est active sur ce projet. Risque de conflit."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"from pathlib import Path; import subprocess; d=Path('.claude'); d.mkdir(exist_ok=True); f=d/'.last_commit_hash'; old=f.read_text().strip() if f.exists() else ''; new=subprocess.run(['git','rev-parse','HEAD'],capture_output=True,text=True).stdout.strip() if Path('.git').exists() else ''; changed=old and new and old!=new; f.write_text(new) if new else None; print('Nouveau commit detecte!') if changed else None\""
+          },
+          {
+            "type": "command",
+            "command": "python3 -m vibesrails.hooks.post_tool_use"
+          },
+          {
+            "type": "prompt",
+            "prompt": "Si le message precedent indique 'Nouveau commit detecte!', mets a jour TaskList (marque la tache completed) et .claude/current-task.md."
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"from vibesrails.hooks.session_lock import release_lock; from pathlib import Path; release_lock(Path('.vibesrails'))\""
+          }
+        ]
+      }
+    ]
+  }
+}

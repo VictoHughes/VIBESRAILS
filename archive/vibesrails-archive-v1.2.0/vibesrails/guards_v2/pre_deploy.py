@@ -32,10 +32,6 @@ class PreDeployGuard:
     ) -> None:
         self.coverage_threshold = coverage_threshold
 
-    def scan(self, project_root: Path) -> list[V2GuardIssue]:
-        """Run all pre-deploy checks (required by run_all_guards)."""
-        return self.run_all(project_root)
-
     def run_all(
         self, project_root: Path
     ) -> list[V2GuardIssue]:

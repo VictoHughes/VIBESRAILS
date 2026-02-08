@@ -38,25 +38,19 @@ audit = ["pip-audit>=2.6"]
 typing = ["mypy>=1.0"]
 deadcode = ["vulture>=2.7"]
 all = ["watchdog>=3.0", "anthropic>=0.18", "pip-audit>=2.6", "mypy>=1.0", "vulture>=2.7"]
-mcp = ["mcp[cli]>=1.0.0"]
-semgrep = ["semgrep>=1.0.0"]
 dev = ["pytest>=7.0", "pytest-timeout>=2.0", "pytest-cov>=4.0", "ruff>=0.1", "import-linter>=2.0"]
 
 [project.scripts]
 vibesrails = "vibesrails.cli:main"
-vibesrails-mcp = "mcp_server:main"
 
 [project.urls]
 Homepage = "https://github.com/VictoHughes/VIBESRAILS"
 Documentation = "https://github.com/VictoHughes/VIBESRAILS#readme"
 Repository = "https://github.com/VictoHughes/VIBESRAILS"
 
-[tool.setuptools]
-py-modules = ["mcp_server"]
-
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["vibesrails*", "tools*", "core*", "adapters*", "storage*"]
+include = ["vibesrails*"]
 
 [tool.setuptools.package-data]
 vibesrails = [
