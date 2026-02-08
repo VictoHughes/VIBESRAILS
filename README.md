@@ -9,11 +9,34 @@ into your AI coding workflow.
 
 ## Install
 
+### Quick install (recommended)
+
 ```bash
-pip install vibesrails-mcp
-# or from source:
-git clone https://github.com/sm/vibesrails.git
-cd vibesrails && pip install -e ".[mcp]"
+# pipx (isolated CLI — recommended)
+pipx install vibesrails
+
+# uv (fast, modern)
+uv tool install vibesrails
+
+# pip (classic)
+pip install vibesrails
+```
+
+### MCP server (requires mcp extra)
+
+```bash
+pipx install vibesrails[mcp]
+# or
+pip install vibesrails[mcp]
+```
+
+### Developer setup (from source)
+
+```bash
+git clone https://github.com/VictoHughes/VIBESRAILS.git
+cd VIBESRAILS
+make install-dev   # installs dev + MCP dependencies
+make test          # 1729 tests
 ```
 
 ## Configure (Claude Code)
