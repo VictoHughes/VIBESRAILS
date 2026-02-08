@@ -7,6 +7,34 @@ It detects AI hallucinations, enforces structured briefs, monitors
 architecture drift, and blocks prompt injections — all integrated
 into your AI coding workflow.
 
+## What's Inside
+
+**7 Security Layers** --
+Rate limiting, input validation, path traversal prevention, SQL injection prevention,
+resource exhaustion limits, information disclosure prevention, structured logging with redaction.
+
+**29 Code Guards** --
+16 V2 Guards (dependency_audit, performance, complexity, env_safety, git_workflow,
+dead_code, observability, type_safety, docstring, pr_checklist, database_safety,
+api_design, pre_deploy, test_integrity, mutation, architecture_drift),
+5 Senior Guards (error_handling, hallucination, lazy_code, bypass, resilience),
+8 AST Guards (dead_code, observability, complexity, performance, type_safety,
+api_design, database_safety, env_safety).
+
+**8 Hooks Pipeline** --
+Pre-tool secrets scan, post-tool guard scan, write throttle, session lock,
+session scan, queue processor, mobile inbox, self-protection (ptuh.py).
+
+**4 Built-in Config Packs** --
+`@vibesrails/security-pack` (OWASP Top 10),
+`@vibesrails/web-pack` (Flask/Django),
+`@vibesrails/fastapi-pack`,
+`@vibesrails/django-pack`.
+
+**Learning Engine** --
+Automatic developer profiling, session tracking, improvement metrics,
+actionable insights, SQLite persistence across sessions.
+
 ## Install
 
 ### Quick install (recommended)
