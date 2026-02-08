@@ -69,8 +69,8 @@ def test_blocks_sql_injection():
     assert "SQL injection" in result.stdout
 
 
-def test_ignores_non_python():
-    """Non-Python files exit 0 even with secrets."""
+def test_ignores_unscannable_files():
+    """Non-scannable files (e.g. .md) exit 0 even with secrets."""
     result = _run_hook({
         "tool_name": "Write",
         "tool_input": {
@@ -223,3 +223,146 @@ def test_handles_malformed_json():
         cwd=PROJECT_ROOT,
     )
     assert result.returncode == 0
+
+
+# --- FIX 2: Secret detection beyond .py ---
+
+
+class TestSecretDetectionMultiFormat:
+    """Secrets in non-.py files must now be blocked."""
+
+    def test_blocks_secret_in_env(self):
+        """Secret in .env file is BLOCKED."""
+        result = _run_hook({
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": ".env",
+                "content": 'API_KEY = "sk-abc123456789abcdef"\n',
+            },
+        })
+        assert result.returncode == 1
+        assert "BLOCKED" in result.stdout
+
+    def test_blocks_secret_in_env_local(self):
+        """Secret in .env.local file is BLOCKED."""
+        result = _run_hook({
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": ".env.local",
+                "content": 'SECRET = "AKIAFAKE1234567890AB1234"\n',
+            },
+        })
+        assert result.returncode == 1
+
+    def test_blocks_secret_in_env_production(self):
+        """Secret in .env.production file is BLOCKED."""
+        result = _run_hook({
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": ".env.production",
+                "content": 'token = "ghp_abcdefghij1234567890klmnopqrst"\n',
+            },
+        })
+        assert result.returncode == 1
+
+    def test_blocks_secret_in_yaml(self):
+        """Secret in .yaml file is BLOCKED."""
+        result = _run_hook({
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": "config.yaml",
+                "content": 'api_key = "sk-abc123456789abcdef"\n',
+            },
+        })
+        assert result.returncode == 1
+        assert "BLOCKED" in result.stdout
+
+    def test_blocks_secret_in_yml(self):
+        """Secret in .yml file is BLOCKED."""
+        result = _run_hook({
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": "docker-compose.yml",
+                "content": 'password = "SuperSecretPassword123"\n',
+            },
+        })
+        assert result.returncode == 1
+
+    def test_blocks_secret_in_json(self):
+        """Secret in .json file is BLOCKED."""
+        result = _run_hook({
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": "config.json",
+                "content": 'api_key = "sk-abc123456789abcdef"\n',
+            },
+        })
+        assert result.returncode == 1
+        assert "BLOCKED" in result.stdout
+
+    def test_blocks_secret_in_sh(self):
+        """Secret in .sh file is BLOCKED."""
+        result = _run_hook({
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": "deploy.sh",
+                "content": 'api_key = "sk-abc123456789abcdef"\n',
+            },
+        })
+        assert result.returncode == 1
+        assert "BLOCKED" in result.stdout
+
+    def test_blocks_secret_in_toml(self):
+        """Secret in .toml file is BLOCKED."""
+        result = _run_hook({
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": "settings.toml",
+                "content": 'password = "SuperSecretPassword123"\n',
+            },
+        })
+        assert result.returncode == 1
+
+    def test_ignores_binary_whl(self):
+        """Binary .whl files are NOT scanned."""
+        result = _run_hook({
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": "dist/package-1.0.0-py3-none-any.whl",
+                "content": 'api_key = "sk-abc123456789abcdef"\n',
+            },
+        })
+        assert result.returncode == 0
+
+    def test_ignores_binary_png(self):
+        """Binary .png files are NOT scanned."""
+        result = _run_hook({
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": "logo.png",
+                "content": 'api_key = "sk-abc123456789abcdef"\n',
+            },
+        })
+        assert result.returncode == 0
+
+    def test_no_code_patterns_in_yaml(self):
+        """SQL injection patterns should NOT trigger in .yaml files."""
+        result = _run_hook({
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": "rules.yaml",
+                "content": 'pattern: f"SELECT * FROM users WHERE id = {user_id}"\n',
+            },
+        })
+        assert result.returncode == 0
+
+    def test_safe_env_file_passes(self):
+        """A .env file without secrets passes."""
+        result = _run_hook({
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": ".env",
+                "content": "DEBUG=true\nLOG_LEVEL=info\nPORT=8080\n",
+            },
+        })
+        assert result.returncode == 0

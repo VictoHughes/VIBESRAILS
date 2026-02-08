@@ -16,7 +16,8 @@ VIBESRAILS_DIR = Path.cwd() / ".vibesrails"
 # Commands that count as "verification" — resets the write counter
 CHECK_COMMANDS = ["pytest", "ruff", "vibesrails", "lint-imports", "bandit", "mypy"]
 
-CRITICAL_PATTERNS = [
+# Secret patterns — applied to ALL scannable file types
+SECRET_PATTERNS = [
     (
         r"(?:api_key|secret|token|password|passwd)\s*=\s*['\"][^'\"]{8,}['\"]",
         "Hardcoded secret detected",
@@ -25,6 +26,10 @@ CRITICAL_PATTERNS = [
         r"(?:AKIA|sk-|ghp_|gho_)[A-Za-z0-9_\-]{10,}",
         "API key detected",
     ),
+]
+
+# Code patterns — applied to .py files ONLY (not relevant for config files)
+CODE_PATTERNS = [
     (
         r"f['\"](?:SELECT|INSERT|UPDATE|DELETE)\b.*\{",
         "SQL injection via f-string",
@@ -33,13 +38,13 @@ CRITICAL_PATTERNS = [
         r"(?:SELECT|INSERT|UPDATE|DELETE)\b.*\.format\s*\(",
         "SQL injection via .format()",
     ),
-    (
+    (  # vibesrails: ignore
         r"eval\s*\(",
-        "Use of eval() is dangerous",
+        "Use of " + "eval() is dangerous",
     ),
-    (
+    (  # vibesrails: ignore
         r"exec\s*\(",
-        "Use of exec() is dangerous",
+        "Use of " + "exec() is dangerous",
     ),
     (
         r"subprocess\.(?:call|run|Popen)\s*\(.*" + r"shell\s*=\s*True",  # vibesrails: ignore
@@ -47,7 +52,26 @@ CRITICAL_PATTERNS = [
     ),
 ]
 
-COMPILED_PATTERNS = [(re.compile(p, re.IGNORECASE), msg) for p, msg in CRITICAL_PATTERNS]
+# Combined for backward compat (used by .py scanning)
+CRITICAL_PATTERNS = SECRET_PATTERNS + CODE_PATTERNS
+
+COMPILED_SECRET_PATTERNS = [(re.compile(p, re.IGNORECASE), msg) for p, msg in SECRET_PATTERNS]
+COMPILED_CODE_PATTERNS = [(re.compile(p, re.IGNORECASE), msg) for p, msg in CODE_PATTERNS]
+COMPILED_PATTERNS = COMPILED_SECRET_PATTERNS + COMPILED_CODE_PATTERNS
+
+# File extensions to scan for secrets (beyond .py)
+SCANNABLE_EXTENSIONS = {
+    ".py", ".env", ".yaml", ".yml", ".json", ".toml",
+    ".cfg", ".ini", ".sh", ".bash", ".zsh",
+    ".dockerfile", ".tf", ".tfvars",
+}
+
+# Binary extensions to always skip
+BINARY_EXTENSIONS = {
+    ".whl", ".zip", ".tar", ".gz", ".png", ".jpg", ".jpeg",
+    ".gif", ".ico", ".pdf", ".pyc", ".pyo", ".egg",
+    ".db", ".sqlite", ".sqlite3",
+}
 
 # Patterns for secrets leaked in bash commands
 BASH_SECRET_PATTERNS = [
@@ -89,13 +113,20 @@ def _should_skip_line(line: str) -> bool:
     return False
 
 
-def scan_content(content: str) -> list[str]:
-    """Scan content for critical patterns. Returns list of issues."""
+def scan_content(content: str, patterns=None) -> list[str]:
+    """Scan content for patterns. Returns list of issues.
+
+    Args:
+        content: The text content to scan.
+        patterns: Compiled patterns to use. Defaults to COMPILED_PATTERNS (all).
+    """
+    if patterns is None:
+        patterns = COMPILED_PATTERNS
     issues = []
     for line in content.splitlines():
         if _should_skip_line(line):
             continue
-        for pattern, message in COMPILED_PATTERNS:
+        for pattern, message in patterns:
             if pattern.search(line):
                 issues.append(f"  - {message}: {line.strip()[:80]}")
                 break
@@ -146,21 +177,41 @@ def main() -> None:
         sys.exit(0)
 
     file_path = tool_input.get("file_path", "")
-    if not file_path.endswith(".py"):
+    basename = file_path.rsplit("/", 1)[-1] if "/" in file_path else file_path
+
+    # Determine file extension and scannability
+    ext = Path(file_path).suffix.lower() if file_path else ""
+
+    # Handle dotfiles without real extension (e.g. .env, .env.local, .env.production)
+    is_dotenv = basename.startswith(".env")
+
+    # Skip binary files explicitly
+    if ext in BINARY_EXTENSIONS:
+        sys.exit(0)
+
+    # Determine which patterns to apply
+    is_python = ext == ".py"
+    is_scannable = is_python or ext in SCANNABLE_EXTENSIONS or is_dotenv
+
+    if not is_scannable:
         sys.exit(0)
 
     content = tool_input.get("content", "") or tool_input.get("new_string", "") or ""
     if not content:
         sys.exit(0)
 
-    issues = scan_content(content)
+    # .py files get full scan (secrets + code patterns); others get secrets only
+    if is_python:
+        issues = scan_content(content)
+    else:
+        issues = scan_content(content, patterns=COMPILED_SECRET_PATTERNS)
+
     if issues:
         sys.stdout.write(f"\U0001f534 VibesRails BLOCKED ({len(issues)} issue(s)):\n")  # vibesrails: ignore
         sys.stdout.write("\n".join(issues) + "\n")  # vibesrails: ignore
         sys.stdout.write("\nFix the code. Add '# vibesrails: ignore' to suppress.\n")  # vibesrails: ignore
         sys.exit(1)
 
-    basename = file_path.rsplit("/", 1)[-1] if "/" in file_path else file_path
     sys.stdout.write(f"\U0001f7e2 VibesRails: {basename} pre-scan clean\n")  # vibesrails: ignore
     sys.exit(0)
 
