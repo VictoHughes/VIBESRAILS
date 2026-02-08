@@ -811,6 +811,31 @@ class TestUninstall:
         finally:
             os.chdir(original_cwd)
 
+    def test_uninstall_notifies_leftover_files(self, tmp_path, capsys):
+        """Notify user about CLAUDE.md and .claude/hooks.json left behind."""
+        original_cwd = os.getcwd()
+        os.chdir(tmp_path)
+
+        try:
+            # Create leftover files that uninstall should mention
+            (tmp_path / "CLAUDE.md").write_text("# Integration")
+            claude_dir = tmp_path / ".claude"
+            claude_dir.mkdir()
+            (claude_dir / "hooks.json").write_text("{}")
+
+            # Create something to actually uninstall
+            config_file = tmp_path / "vibesrails.yaml"
+            config_file.write_text("version: '1.0'")
+
+            uninstall()
+
+            captured = capsys.readouterr()
+            assert "CLAUDE.md" in captured.out
+            assert ".claude/hooks.json" in captured.out
+            assert "Remove them manually" in captured.out
+        finally:
+            os.chdir(original_cwd)
+
 
 # ============================================
 # Edge Cases and Error Conditions

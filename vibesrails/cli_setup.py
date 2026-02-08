@@ -117,6 +117,17 @@ def uninstall() -> bool:
     else:
         logger.info(f"{YELLOW}Nothing to uninstall{NC}")
 
+    # Notify about files left behind intentionally
+    leftovers = [
+        p for p in [Path("CLAUDE.md"), Path(".claude/hooks.json")]
+        if p.exists()
+    ]
+    if leftovers:
+        logger.info(f"\n{YELLOW}Note: These files were left in place (not managed by vibesrails):{NC}")
+        for p in leftovers:
+            logger.info(f"  - {p}")
+        logger.info("Remove them manually if no longer needed.")
+
     return True
 
 
