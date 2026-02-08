@@ -5,25 +5,25 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "vibesrails"
 version = "2.0.0"
-description = "VibesRails - Scale up your vibe coding safely. Semgrep-enhanced YAML-driven security scanner. From KIONOS™ (free tools)."
+description = "Security guardrails for AI-assisted development"
 readme = "README.md"
 license = {text = "Apache-2.0"}
 requires-python = ">=3.10"
-authors = [
-    {name = "SM", email = "contact@kionos.dev"}
+authors = [{name = "SM"}]
+maintainers = [{name = "SM"}]
+keywords = [
+    "security", "ai", "code-review", "mcp", "guardrails",
+    "vibe-coding", "claude", "cursor", "copilot",
 ]
-maintainers = [
-    {name = "KIONOS", email = "contact@kionos.dev"}
-]
-keywords = ["security", "linting", "code-quality", "claude", "ai"]
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
     "Topic :: Software Development :: Quality Assurance",
 ]
 dependencies = [
@@ -47,9 +47,10 @@ vibesrails = "vibesrails.cli:main"
 vibesrails-mcp = "mcp_server:main"
 
 [project.urls]
-Homepage = "https://github.com/VictoHughes/VIBESRAILS"
-Documentation = "https://github.com/VictoHughes/VIBESRAILS#readme"
-Repository = "https://github.com/VictoHughes/VIBESRAILS"
+Homepage = "https://github.com/kionos/vibesrails"
+Repository = "https://github.com/kionos/vibesrails"
+"Bug Tracker" = "https://github.com/kionos/vibesrails/issues"
+"Buy Me a Coffee" = "https://buymeacoffee.com/vibesrails"
 
 [tool.setuptools]
 py-modules = ["mcp_server"]
