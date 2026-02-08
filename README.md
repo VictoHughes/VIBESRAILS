@@ -81,6 +81,25 @@ Other tools scan for bugs. VibesRails changes how you code.
 - **Learning Engine** — builds your developer profile over time
 - **Pedagogy** — teaches you WHY, not just WHAT
 
+## Claude Code Hooks (4-layer protection)
+
+VibesRails includes Claude Code hooks that protect your project in real-time:
+
+| Layer | Event | What it does |
+|-------|-------|-------------|
+| **PreToolUse** | Write/Edit/Bash | Blocks secrets, SQL injection, eval/exec BEFORE execution |
+| **PostToolUse** | Write/Edit | Scans written files with AST guards (warn-only) |
+| **Throttle** | Write/Edit | Pauses AI after too many writes without tests |
+| **Session Lock** | SessionStart/End | Prevents concurrent Claude Code sessions on same project |
+
+Install hooks on any project:
+
+```bash
+vibesrails --setup
+```
+
+This copies `hooks.json` to `.claude/` and generates a `CLAUDE.md` with project-specific rules.
+
 ## Security
 
 1729 tests including 96 security tests. Path traversal protection,
