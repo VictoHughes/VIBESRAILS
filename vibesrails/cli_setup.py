@@ -63,15 +63,46 @@ def uninstall() -> bool:
         content = hook_path.read_text()
         if "vibesrails" in content:
             lines = content.split("\n")
-            new_lines = [line for line in lines if "vibesrails" not in line.lower()]
+            new_lines = []
+            in_vibesrails_block = False
+
+            for line in lines:
+                stripped = line.strip()
+
+                # Inside vibesrails if-block: skip until closing fi
+                if in_vibesrails_block:
+                    if stripped == "fi":
+                        in_vibesrails_block = False
+                    continue
+
+                # Detect start of if/elif block that references vibesrails
+                if "vibesrails" in line.lower() and (
+                    stripped.startswith("if ") or stripped.startswith("elif ")
+                ):
+                    in_vibesrails_block = True
+                    continue
+
+                # Skip individual vibesrails lines (comments, commands)
+                if "vibesrails" in line.lower():
+                    continue
+
+                new_lines.append(line)
+
             new_content = "\n".join(new_lines).strip()
 
-            if new_content and new_content != "#!/bin/bash":
-                hook_path.write_text(new_content)
-                logger.info(f"{YELLOW}Removed vibesrails from pre-commit hook{NC}")
-            else:
+            # Check if only shebang/comments/whitespace remain
+            meaningful = [
+                l
+                for l in new_content.split("\n")
+                if l.strip() and not l.strip().startswith("#")
+            ]
+
+            if not meaningful:
                 hook_path.unlink()
                 removed.append(str(hook_path))
+            else:
+                hook_path.write_text(new_content + "\n")
+                logger.info(f"{YELLOW}Removed vibesrails from pre-commit hook{NC}")
     vibesrails_dir = Path(".vibesrails")
     if vibesrails_dir.exists():
         shutil.rmtree(vibesrails_dir)
