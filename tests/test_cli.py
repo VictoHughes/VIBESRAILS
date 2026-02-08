@@ -5,6 +5,8 @@ Tests configuration discovery, hook installation, initialization, and uninstalla
 
 import os
 import stat
+import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
@@ -878,3 +880,48 @@ class TestEdgeCases:
             assert result is not None
         finally:
             os.chdir(original_cwd)
+
+
+# ============================================
+# Tests for exit codes (FIX 5)
+# ============================================
+
+
+class TestExitCodes:
+    """Verify correct exit codes for error scenarios."""
+
+    def test_file_not_found_exits_1(self, tmp_path):
+        """--file with nonexistent path exits 1 with clear message."""
+        # Create a valid config so we get past config check
+        config = tmp_path / "vibesrails.yaml"
+        config.write_text("patterns: []\n")
+        ghost = tmp_path / "nonexistent_file.py"
+
+        result = subprocess.run(
+            [sys.executable, "-m", "vibesrails.cli",
+             "--config", str(config), "--file", str(ghost)],
+            capture_output=True, text=True, timeout=30,
+            cwd=str(tmp_path),
+        )
+        assert result.returncode == 1
+        assert "file not found" in result.stderr.lower() or "file not found" in result.stdout.lower()
+
+    def test_permission_denied_exits_1(self, tmp_path):
+        """--file with unreadable file exits 1 with permission error."""
+        config = tmp_path / "vibesrails.yaml"
+        config.write_text("patterns: []\n")
+        locked = tmp_path / "locked.py"
+        locked.write_text("x = 1\n")
+        locked.chmod(0o000)
+
+        try:
+            result = subprocess.run(
+                [sys.executable, "-m", "vibesrails.cli",
+                 "--config", str(config), "--file", str(locked)],
+                capture_output=True, text=True, timeout=30,
+                cwd=str(tmp_path),
+            )
+            assert result.returncode == 1
+            assert "permission denied" in result.stderr.lower() or "permission denied" in result.stdout.lower()
+        finally:
+            locked.chmod(0o644)

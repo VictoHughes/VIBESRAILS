@@ -247,7 +247,16 @@ def main() -> None:
 
     # Determine files to scan
     if args.file:
-        files = [args.file] if Path(args.file).exists() else []
+        file_path = Path(args.file)
+        if not file_path.exists():
+            logger.error("%sError: file not found: %s%s", RED, args.file, NC)
+            sys.exit(1)
+        try:
+            file_path.read_bytes()[:1]  # test read permission
+        except PermissionError:
+            logger.error("%sError: permission denied: %s%s", RED, args.file, NC)
+            sys.exit(1)
+        files = [args.file]
     elif args.all:
         files = get_all_python_files()
     else:
