@@ -8,8 +8,12 @@
             "command": "python3 -c \"import sys; from pathlib import Path; y=Path('vibesrails.yaml'); h=Path('.claude/hooks.json'); t=Path('vibesrails/hooks/throttle.py') if Path('vibesrails').exists() else None; ok=y.exists(); layers=['PreToolUse','PostToolUse','Pre-commit','ptuh.py']; extras=[]; extras.append('throttle') if t and t.exists() else None; extras.append('session-lock') if Path('vibesrails/hooks/session_lock.py').exists() else None; print(f'VibesRails ACTIVE | {len(layers)}+{len(extras)} protections | yaml:{y.exists()} hooks:{h.exists()}') if ok else None; sys.exit(0 if ok else 1)\" || echo 'vibesrails: Run vibesrails --setup for auto-security setup'"
           },
           {
+            "type": "command",
+            "command": "python3 -m vibesrails.hooks.session_scan"
+          },
+          {
             "type": "prompt",
-            "prompt": "IMPORTANT: Annonce a l'utilisateur au debut de ta reponse que VibesRails est actif sur ce projet. Utilise le format: 'VibesRails ACTIVE — 4 protections (PreToolUse, PostToolUse, Pre-commit, ptuh.py) + orchestration (throttle, session-lock). Toutes les ecritures sont scannees.'"
+            "prompt": "IMPORTANT: Annonce a l'utilisateur au debut de ta reponse que VibesRails est actif sur ce projet. Inclus le resultat du session scan (nombre de fichiers, blocking, warnings). Si des issues BLOCKING sont listees, signale-les en priorite.'"
           },
           {
             "type": "prompt",
@@ -103,6 +107,10 @@
           {
             "type": "command",
             "command": "python3 -c \"from pathlib import Path; import subprocess; d=Path('.claude'); d.mkdir(exist_ok=True); f=d/'.last_commit_hash'; old=f.read_text().strip() if f.exists() else ''; new=subprocess.run(['git','rev-parse','HEAD'],capture_output=True,text=True).stdout.strip() if Path('.git').exists() else ''; changed=old and new and old!=new; f.write_text(new) if new else None; print('Nouveau commit detecte!') if changed else None\""
+          },
+          {
+            "type": "command",
+            "command": "python3 -m vibesrails.hooks.post_tool_use"
           },
           {
             "type": "prompt",
