@@ -16,17 +16,22 @@ VIBESRAILS_DIR = Path.cwd() / ".vibesrails"
 # Commands that count as "verification" — resets the write counter
 CHECK_COMMANDS = ["pytest", "ruff", "vibesrails", "lint-imports", "bandit", "mypy"]
 
-# Secret patterns — applied to ALL scannable file types
-SECRET_PATTERNS = [
-    (
-        r"(?:api_key|secret|token|password|passwd)\s*=\s*['\"][^'\"]{8,}['\"]",
-        "Hardcoded secret detected",
-    ),
-    (
-        r"(?:AKIA|sk-|ghp_|gho_)[A-Za-z0-9_\-]{10,}",
-        "API key detected",
-    ),
-]
+# Secret patterns — imported from central source of truth
+try:
+    from core.secret_patterns import SECRET_PATTERN_DEFS
+    SECRET_PATTERNS = [(p, label) for p, label in SECRET_PATTERN_DEFS]
+except ImportError:
+    # Fallback if core not installed (standalone hook usage)
+    SECRET_PATTERNS = [
+        (
+            r"(?:api_key|secret|token|password|passwd)\s*=\s*['\"][^'\"]{8,}['\"]",
+            "Hardcoded secret detected",
+        ),
+        (
+            r"(?:AKIA|sk-|ghp_|gho_)[A-Za-z0-9_\-]{10,}",
+            "API key detected",
+        ),
+    ]
 
 # Code patterns — applied to .py files ONLY (not relevant for config files)
 CODE_PATTERNS = [

@@ -12,24 +12,32 @@ logger = logging.getLogger(__name__)
 
 GUARD_NAME = "env-safety"
 
-# Patterns for hardcoded secrets in source code
-SECRET_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
-    ("AWS access key", re.compile(r"""(?:=|:)\s*['"]?(AKIA[0-9A-Z]{16})""")),
-    (
-        "Hardcoded password",
-        re.compile(
-            r"""(?:password|passwd|pwd)\s*=\s*['"][^'"]{4,}['"]""",
-            re.IGNORECASE,
+# Secret patterns — imported from central source of truth
+try:
+    from core.secret_patterns import SECRET_PATTERN_DEFS
+    SECRET_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
+        (label, re.compile(pattern, re.IGNORECASE))
+        for pattern, label in SECRET_PATTERN_DEFS
+    ]
+except ImportError:
+    # Fallback if core not available
+    SECRET_PATTERNS = [
+        ("AWS access key", re.compile(r"""(?:=|:)\s*['"]?(AKIA[0-9A-Z]{16})""")),
+        (
+            "Hardcoded password",
+            re.compile(
+                r"""(?:password|passwd|pwd)\s*=\s*['"][^'"]{4,}['"]""",
+                re.IGNORECASE,
+            ),
         ),
-    ),
-    (
-        "Hardcoded token",
-        re.compile(
-            r"""(?:token|secret|api_key)\s*=\s*['"](?:sk-|ghp_|gho_)[^'"]+['"]""",
-            re.IGNORECASE,
+        (
+            "Hardcoded token",
+            re.compile(
+                r"""(?:token|secret|api_key)\s*=\s*['"](?:sk-|ghp_|gho_)[^'"]+['"]""",
+                re.IGNORECASE,
+            ),
         ),
-    ),
-]
+    ]
 
 # Field names that should be masked in __repr__/__str__
 SECRET_FIELD_NAMES: set[str] = {

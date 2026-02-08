@@ -19,18 +19,29 @@ import sys
 logger = logging.getLogger("vibesrails.ptuh")
 logging.basicConfig(level=logging.ERROR)
 
-# Secret patterns — block commands and file content containing secrets
-SECRET_PATTERNS = [
-    (r"AKIA[0-9A-Z]{16}", "AWS Access Key"),
-    (r"(?:sk-|sk-proj-)[a-zA-Z0-9]{20,}", "OpenAI/API Secret Key"),
-    (r"ghp_[a-zA-Z0-9]{36}", "GitHub Personal Access Token"),
-    (r"gho_[a-zA-Z0-9]{36}", "GitHub OAuth Token"),
-    (r"glpat-[a-zA-Z0-9\-_]{20,}", "GitLab Personal Access Token"),
-    (r"xox[bps]-[a-zA-Z0-9\-]{10,}", "Slack Token"),
-    (r"Bearer\s+[a-zA-Z0-9\-_.]{20,}", "Bearer Token in command"),
-    (r"(?:password|passwd|pwd)\s*=\s*['\"][^'\"]{8,}['\"]", "Hardcoded password"),
-    (r"(?:api_key|apikey|secret_key|secret)\s*=\s*['\"][^'\"]{8,}['\"]", "Hardcoded API key"),
-]
+# Secret patterns — import from central source, fallback to inline
+try:
+    from core.secret_patterns import SECRET_PATTERN_DEFS
+    SECRET_PATTERNS = SECRET_PATTERN_DEFS
+except ImportError:
+    # Standalone deployment — keep inline copy synced with core/secret_patterns.py
+    SECRET_PATTERNS = [
+        (r"AKIA[0-9A-Z]{16}", "AWS Access Key"),
+        (r"(?:sk-|sk-proj-)[a-zA-Z0-9]{20,}", "OpenAI/Anthropic API Key"),
+        (r"AIza[0-9A-Za-z\-_]{35}", "Google API Key"),
+        (r"ghp_[a-zA-Z0-9]{36}", "GitHub Personal Access Token"),
+        (r"gho_[a-zA-Z0-9]{36}", "GitHub OAuth Token"),
+        (r"glpat-[a-zA-Z0-9\-_]{20,}", "GitLab Personal Access Token"),
+        (r"sk_(?:live|test)_[a-zA-Z0-9]{20,}", "Stripe Secret Key"),
+        (r"whsec_[a-zA-Z0-9]{20,}", "Webhook Secret (Stripe/Svix)"),
+        (r"SG\.[a-zA-Z0-9\-_]{20,}", "SendGrid API Key"),
+        (r"xox[bps]-[a-zA-Z0-9\-]{10,}", "Slack Token"),
+        (r"Bearer\s+[a-zA-Z0-9\-_.]{20,}", "Bearer Token"),
+        (r"-----BEGIN\s+(?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----", "Private Key (PEM)"),
+        (r"(?:postgresql|mysql|mongodb|redis|amqp)://[^:]+:[^@]{4,}@", "Database URL with password"),
+        (r"(?:password|passwd|pwd)\s*=\s*['\"][^'\"]{8,}['\"]", "Hardcoded password"),
+        (r"(?:api_key|apikey|secret_key|secret|token)\s*=\s*['\"][^'\"]{8,}['\"]", "Hardcoded API key/secret"),
+    ]
 _SECRET_REGEXES = [(re.compile(p), label) for p, label in SECRET_PATTERNS]
 
 PROTECTED_PATHS = [
