@@ -323,4 +323,215 @@ No noise commits. Clean history.
 
 ---
 
+## Post-Release Audit Addendum — Installers, Upgrade Path, Post-Install
+
+**Date**: 2026-02-08
+**Auditeur**: Claude Opus 4.6
+
+---
+
+### A. Installers Directory
+
+**34 files across 6 variants** (mac-linux, claude-code, drag-and-drop, offline, python, windows):
+
+| Variant | Files | Role | In Wheel? |
+|---------|-------|------|-----------|
+| mac-linux/ | install.sh, ptuh.py, CLAUDE.md, .claude/hooks.json | Primary installer (bash) | No |
+| claude-code/ | install.sh, ptuh.py, CLAUDE.md, .claude/hooks.json, claude-code.zip | Claude Code specific | No |
+| drag-and-drop/ | install.sh, ptuh.py, CLAUDE.md, .claude/hooks.json, README.txt, .whl | Offline drag-drop | No |
+| offline/ | INSTALL.sh, INSTALL.bat, ptuh.py, CLAUDE.md, .claude/hooks.json, .whl | Air-gapped | No |
+| python/ | install.py, ptuh.py, CLAUDE.md, .claude/hooks.json | Cross-platform Python | No |
+| windows/ | install.bat, ptuh.py, CLAUDE.md, .claude/hooks.json | Windows specific | No |
+
+**None** of the installer files are included in the wheel (correct — they are separate distribution).
+
+Referenced from: ARCHITECTURE.md, archive/README.md, docs/plans/, .claude/settings.local.json
+
+#### Bundled .whl files: STALE
+
+| Location | Version | Description | Status |
+|----------|---------|-------------|--------|
+| drag-and-drop/vibesrails-2.0.0-py3-none-any.whl | 2.0.0 | Old description, old author-email | 🟡 STALE |
+| offline/vibesrails-2.0.0-py3-none-any.whl | 2.0.0 | Old description, old author-email | 🟡 STALE |
+
+Both bundled wheels have the OLD metadata (pre-PyPI update). They are version 2.0.0 but with the old description "VibesRails - Scale up your vibe coding safely..." and `Author-email: SM <contact@kionos.dev>`.
+
+#### Bundled .zip files: CONTAIN .DS_Store
+
+| File | Issue |
+|------|-------|
+| `claude-code vibesrails drop, plug&play.zip` | Contains __MACOSX/ and .DS_Store artifacts |
+| `claude-code.zip` | Contains __MACOSX/ and .DS_Store artifacts |
+| `claude-code/claude-code.zip` | Clean (no artifacts) |
+
+#### ptuh.py DIVERGENCE: 🟡 5 of 6 variants STALE
+
+| File | Patterns | Central Import | Has Stripe/Google/PEM/DB? |
+|------|----------|---------------|--------------------------|
+| mac-linux/ptuh.py | **15** | YES (try/import) | YES |
+| claude-code/ptuh.py | 9 | NO | NO |
+| drag-and-drop/ptuh.py | 9 | NO | NO |
+| offline/ptuh.py | 9 | NO | NO |
+| python/ptuh.py | 9 | NO | NO |
+| windows/ptuh.py | 9 | NO | NO |
+| **~/.claude/hooks/ptuh.py** (installed) | **9** | **NO** | **NO** |
+
+**Only mac-linux/ptuh.py** was updated during the centralization fix. The 5 other variants and the actually-installed global hook are missing 6 patterns: Google API Key, Stripe, Webhook Secret, SendGrid, PEM Private Key, Database URL.
+
+PROTECTED_PATHS and BLOCKED_COMMANDS are identical across all files.
+
+#### vibesrails.yaml NOT in installers
+
+The installer scripts reference `$SCRIPT_DIR/vibesrails.yaml` but no vibesrails.yaml file exists in the installer dirs (they were removed or never synced). The install.sh would fall through to `pip install vibesrails` and use `--init` to create config.
+
+---
+
+### B. Upgrade Path
+
+#### DB Migration V1 → V3: ✅ PASS
+
+```
+V1 DB (schema_version=1, tables: [meta, sessions])
+→ After migrate():
+  schema_version=3
+  Tables: [brief_history, developer_profile, learning_events, meta, sessions, sqlite_sequence]
+```
+
+Migration is triggered by MCP server startup (lifespan pattern), not by CLI. Running `vibesrails --version` does NOT trigger migration (correct — CLI doesn't use MCP DB).
+
+#### Config Compatibility: ✅ PASS
+
+A minimal v1-style config works:
+```yaml
+version: "1.0"
+blocking:
+  - id: hardcoded_secret
+    regex: "password\\s*=\\s*['\"]"
+```
+- `vibesrails --validate` → "vibesrails.yaml is valid" (exit 0)
+- `vibesrails --all` → Scans correctly, 0 blocking, 0 warnings
+
+---
+
+### C. New User Flow
+
+#### Step 1: pip install → ✅
+```
+pip install vibesrails-2.0.0-py3-none-any.whl → installs cleanly
+```
+
+#### Step 2: vibesrails --setup → ✅
+Creates 4 files:
+- `vibesrails.yaml` — config with detected packs (security, fastapi, web)
+- `.git/hooks/pre-commit` — auto-scan hook (361 bytes)
+- `CLAUDE.md` — Claude Code instructions (5K)
+- `.claude/hooks.json` — Claude Code integration (7.7K)
+
+Output is interactive, clear, shows detected project type and proposed config.
+
+#### Step 3: vibesrails --all → ✅
+```
+Scanning 1 file(s)...
+Running Semgrep scan... Found 0 issue(s)
+Running VibesRails scan... Found 1 issue(s)
+WARN app.py:1 [fastapi_print_debug] Use logging module instead of print
+BLOCKING: 0 | WARNINGS: 1
+VibesRails: PASSED
+```
+
+#### Step 4: vibesrails --init → ✅
+Says "vibesrails.yaml already exists" (because --setup already created it). On fresh project: creates default config with reasonable patterns.
+
+#### Step 5: vibesrails --hook → ✅
+"VibesRails hook already installed" (from --setup). Pre-commit hook tries: PATH, .venv, venv, python -m fallback.
+
+#### Step 6: Pre-commit hook test → ✅ BLOCKS SECRETS
+```
+echo 'password = "SuperSecretPassword123"' > secrets2.py
+git commit → BLOCK secrets2.py:1 [hardcoded_secret]
+Exit code: 1 — commit aborted
+```
+
+Note: `DB_PASS = "..."` is NOT caught (only `password|passwd|pwd|api_key|secret|token` are in default patterns). This is expected behavior — users can add custom patterns.
+
+#### Step 7: vibesrails-mcp --help → ✅
+Clear output: version, usage, 12 tools listed.
+
+---
+
+### D. Uninstall
+
+#### vibesrails --uninstall output:
+```
+Removed vibesrails from pre-commit hook
+Removed:
+  - vibesrails.yaml
+  - .vibesrails
+vibesrails uninstalled from this project
+To uninstall the package: pip uninstall vibesrails
+```
+
+#### What is removed:
+| Item | Removed? |
+|------|----------|
+| vibesrails.yaml | ✅ YES |
+| .vibesrails/ (session dir) | ✅ YES |
+| .git/hooks/pre-commit (vibesrails lines) | ✅ YES (partial) |
+| ~/.vibesrails/ (global DB) | ❌ NO |
+
+#### What is LEFT BEHIND:
+| Item | Status |
+|------|--------|
+| CLAUDE.md | LEFT — not removed |
+| .claude/hooks.json | LEFT — not removed |
+| ~/.vibesrails/sessions.db | LEFT — not mentioned |
+
+#### 🔴 BUG: Broken pre-commit hook after uninstall
+
+After `--uninstall`, the pre-commit hook contains:
+```bash
+#!/bin/bash
+# Scale up your vibe coding - safely
+
+else
+fi
+```
+
+The vibesrails-specific lines were removed, but the `if/elif/else/fi` conditional structure was not properly cleaned. This leaves a **broken shell script** that will error on every subsequent `git commit`.
+
+#### pip uninstall:
+```
+pip uninstall vibesrails -y → Successfully uninstalled vibesrails-2.0.0
+```
+Clean, no residual packages.
+
+---
+
+### E. Findings
+
+#### 🔴 BLOQUANT
+
+| ID | Issue |
+|----|-------|
+| UNINSTALL-BROKEN-HOOK | `--uninstall` leaves a broken pre-commit hook (`else\nfi` orphaned). Every subsequent `git commit` will fail with shell syntax errors. |
+
+#### 🟡 IMPORTANT
+
+| ID | Issue |
+|----|-------|
+| INSTALLER-PTUH-STALE | 5 of 6 installer ptuh.py variants have only 9 secret patterns (missing Stripe, Google, SendGrid, PEM, DB URL, Webhook). The installed ~/.claude/hooks/ptuh.py is also stale. |
+| INSTALLER-WHL-STALE | Bundled .whl files in drag-and-drop/ and offline/ have old metadata (old description, old author-email). Must be rebuilt from current dist/. |
+| UNINSTALL-LEFTOVER | --uninstall does not mention that CLAUDE.md and .claude/hooks.json are left behind. Should inform user. |
+
+#### 🟢 NICE TO HAVE
+
+| ID | Issue |
+|----|-------|
+| INSTALLER-DSSTORE | Zip files contain __MACOSX/ and .DS_Store artifacts |
+| INSTALLER-NO-YAML | Install scripts reference vibesrails.yaml but none exists in installer dirs |
+| UNINSTALL-NO-GLOBALDB | --uninstall doesn't mention ~/.vibesrails/ (global MCP database). Not critical — user may want to keep history. |
+| UX-MIXED-LANG | Default config and --setup output mix French and English |
+
+---
+
 *Generated by Claude Opus 4.6 — 2026-02-08*
