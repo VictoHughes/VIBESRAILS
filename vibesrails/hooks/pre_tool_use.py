@@ -154,10 +154,14 @@ def main() -> None:
 
         if tool_name in ("Write", "Edit"):
             if should_block(VIBESRAILS_DIR):
-                sys.stdout.write(
+                msg = (
                     "\U0001f6d1 VibesRails THROTTLE: Too many writes without verification.\n"  # vibesrails: ignore
                     "Run pytest, ruff, or vibesrails --all before continuing.\n"
                 )
+                reminder_path = Path(".claude") / "rules_reminder.md"
+                if reminder_path.exists():
+                    msg += "\n" + reminder_path.read_text(encoding="utf-8")
+                sys.stdout.write(msg)
                 sys.exit(1)
             record_write(VIBESRAILS_DIR)
 

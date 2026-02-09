@@ -135,4 +135,11 @@ def install_claude_hooks(project_root: Path) -> bool:
         _merge_hooks(existing, source_hooks)
         hooks_dest.write_text(json.dumps(existing, indent=2))
 
+    # Install rules_reminder.md for post-commit scope checks
+    reminder_source = get_package_data_path("claude_integration/rules_reminder.md")
+    if reminder_source and reminder_source.exists():
+        reminder_dest = claude_dir / "rules_reminder.md"
+        if not reminder_dest.exists():
+            reminder_dest.write_text(reminder_source.read_text())
+
     return True

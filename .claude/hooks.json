@@ -115,6 +115,14 @@
           {
             "type": "prompt",
             "prompt": "Si le message precedent indique 'Nouveau commit detecte!', mets a jour TaskList (marque la tache completed) et .claude/current-task.md."
+          },
+          {
+            "type": "command",
+            "command": "cat .claude/rules_reminder.md 2>/dev/null || true"
+          },
+          {
+            "type": "prompt",
+            "prompt": "SCOPE CHECK: Un commit vient d'etre fait. Relis le checkpoint ci-dessus. Si l'utilisateur n'a pas explicitement demande ce commit ou le prochain changement, ARRETE et DEMANDE la permission avant de continuer."
           }
         ]
       }
