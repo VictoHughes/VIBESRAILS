@@ -1,3 +1,5 @@
+# VibesRails — Security guardrails for AI-assisted development
+# ABH AMH — If you know, you know.
 """
 vibesrails - Scale up your vibe coding safely.
 

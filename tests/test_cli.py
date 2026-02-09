@@ -1017,3 +1017,30 @@ class TestExitCodes:
             assert "permission denied" in result.stderr.lower() or "permission denied" in result.stdout.lower()
         finally:
             locked.chmod(0o644)
+
+
+class TestAboutEasterEgg:
+    """--about is hidden and shows the easter egg."""
+
+    def test_about_exits_zero(self):
+        result = subprocess.run(
+            [sys.executable, "-m", "vibesrails.cli", "--about"],
+            capture_output=True, text=True, timeout=10,
+        )
+        assert result.returncode == 0
+        assert "ABH AMH" in result.stdout
+
+    def test_help_does_not_show_about(self):
+        result = subprocess.run(
+            [sys.executable, "-m", "vibesrails.cli", "--help"],
+            capture_output=True, text=True, timeout=10,
+        )
+        assert "--about" not in result.stdout
+
+    def test_version_shows_by_sm_not_kionos(self):
+        result = subprocess.run(
+            [sys.executable, "-m", "vibesrails.cli", "--version"],
+            capture_output=True, text=True, timeout=10,
+        )
+        assert "by SM" in result.stdout
+        assert "KIONOS" not in result.stdout

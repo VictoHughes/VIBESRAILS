@@ -345,7 +345,7 @@ semgrep:
 ## Credits
 
 - **Semgrep:** r2c (https://semgrep.dev)
-- **VibesRails:** KIONOS™ (https://kionos.dev)
+- **VibesRails:** by SM (https://github.com/kionos/vibesrails)
 
 **Integration Philosophy:** Augment, don't compete. Use the best tool for each job.
 

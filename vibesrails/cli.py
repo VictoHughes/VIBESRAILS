@@ -40,12 +40,12 @@ logger = logging.getLogger(__name__)
 def _parse_args():
     """Parse command-line arguments and return the parsed args."""
     parser = argparse.ArgumentParser(
-        description="VibesRails - Scale up your vibe coding safely | From KIONOS™",
+        description="VibesRails 2.1.0 — by SM",
         epilog="Examples: vibesrails --all | --show | --stats | --learn | --watch",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--version", "-v", action="version",
-                        version=f"VibesRails {__version__} - From KIONOS™ (free tools) - Developed by SM")
+                        version=f"VibesRails {__version__} — by SM")
 
     # --- Setup & Config ---
     g_setup = parser.add_argument_group("Setup & Config")
@@ -112,11 +112,21 @@ def _parse_args():
     g_guardian.add_argument("--guardian-stats", action="store_true",
                             help="Show AI coding block statistics")
 
+    parser.add_argument("--about", action="store_true", help=argparse.SUPPRESS)
+
     return parser.parse_args()
 
 
 def _handle_info_commands(args) -> None:
     """Handle stats/info commands. Exits if handled."""
+    if args.about:
+        print(f"VibesRails {__version__} — by SM")
+        print("Built in Guadeloupe. ABH AMH.")
+        print("")
+        print("First program. 22 tests to 1812.")
+        print("pip install vibesrails")
+        sys.exit(0)
+
     if args.throttle_status:
         from .hooks.throttle import get_writes_since_check
         count = get_writes_since_check(Path(".vibesrails"))

@@ -1,6 +1,6 @@
 # VibesRails - Development Guidelines
 
-> From KIONOS™ (free tools) - Developed by SM
+> VibesRails 2.1.0 — by SM
 
 ## Project Overview
 
