@@ -1,1 +1,0 @@
-# vibesrails tests

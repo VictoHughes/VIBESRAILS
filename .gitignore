@@ -39,6 +39,11 @@ htmlcov/
 .vibesrails/
 *.db
 
+# Claude Code runtime files
+.claude/.last_commit_hash
+.claude/.write_reminded
+.claude/settings.local.json
+
 # Generated
 *.html
 *.pdf
