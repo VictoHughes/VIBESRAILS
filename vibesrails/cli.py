@@ -121,7 +121,7 @@ def _handle_info_commands(args) -> None:
     """Handle stats/info commands. Exits if handled."""
     if args.about:
         print(f"VibesRails {__version__} — by SM")
-        print("Built in Guadeloupe. ABH AMH.")
+        print("ABH AMH.")
         print("")
         print("First program. 22 tests to 1812.")
         print("pip install vibesrails")
