@@ -92,9 +92,9 @@ def uninstall() -> bool:
 
             # Check if only shebang/comments/whitespace remain
             meaningful = [
-                l
-                for l in new_content.split("\n")
-                if l.strip() and not l.strip().startswith("#")
+                line
+                for line in new_content.split("\n")
+                if line.strip() and not line.strip().startswith("#")
             ]
 
             if not meaningful:
