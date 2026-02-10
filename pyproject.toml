@@ -47,9 +47,9 @@ vibesrails = "vibesrails.cli:main"
 vibesrails-mcp = "mcp_server:main"
 
 [project.urls]
-Homepage = "https://github.com/kionos/vibesrails"
-Repository = "https://github.com/kionos/vibesrails"
-"Bug Tracker" = "https://github.com/kionos/vibesrails/issues"
+Homepage = "https://github.com/VictoHughes/VIBESRAILS"
+Repository = "https://github.com/VictoHughes/VIBESRAILS"
+"Bug Tracker" = "https://github.com/VictoHughes/VIBESRAILS/issues"
 "Buy Me a Coffee" = "https://buymeacoffee.com/vibesrails"
 
 [tool.setuptools]
