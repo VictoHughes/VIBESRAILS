@@ -1,43 +1,56 @@
 # VibesRails
 
-**Security guardrails for AI-assisted development.**
+**The only open-source runtime guard for AI coding agents.**
 
-VibesRails is an MCP server that watches your back while you vibe code.
-It detects AI hallucinations, enforces structured briefs, monitors
-architecture drift, and blocks prompt injections — all integrated
-into your AI coding workflow.
+Most security tools scan your code after it's written.
+VibesRails intercepts before execution — secrets are blocked
+before they touch your files.
 
-## What's Inside
+![Tests](https://img.shields.io/badge/tests-1815_passing-green)
+![Python](https://img.shields.io/badge/python-3.10+-blue)
+![License](https://img.shields.io/badge/license-Apache_2.0-orange)
 
-**7 Security Layers** --
-Rate limiting, input validation, path traversal prevention, SQL injection prevention,
-resource exhaustion limits, information disclosure prevention, structured logging with redaction.
+## What makes it different
 
-**29 Code Guards** --
-16 V2 Guards (dependency_audit, performance, complexity, env_safety, git_workflow,
-dead_code, observability, type_safety, docstring, pr_checklist, database_safety,
-api_design, pre_deploy, test_integrity, mutation, architecture_drift),
-5 Senior Guards (error_handling, hallucination, lazy_code, bypass, resilience),
-8 AST Guards (dead_code, observability, complexity, performance, type_safety,
-api_design, database_safety, env_safety).
+| Approach | When it acts | Examples |
+|----------|-------------|----------|
+| Static scanning | After code exists | Semgrep, Snyk, linters |
+| Pre-install scanning | Before adding plugins | mcp-scan, Cisco Skill Scanner |
+| **Runtime interception** | **Before each write/edit/command** | **VibesRails** |
 
-**8 Hooks Pipeline** --
-Pre-tool secrets scan, post-tool guard scan, write throttle, session lock,
-session scan, queue processor, mobile inbox, self-protection (ptuh.py).
+VibesRails doesn't wait for you to commit bad code. It blocks it
+before the file is written.
 
-**4 Built-in Config Packs** --
-`@vibesrails/security-pack` (OWASP Top 10),
-`@vibesrails/web-pack` (Flask/Django),
-`@vibesrails/fastapi-pack`,
-`@vibesrails/django-pack`.
+## 4-layer runtime protection
 
-**Learning Engine** --
-Automatic developer profiling, session tracking, improvement metrics,
-actionable insights, SQLite persistence across sessions.
+| Layer | Event | What it does |
+|-------|-------|-------------|
+| **PreToolUse** | Write/Edit/Bash | Blocks secrets, SQL injection, eval/exec BEFORE your AI writes them |
+| **PostToolUse** | Write/Edit | Scans every file AFTER write with 16 AST guards + 7 senior guards |
+| **Throttle** | Write/Edit | Forces verification every 5 writes, prevents runaway agents |
+| **Scope Guard** | Post-commit | Reminds rules after every commit, prevents scope creep |
+
+## Works with
+
+| Agent | Integration | Level |
+|-------|------------|-------|
+| Claude Code | Full hooks + MCP | Runtime guard |
+| Cursor | MCP server | 12 security tools |
+| GitHub Copilot | MCP server | 12 security tools |
+| Windsurf | MCP server | 12 security tools |
+| Continue.dev | MCP server | 12 security tools |
+| Any MCP client | MCP server | 12 security tools |
 
 ## Install
 
-### Quick install (recommended)
+> **Note:** PyPI publication pending. For now, install from source:
+> ```bash
+> git clone https://github.com/VictoHughes/VIBESRAILS.git
+> cd VIBESRAILS
+> pip install -e ".[mcp]"
+> ```
+
+### Quick install (after PyPI publish)
 
 ```bash
 # pipx (isolated CLI — recommended)
@@ -64,7 +77,7 @@ pip install vibesrails[mcp]
 git clone https://github.com/VictoHughes/VIBESRAILS.git
 cd VIBESRAILS
 make install-dev   # installs dev + MCP dependencies
-make test          # 1729 tests
+make test          # 1815 tests
 ```
 
 ## Configure (Claude Code)
@@ -88,7 +101,7 @@ Add to `.mcp.json`:
 |------|-------------|
 | `ping` | Health check |
 | `scan_code` | 16 AST guards (eval, hardcoded secrets, binding...) |
-| `scan_senior` | 5 senior guards (error handling, hallucination, lazy code...) |
+| `scan_senior` | 7 senior guards (error handling, hallucination, lazy code...) |
 | `scan_semgrep` | Semgrep integration with CWE classification |
 | `check_session` | AI session detection (Cursor, Copilot, Claude) |
 | `monitor_entropy` | Session entropy tracking with risk levels |
@@ -99,38 +112,37 @@ Add to `.mcp.json`:
 | `shield_prompt` | 5-category prompt injection detection |
 | `get_learning` | Cross-session developer profiling + insights |
 
-## What makes VibesRails different
+## What's Inside
 
-Other tools scan for bugs. VibesRails changes how you code.
+**16 V2 Guards** --
+dependency_audit, performance, complexity, env_safety, git_workflow,
+dead_code, observability, type_safety, docstring, pr_checklist,
+database_safety, api_design, pre_deploy, test_integrity, mutation,
+architecture_drift.
 
-- **Session Entropy** — knows when your AI session is getting chaotic
-- **Brief Enforcement** — forces you to think before generating
-- **Drift Velocity** — catches architecture erosion across sessions
-- **Learning Engine** — builds your developer profile over time
-- **Pedagogy** — teaches you WHY, not just WHAT
+**7 Senior Guards** --
+diff_size, error_handling, hallucination, dependency, test_coverage,
+lazy_code, bypass, resilience.
 
-## Claude Code Hooks (4-layer protection)
+**15 Secret Patterns** --
+AWS, OpenAI/Anthropic, Google, GitHub, GitLab, Stripe, SendGrid,
+Slack, Bearer tokens, PEM keys, database URLs, hardcoded passwords.
 
-VibesRails includes Claude Code hooks that protect your project in real-time:
+**8 Hooks Pipeline** --
+Pre-tool secrets scan, post-tool guard scan, write throttle, scope guard,
+session lock, session scan, queue processor, mobile inbox.
 
-| Layer | Event | What it does |
-|-------|-------|-------------|
-| **PreToolUse** | Write/Edit/Bash | Blocks secrets, SQL injection, eval/exec BEFORE execution |
-| **PostToolUse** | Write/Edit | Scans written files with AST guards (warn-only) |
-| **Throttle** | Write/Edit | Pauses AI after too many writes without tests |
-| **Session Lock** | SessionStart/End | Prevents concurrent Claude Code sessions on same project |
+**4 Built-in Config Packs** --
+`@vibesrails/security-pack` (OWASP Top 10),
+`@vibesrails/web-pack` (Flask/Django),
+`@vibesrails/fastapi-pack`,
+`@vibesrails/django-pack`.
 
-Install hooks on any project:
-
-```bash
-vibesrails --setup
-```
-
-This copies `hooks.json` to `.claude/` and generates a `CLAUDE.md` with project-specific rules.
+**Learning Engine** --
+Automatic developer profiling, session tracking, improvement metrics,
+actionable insights, SQLite persistence across sessions.
 
 ## CLI Reference
-
-VibesRails CLI provides 38 commands organized in 7 categories:
 
 | Category | Key Commands | Count |
 |----------|-------------|-------|
@@ -146,9 +158,11 @@ Run `vibesrails --help` for full details.
 
 ## Security
 
-1734 tests including 96 security tests. Path traversal protection,
+1815 tests including 111 security tests. Path traversal protection,
 SQL injection prevention, ReDoS verification, filesystem sandbox,
 rate limiting, structured logging with data redaction.
+
+See [SECURITY.md](SECURITY.md) for vulnerability reporting.
 
 ## License
 
