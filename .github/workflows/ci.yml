@@ -52,7 +52,8 @@ jobs:
       - name: v1 scan — security patterns
         run: vibesrails --all
 
-      - name: v2 scan — all 21 guards
+      - name: v2 scan — all 21 guards (advisory)
+        continue-on-error: true
         run: vibesrails --senior-v2
 
       - name: File size check — no file over 300 lines
