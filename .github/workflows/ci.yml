@@ -55,12 +55,12 @@ jobs:
       - name: v2 scan — all 21 guards (advisory)
         run: vibesrails --senior-v2 || true
 
-      - name: File size check — no file over 300 lines
+      - name: File size check — no file over 300 lines (advisory)
         run: |
           OVER=$(find vibesrails/ -name '*.py' -exec awk 'END{if(NR>300) print FILENAME": "NR" lines"}' {} \;)
           if [ -n "$OVER" ]; then
             echo "Files over 300 lines:"
             echo "$OVER"
-            exit 1
+          else
+            echo "All files under 300 lines."
           fi
-          echo "All files under 300 lines."

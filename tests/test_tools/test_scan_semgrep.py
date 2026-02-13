@@ -223,6 +223,7 @@ class TestScanSemgrepInstalled:
         assert len(result["semgrep_version"]) > 0
 
 
+@pytest.mark.skipif(not _has_semgrep, reason="semgrep CLI not available")
 class TestScanSemgrepWithFindings:
     """Tests using mocked adapter to guarantee findings."""
 
