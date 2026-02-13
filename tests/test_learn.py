@@ -7,7 +7,12 @@ import pytest
 
 import vibesrails.learn as learn_module
 
-_has_anthropic = getattr(learn_module, "HAS_ANTHROPIC", False)
+_has_anthropic = False
+try:
+    import anthropic  # noqa: F401
+    _has_anthropic = True
+except ImportError:
+    pass
 
 # ============================================
 # HAS_ANTHROPIC Flag Tests

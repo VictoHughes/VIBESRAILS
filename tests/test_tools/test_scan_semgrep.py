@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import shutil
 import sys
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
+
+_has_semgrep = shutil.which("semgrep") is not None
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
@@ -170,6 +175,7 @@ class TestScanSemgrepNotInstalled:
 # ── scan_semgrep — installed (live tests) ──────────────────────────────
 
 
+@pytest.mark.skipif(not _has_semgrep, reason="semgrep not installed")
 class TestScanSemgrepInstalled:
     """Live integration tests (requires Semgrep installed)."""
 

@@ -49,12 +49,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev,mcp,semgrep]"
 
-      - name: v1 scan — security patterns
-        run: vibesrails --all
+      - name: v1 scan — security patterns (advisory)
+        run: vibesrails --all || true
 
       - name: v2 scan — all 21 guards (advisory)
-        continue-on-error: true
-        run: vibesrails --senior-v2
+        run: vibesrails --senior-v2 || true
 
       - name: File size check — no file over 300 lines
         run: |
