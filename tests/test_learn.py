@@ -3,7 +3,11 @@
 import os
 from unittest import mock
 
+import pytest
+
 import vibesrails.learn as learn_module
+
+_has_anthropic = getattr(learn_module, "HAS_ANTHROPIC", False)
 
 # ============================================
 # HAS_ANTHROPIC Flag Tests
@@ -274,6 +278,7 @@ class TestAnalyzeWithClaude:
         result = learn_module.analyze_with_claude("test code")
         assert result is None
 
+    @pytest.mark.skipif(not _has_anthropic, reason="anthropic not installed")
     def test_analyze_with_claude_with_mocked_client(self, monkeypatch):
         """Test analyze_with_claude with mocked anthropic client."""
         import vibesrails.learn as learn_module

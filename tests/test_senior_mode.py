@@ -1,5 +1,13 @@
 """Tests for Senior Mode."""
 
+import pytest
+
+try:
+    import anthropic  # noqa: F401
+    _has_anthropic = True
+except ImportError:
+    _has_anthropic = False
+
 
 class TestArchitectureMapper:
     """Tests for ArchitectureMapper."""
@@ -248,6 +256,7 @@ class TestClaudeReviewer:
 
         assert reviewer.should_review("simple.py", complex_diff) is True
 
+    @pytest.mark.skipif(not _has_anthropic, reason="anthropic not installed")
     def test_review_returns_structured_result(self, monkeypatch):
         """review() returns structured result."""
         from vibesrails.senior_mode.claude_reviewer import ClaudeReviewer, ReviewResult
