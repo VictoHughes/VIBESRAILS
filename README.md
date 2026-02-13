@@ -6,7 +6,7 @@ Most security tools scan your code after it's written.
 VibesRails intercepts before execution — secrets are blocked
 before they touch your files.
 
-![Tests](https://img.shields.io/badge/tests-1815_passing-green)
+![Tests](https://img.shields.io/badge/tests-1822_passing-green)
 ![Python](https://img.shields.io/badge/python-3.10+-blue)
 ![License](https://img.shields.io/badge/license-Apache_2.0-orange)
 
@@ -77,7 +77,7 @@ pip install vibesrails[mcp]
 git clone https://github.com/VictoHughes/VIBESRAILS.git
 cd VIBESRAILS
 make install-dev   # installs dev + MCP dependencies
-make test          # 1815 tests
+make test          # 1822 tests
 ```
 
 ## Configure (Claude Code)
@@ -124,9 +124,10 @@ architecture_drift.
 diff_size, error_handling, hallucination, dependency, test_coverage,
 lazy_code, bypass, resilience.
 
-**15 Secret Patterns** --
+**22 Secret Patterns** --
 AWS, OpenAI/Anthropic, Google, GitHub, GitLab, Stripe, SendGrid,
-Slack, Bearer tokens, PEM keys, database URLs, hardcoded passwords.
+Slack, Telegram, Discord, Twilio, npm, PyPI, Supabase,
+Bearer tokens, PEM keys, database URLs, hardcoded passwords.
 
 **8 Hooks Pipeline** --
 Pre-tool secrets scan, post-tool guard scan, write throttle, scope guard,
@@ -158,7 +159,7 @@ Run `vibesrails --help` for full details.
 
 ## Security
 
-1815 tests including 111 security tests. Path traversal protection,
+1822 tests including 111 security tests. Path traversal protection,
 SQL injection prevention, ReDoS verification, filesystem sandbox,
 rate limiting, structured logging with data redaction.
 
