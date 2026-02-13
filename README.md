@@ -1,6 +1,6 @@
 # VibesRails
 
-**The only open-source runtime guard for AI coding agents.**
+**The open-source runtime guard for AI coding agents.**
 
 Most security tools scan your code after it's written.
 VibesRails intercepts before execution — secrets are blocked
