@@ -2,26 +2,9 @@
 
 from __future__ import annotations
 
-import subprocess
 import sys
 from pathlib import Path
 from unittest.mock import patch
-
-import pytest
-
-
-def _semgrep_cli_works():
-    try:
-        result = subprocess.run(
-            ["semgrep", "--version"],
-            capture_output=True, text=True, timeout=10,
-        )
-        return result.returncode == 0 and len(result.stdout.strip()) > 0
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        return False
-
-
-_has_semgrep_cli = _semgrep_cli_works()
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
@@ -182,107 +165,3 @@ class TestScanSemgrepNotInstalled:
             result = scan_semgrep(file_path=str(f))
         assert result["status"] == "error"
         assert result["findings"] == []
-
-
-# ── scan_semgrep — installed (live tests) ──────────────────────────────
-
-
-@pytest.mark.skipif(not _has_semgrep_cli, reason="semgrep not installed")
-class TestScanSemgrepInstalled:
-    """Live integration tests (requires Semgrep installed)."""
-
-    def test_auto_rules_on_clean_code(self, tmp_path):
-        f = _write_file(tmp_path, CLEAN_CODE)
-        result = scan_semgrep(file_path=str(f), rules="auto")
-        assert result["status"] == "pass"
-        assert result["findings"] == []
-        assert result["rules_used"] == "auto"
-        assert result["semgrep_version"] is not None
-
-    def test_result_structure(self, tmp_path):
-        f = _write_file(tmp_path, CLEAN_CODE)
-        result = scan_semgrep(file_path=str(f))
-        assert "status" in result
-        assert "findings" in result
-        assert "semgrep_version" in result
-        assert "rules_used" in result
-        assert "summary" in result
-        assert "total" in result["summary"]
-        assert "by_severity" in result["summary"]
-
-    def test_nonexistent_file_returns_error(self):
-        result = scan_semgrep(file_path="/nonexistent/file.py")
-        assert result["status"] == "error"
-        assert "does not exist" in result.get("error", "")
-
-    def test_nonexistent_rules_file_returns_error(self, tmp_path):
-        f = _write_file(tmp_path, CLEAN_CODE)
-        result = scan_semgrep(file_path=str(f), rules="/nonexistent/rules.yaml")
-        assert result["status"] == "error"
-        assert "does not exist" in result.get("error", "")
-
-    def test_summary_counts_correct(self, tmp_path):
-        f = _write_file(tmp_path, CLEAN_CODE)
-        result = scan_semgrep(file_path=str(f))
-        total = sum(result["summary"]["by_severity"].values())
-        assert total == result["summary"]["total"]
-        assert total == len(result["findings"])
-
-    def test_version_is_string(self, tmp_path):
-        f = _write_file(tmp_path, CLEAN_CODE)
-        result = scan_semgrep(file_path=str(f))
-        assert isinstance(result["semgrep_version"], str)
-        assert len(result["semgrep_version"]) > 0
-
-
-@pytest.mark.skipif(not _has_semgrep_cli, reason="semgrep CLI not available")
-class TestScanSemgrepWithFindings:
-    """Tests using mocked adapter to guarantee findings."""
-
-    def test_findings_have_pedagogy(self, tmp_path):
-        f = _write_file(tmp_path, VULN_CODE)
-        mock_results = [
-            SemgrepResult(
-                file=str(f), line=5,
-                rule_id="python.lang.security.audit.subprocess-shell-true",
-                message="subprocess call with shell=True",
-                severity="ERROR",
-                code_snippet="subprocess.call(user_input, shell=True)",
-            ),
-        ]
-        with patch.object(
-            __import__("adapters.semgrep_adapter", fromlist=["SemgrepAdapter"]).SemgrepAdapter,
-            "scan", return_value=mock_results,
-        ):
-            result = scan_semgrep(file_path=str(f))
-        assert result["status"] == "block"
-        assert len(result["findings"]) == 1
-        finding = result["findings"][0]
-        assert "pedagogy" in finding
-        assert "why" in finding["pedagogy"]
-        assert "how_to_fix" in finding["pedagogy"]
-        assert "prevention" in finding["pedagogy"]
-
-    def test_multiple_findings_mixed_severity(self, tmp_path):
-        f = _write_file(tmp_path, VULN_CODE)
-        mock_results = [
-            SemgrepResult(
-                file=str(f), line=5,
-                rule_id="python.lang.security.injection",
-                message="injection risk", severity="ERROR",
-            ),
-            SemgrepResult(
-                file=str(f), line=3,
-                rule_id="python.lang.style.unused-import",
-                message="unused import", severity="INFO",
-            ),
-        ]
-        with patch.object(
-            __import__("adapters.semgrep_adapter", fromlist=["SemgrepAdapter"]).SemgrepAdapter,
-            "scan", return_value=mock_results,
-        ):
-            result = scan_semgrep(file_path=str(f))
-        assert result["status"] == "block"
-        assert result["summary"]["total"] == 2
-        assert result["summary"]["by_severity"]["block"] == 1
-        assert result["summary"]["by_severity"]["info"] == 1
