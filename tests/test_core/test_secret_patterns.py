@@ -101,6 +101,36 @@ class TestSecretPatternCoverage:
         assert "Hardcoded API key/secret" in _match('api_key = "some-long-value-here"')
 
 
+    def test_telegram_bot_token(self):
+        assert "Telegram Bot Token" in _match(
+            'BOT_TOKEN = "123456789:ABCdefGHI-jklMNOpqrsTUVwxyz_1234567"'
+        )
+
+    def test_discord_bot_token(self):
+        assert "Discord Bot Token" in _match(
+            'discord token = "MTk4NjIyNDgzNDcxOTI1.Cl2FMQ.ZnCjm1XVW7vRze4b7Cq4se7kKWs"'
+        )
+
+    def test_twilio_account_sid(self):
+        assert "Twilio Account SID" in _match("AC1234567890abcdef1234567890abcdef")
+
+    def test_twilio_api_key(self):
+        assert "Twilio API Key" in _match("SK" + "1234567890abcdef" * 2)  # vibesrails: ignore
+
+    def test_npm_token(self):
+        assert "npm Access Token" in _match(
+            "npm_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij"
+        )
+
+    def test_pypi_token(self):
+        assert "PyPI API Token" in _match("pypi-AgEIcHlwaS5vcmcCJ12345678")
+
+    def test_supabase_service_key(self):
+        assert "Supabase Service Key" in _match(
+            "sbp_1234567890abcdef1234567890abcdef12345678"
+        )
+
+
 class TestSecretPatternFalsePositives:
     """Patterns should NOT trigger on safe content."""
 
@@ -143,5 +173,5 @@ class TestPatternConsistency:
         assert len(labels) == len(set(labels)), f"Duplicate labels: {labels}"
 
     def test_minimum_pattern_count(self):
-        """We should have at least 15 patterns after centralization."""
-        assert len(SECRET_PATTERN_DEFS) >= 15
+        """We should have at least 22 patterns after expansion."""
+        assert len(SECRET_PATTERN_DEFS) >= 22

@@ -81,7 +81,7 @@ BINARY_EXTENSIONS = {
 # Patterns for secrets leaked in bash commands
 BASH_SECRET_PATTERNS = [
     (
-        r"(?:AKIA|sk-|ghp_|gho_)[A-Za-z0-9_\-]{10,}",
+        r"(?:AKIA|sk-|ghp_|gho_|glpat-|npm_|pypi-|sbp_)[A-Za-z0-9_\-]{10,}",
         "API key leaked in command",
     ),
     (
@@ -91,6 +91,10 @@ BASH_SECRET_PATTERNS = [
     (
         r"(?:password|passwd|pwd)[=:\s]+['\"]?[^\s'\"]{8,}",
         "Password leaked in command",
+    ),
+    (
+        r"[0-9]{8,10}:[A-Za-z0-9_\-]{35,}",
+        "Telegram bot token leaked in command",
     ),
 ]
 

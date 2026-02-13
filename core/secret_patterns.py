@@ -27,6 +27,15 @@ SECRET_PATTERN_DEFS: list[tuple[str, str]] = [
 
     # Communication
     (r"xox[bps]-[a-zA-Z0-9\-]{10,}", "Slack Token"),
+    (r"[0-9]{8,10}:[A-Za-z0-9_\-]{35,}", "Telegram Bot Token"),
+    (r"[MN][A-Za-z0-9]{16,}\.[A-Za-z0-9_\-]{5,}\.[A-Za-z0-9_\-]{20,}", "Discord Bot Token"),
+
+    # Infrastructure / SaaS
+    (r"AC[a-f0-9]{32}", "Twilio Account SID"),
+    (r"SK[a-f0-9]{32}", "Twilio API Key"),
+    (r"npm_[A-Za-z0-9]{36,}", "npm Access Token"),
+    (r"pypi-[A-Za-z0-9\-_]{16,}", "PyPI API Token"),
+    (r"sbp_[a-f0-9]{40,}", "Supabase Service Key"),
 
     # Auth tokens
     (r"Bearer\s+[a-zA-Z0-9\-_.]{20,}", "Bearer Token"),
