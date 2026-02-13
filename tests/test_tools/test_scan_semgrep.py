@@ -2,14 +2,26 @@
 
 from __future__ import annotations
 
-import shutil
+import subprocess
 import sys
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
-_has_semgrep = shutil.which("semgrep") is not None
+
+def _semgrep_cli_works():
+    try:
+        result = subprocess.run(
+            ["semgrep", "--version"],
+            capture_output=True, text=True, timeout=10,
+        )
+        return result.returncode == 0 and len(result.stdout.strip()) > 0
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+
+
+_has_semgrep_cli = _semgrep_cli_works()
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
@@ -175,7 +187,7 @@ class TestScanSemgrepNotInstalled:
 # ── scan_semgrep — installed (live tests) ──────────────────────────────
 
 
-@pytest.mark.skipif(not _has_semgrep, reason="semgrep not installed")
+@pytest.mark.skipif(not _has_semgrep_cli, reason="semgrep not installed")
 class TestScanSemgrepInstalled:
     """Live integration tests (requires Semgrep installed)."""
 
@@ -223,7 +235,7 @@ class TestScanSemgrepInstalled:
         assert len(result["semgrep_version"]) > 0
 
 
-@pytest.mark.skipif(not _has_semgrep, reason="semgrep CLI not available")
+@pytest.mark.skipif(not _has_semgrep_cli, reason="semgrep CLI not available")
 class TestScanSemgrepWithFindings:
     """Tests using mocked adapter to guarantee findings."""
 
