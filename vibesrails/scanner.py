@@ -48,6 +48,7 @@ from .scanner_utils import (  # noqa: F401
     matches_pattern,
     safe_regex_search,
 )
+from .yaml_safety import safe_yaml_load as _safe_yaml_load
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +90,7 @@ def load_config(config_path: Path | str | None = None) -> dict:
         # Fallback to simple load if config module not available
         try:
             with open(config_path) as f:
-                return yaml.safe_load(f)
+                return _safe_yaml_load(f)
         except yaml.YAMLError as e:
             mark = getattr(e, "problem_mark", None)
             if mark:

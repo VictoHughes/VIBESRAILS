@@ -129,8 +129,8 @@ def test_skips_comment_lines():
     assert result.returncode == 0
 
 
-def test_skips_vibesrails_ignore():
-    """Lines with vibesrails: ignore are skipped."""
+def test_vibesrails_ignore_not_honored_in_hook():
+    """PreToolUse hook does NOT honor vibesrails: ignore (anti-bypass)."""
     result = _run_hook({
         "tool_name": "Write",
         "tool_input": {
@@ -138,7 +138,8 @@ def test_skips_vibesrails_ignore():
             "content": 'API_KEY = "sk-abc123456789abcdef"  # vibesrails: ignore\n',
         },
     })
-    assert result.returncode == 0
+    assert result.returncode == 1
+    assert "BLOCKED" in result.stdout
 
 
 def test_blocks_sql_injection_format():

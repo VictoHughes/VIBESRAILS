@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from core.input_validator import InputValidationError, validate_list
+from core.input_validator import InputValidationError, sanitize_for_output, validate_list
 from core.learning_bridge import record_safe
 from core.path_validator import PathValidationError, validate_path
 from vibesrails.guards_v2 import ALL_GUARD_CLASSES, V2GuardIssue
@@ -109,7 +109,7 @@ def _issue_to_finding(issue: V2GuardIssue, guard_slug: str) -> dict:
         },
     }
     if issue.file is not None:
-        finding["file"] = issue.file
+        finding["file"] = sanitize_for_output(issue.file)
     if issue.line is not None:
         finding["line"] = issue.line
 

@@ -16,6 +16,7 @@ from pathlib import Path
 import yaml
 
 from .scanner import NC, RED, YELLOW
+from .yaml_safety import safe_yaml_load as _safe_yaml_load
 
 logger = logging.getLogger(__name__)
 
@@ -145,7 +146,7 @@ def fetch_remote_config(
                 logger.info(f"{YELLOW}WARN: Remote config too large, skipping: {url}{NC}")
                 return None
 
-            config = yaml.safe_load(content)
+            config = _safe_yaml_load(content)
             _remote_cache[url] = config
             return config
 
@@ -183,7 +184,7 @@ def load_extended_config(
     # Load the config file
     try:
         with open(config_path) as f:
-            config = yaml.safe_load(f) or {}
+            config = _safe_yaml_load(f) or {}
     except yaml.YAMLError as e:
         mark = getattr(e, "problem_mark", None)
         if mark:

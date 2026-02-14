@@ -108,11 +108,22 @@ def _load_max_file_lines() -> int:
     try:
         import yaml
 
+        def _safe_yaml_load(stream):
+            class _L(yaml.SafeLoader):
+                def compose_node(self, parent, index):
+                    if self.check_event(yaml.AliasEvent):
+                        cnt = getattr(self, '_alias_count', 0) + 1
+                        if cnt > 100:
+                            raise yaml.YAMLError("YAML alias limit exceeded")
+                        self._alias_count = cnt
+                    return super().compose_node(parent, index)
+            return yaml.load(stream, Loader=_L)
+
         config_path = Path.cwd() / "vibesrails.yaml"
         if not config_path.exists():
             return DEFAULT_MAX_FILE_LINES
         with open(config_path) as f:
-            config = yaml.safe_load(f)
+            config = _safe_yaml_load(f)
         if not isinstance(config, dict):
             return DEFAULT_MAX_FILE_LINES
         guardian = config.get("guardian", {})
@@ -136,11 +147,14 @@ def scan_bash_command(command: str) -> list[str]:
 
 
 def _should_skip_line(line: str) -> bool:
-    """Return True if the line should be excluded from scanning."""
+    """Return True if the line should be excluded from scanning.
+
+    NOTE: The PreToolUse hook intentionally does NOT honor 'vibesrails: ignore'
+    comments. That bypass is only for the offline scanner (vibesrails --all).
+    An AI agent could inject '# vibesrails: ignore' to disable its own guardrails.
+    """
     stripped = line.strip()
     if stripped.startswith("#"):
-        return True
-    if "vibesrails: ignore" in stripped or "vibesrails: disable" in stripped:
         return True
     return False
 

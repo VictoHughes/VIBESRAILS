@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 
 from adapters.semgrep_adapter import SemgrepAdapter, SemgrepResult
-from core.input_validator import InputValidationError, validate_string
+from core.input_validator import InputValidationError, sanitize_for_output, validate_string
 from core.learning_bridge import record_safe
 from core.path_validator import PathValidationError, validate_path
 
@@ -98,7 +98,7 @@ def _result_to_finding(result: SemgrepResult) -> dict:
         "rule_id": result.rule_id,
         "severity": severity_map.get(result.severity, "info"),
         "message": result.message,
-        "file": result.file,
+        "file": sanitize_for_output(result.file),
         "line": result.line,
         "pedagogy": {
             "why": pedagogy["why"],

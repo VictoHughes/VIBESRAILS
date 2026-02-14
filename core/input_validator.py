@@ -158,6 +158,16 @@ def validate_enum(
     return value
 
 
+def sanitize_for_output(text: str, max_length: int = 256) -> str:
+    """Sanitize text for safe inclusion in MCP responses.
+
+    Strips control characters and limits length to prevent
+    prompt injection via filenames or messages in tool output.
+    """
+    sanitized = "".join(c for c in text if c.isprintable())
+    return sanitized[:max_length]
+
+
 def validate_optional_string(
     value: object,
     name: str,

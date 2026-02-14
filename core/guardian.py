@@ -156,7 +156,14 @@ def apply_guardian_rules(
             except re.error:
                 continue
             for line_num, line in enumerate(content.splitlines(), 1):
-                if compiled.search(line):
+                # ReDoS protection: truncate long lines to prevent
+                # catastrophic backtracking on user-supplied regex
+                safe_line = line[:10000]
+                try:
+                    match = compiled.search(safe_line)
+                except (RecursionError, re.error):
+                    continue
+                if match:
                     results.append(
                         ScanResult(
                             file=filepath,
@@ -249,19 +256,14 @@ def get_guardian_stats() -> dict[str, Any]:
 def show_guardian_stats() -> None:
     """Display guardian statistics."""
     stats = get_guardian_stats()
-
     logger.info(f"\n{BLUE}=== Guardian Statistics ==={NC}\n")
-
     if stats["total_blocks"] == 0:
         logger.info(f"{GREEN}No AI code blocks recorded yet.{NC}")
         return
-
     logger.info(f"Total blocks: {stats['total_blocks']}\n")
-
     logger.info(f"{YELLOW}By Pattern:{NC}")
     for pattern, count in sorted(stats["by_pattern"].items(), key=lambda x: -x[1]):
         logger.info(f"  {pattern}: {count}")
-
     logger.info(f"\n{YELLOW}By Agent:{NC}")
     for agent, count in sorted(stats["by_agent"].items(), key=lambda x: -x[1]):
         logger.info(f"  {agent}: {count}")

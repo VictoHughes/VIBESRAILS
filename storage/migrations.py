@@ -6,6 +6,7 @@ Uses parameterized queries only. No ORM, pure sqlite3.
 
 from __future__ import annotations
 
+import os
 import sqlite3
 from pathlib import Path
 
@@ -141,3 +142,9 @@ def migrate(db_path: str | Path | None = None) -> None:
         conn.commit()
     finally:
         conn.close()
+
+    # Restrict DB file permissions — owner read/write only
+    try:
+        os.chmod(str(db_path), 0o600)
+    except OSError:
+        pass  # May fail on Windows or restricted filesystems
