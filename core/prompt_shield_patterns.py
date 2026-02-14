@@ -143,7 +143,7 @@ _EXFILTRATION_PATTERNS: list[tuple[re.Pattern, str]] = [
     ),
     (
         re.compile(
-            r"(?:subprocess|os\.system|os\.popen)\s*\(.*(?:curl|wget|nc\s)",
+            r"(?:subprocess|os\.system|os\.popen)\s*\([^)]*(?:curl|wget|nc\s)",
             re.I,
         ),
         "Exfiltration: subprocess with network command",

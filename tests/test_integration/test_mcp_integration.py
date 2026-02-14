@@ -140,7 +140,7 @@ class TestCombinedScan:
 
     def test_monitor_entropy_lifecycle(self, tmp_path):
         db = tmp_path / "integ.db"
-        start = monitor_entropy(action="start", project_path="/tmp/p", db_path=str(db))
+        start = monitor_entropy(action="start", project_path=str(tmp_path), db_path=str(db))
         assert start["status"] == "ok"
         sid = start["session_id"]
 

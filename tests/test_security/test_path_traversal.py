@@ -174,7 +174,6 @@ def test_no_allowed_roots_no_restriction(tmp_path, monkeypatch):
 def test_guardian_rejects_traversal_path(tmp_path):
     """guardian.apply_guardian_rules rejects paths outside sandbox."""
     from core.guardian import apply_guardian_rules
-    from vibesrails.scanner import ScanResult
     # Create a config with a stricter pattern that would trigger a read
     config = {"guardian": {"stricter_patterns": [{"id": "test", "regex": "x", "message": "m"}]}}
     results = apply_guardian_rules([], config, filepath="/etc/shadow")

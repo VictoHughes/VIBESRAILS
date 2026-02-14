@@ -165,18 +165,18 @@ class TestLevel2PackageRegistry:
 class TestLevel3SymbolExists:
     """Tests for Level 3 — symbol verification."""
 
-    def test_existing_symbol_found(self, tmp_path):
+    def test_existing_symbol_returns_installed_not_verified(self, tmp_path):
         c = _checker(tmp_path)
-        result = c.check_symbol_exists("os", "path")
-        assert result["exists"] is True
-        assert result["status"] == "verified"
+        # Symbol check disabled for security (no import_module)
+        result = c.check_symbol_exists("pytest", "main")
+        assert result["exists"] is None
+        assert result["status"] == "installed_not_verified"
 
-    def test_nonexistent_symbol_not_found(self, tmp_path):
+    def test_nonexistent_symbol_same_as_existing(self, tmp_path):
         c = _checker(tmp_path)
-        result = c.check_symbol_exists("os", "fake_function_xyz")
-        assert result["exists"] is False
-        assert result["status"] == "not_found"
-        assert len(result["available_symbols"]) > 0
+        # Without import_module, can't distinguish symbols
+        result = c.check_symbol_exists("pytest", "fake_function_xyz")
+        assert result["status"] == "installed_not_verified"
 
     def test_uninstalled_package_unverifiable(self, tmp_path):
         c = _checker(tmp_path)
@@ -202,11 +202,12 @@ class TestLevel4VersionCompat:
         result = c.check_version_compat("os", symbol_name="path")
         assert result["compatible"] is True
 
-    def test_installed_with_missing_symbol(self, tmp_path):
+    def test_installed_with_symbol_check_disabled(self, tmp_path):
         c = _checker(tmp_path)
         result = c.check_version_compat("os", symbol_name="fake_func_xyz")
-        assert result["compatible"] is False
-        assert "fake_func_xyz" in result["reason"]
+        # Symbol check disabled for security — always returns compatible
+        assert result["compatible"] is True
+        assert result["reason"] == "symbol_check_disabled_for_security"
 
     def test_uninstalled_package(self, tmp_path):
         c = _checker(tmp_path)

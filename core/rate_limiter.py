@@ -9,9 +9,12 @@ Resets on server restart (in-memory only, no persistence).
 
 from __future__ import annotations
 
+import logging
 import os
 import threading
 import time
+
+logger = logging.getLogger(__name__)
 
 
 class _Bucket:
@@ -67,10 +70,17 @@ class RateLimiter:
         )
         self._lock = threading.Lock()
 
+    _warned_disabled = False
+
     @property
     def disabled(self) -> bool:
         """Check if rate limiting is disabled via environment variable."""
-        return os.environ.get("VIBESRAILS_RATE_LIMIT") == "0"
+        if os.environ.get("VIBESRAILS_RATE_LIMIT") == "0":
+            if not RateLimiter._warned_disabled:
+                logger.warning("Security: rate limiting disabled via VIBESRAILS_RATE_LIMIT=0")
+                RateLimiter._warned_disabled = True
+            return True
+        return False
 
     def _get_tool_bucket(self, tool_name: str) -> _Bucket:
         if tool_name not in self._tool_buckets:

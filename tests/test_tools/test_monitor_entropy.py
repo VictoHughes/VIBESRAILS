@@ -22,20 +22,20 @@ class TestMonitorEntropyStart:
 
     def test_start_returns_session_id(self, tmp_path):
         db = tmp_path / "test.db"
-        result = monitor_entropy(action="start", project_path="/tmp/project", db_path=str(db))
+        result = monitor_entropy(action="start", project_path=str(tmp_path), db_path=str(db))
         assert result["status"] == "ok"
         assert result["session_id"] is not None
         assert len(result["session_id"]) == 36
 
     def test_start_initial_entropy_zero(self, tmp_path):
         db = tmp_path / "test.db"
-        result = monitor_entropy(action="start", project_path="/tmp/project", db_path=str(db))
+        result = monitor_entropy(action="start", project_path=str(tmp_path), db_path=str(db))
         assert result["entropy_score"] == 0.0
         assert result["entropy_level"] == "safe"
 
     def test_start_has_pedagogy(self, tmp_path):
         db = tmp_path / "test.db"
-        result = monitor_entropy(action="start", project_path="/tmp/project", db_path=str(db))
+        result = monitor_entropy(action="start", project_path=str(tmp_path), db_path=str(db))
         assert "pedagogy" in result
         assert "why" in result["pedagogy"]
         assert "recommendation" in result["pedagogy"]
@@ -55,7 +55,7 @@ class TestMonitorEntropyUpdate:
 
     def test_update_returns_entropy(self, tmp_path):
         db = tmp_path / "test.db"
-        start = monitor_entropy(action="start", project_path="/tmp/p", db_path=str(db))
+        start = monitor_entropy(action="start", project_path=str(tmp_path), db_path=str(db))
         sid = start["session_id"]
 
         result = monitor_entropy(
@@ -76,7 +76,7 @@ class TestMonitorEntropyUpdate:
     def test_update_unknown_session_errors(self, tmp_path):
         db = tmp_path / "test.db"
         # Need to init the DB first
-        monitor_entropy(action="start", project_path="/tmp/p", db_path=str(db))
+        monitor_entropy(action="start", project_path=str(tmp_path), db_path=str(db))
         result = monitor_entropy(action="update", session_id="nonexistent", db_path=str(db))
         assert result["status"] == "error"
         assert "not found" in result["error"].lower()
@@ -90,7 +90,7 @@ class TestMonitorEntropyStatus:
 
     def test_status_returns_session_info(self, tmp_path):
         db = tmp_path / "test.db"
-        start = monitor_entropy(action="start", project_path="/tmp/p", db_path=str(db))
+        start = monitor_entropy(action="start", project_path=str(tmp_path), db_path=str(db))
         sid = start["session_id"]
 
         result = monitor_entropy(action="status", session_id=sid, db_path=str(db))
@@ -107,7 +107,7 @@ class TestMonitorEntropyStatus:
 
     def test_status_unknown_session_errors(self, tmp_path):
         db = tmp_path / "test.db"
-        monitor_entropy(action="start", project_path="/tmp/p", db_path=str(db))
+        monitor_entropy(action="start", project_path=str(tmp_path), db_path=str(db))
         result = monitor_entropy(action="status", session_id="nonexistent", db_path=str(db))
         assert result["status"] == "error"
 
@@ -120,7 +120,7 @@ class TestMonitorEntropyEnd:
 
     def test_end_returns_summary(self, tmp_path):
         db = tmp_path / "test.db"
-        start = monitor_entropy(action="start", project_path="/tmp/p", db_path=str(db))
+        start = monitor_entropy(action="start", project_path=str(tmp_path), db_path=str(db))
         sid = start["session_id"]
 
         monitor_entropy(
@@ -175,7 +175,7 @@ class TestPedagogyPerLevel:
             mock_dt.now.return_value = base_time
             mock_dt.fromisoformat = datetime.fromisoformat
             mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
-            start = monitor_entropy(action="start", project_path="/tmp/p", db_path=str(db))
+            start = monitor_entropy(action="start", project_path=str(tmp_path), db_path=str(db))
 
         sid = start["session_id"]
 
@@ -204,7 +204,7 @@ class TestPedagogyPerLevel:
             mock_dt.now.return_value = base_time
             mock_dt.fromisoformat = datetime.fromisoformat
             mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
-            start = monitor_entropy(action="start", project_path="/tmp/p", db_path=str(db))
+            start = monitor_entropy(action="start", project_path=str(tmp_path), db_path=str(db))
 
         sid = start["session_id"]
 

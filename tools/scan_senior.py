@@ -205,6 +205,9 @@ def scan_senior(
             continue
 
         try:
+            if py_file.stat().st_size > 5 * 1024 * 1024:  # 5MB
+                logger.debug("Skipping large file: %s", py_file)
+                continue
             code = py_file.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
             continue

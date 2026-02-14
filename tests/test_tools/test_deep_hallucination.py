@@ -114,12 +114,13 @@ class TestMaxLevelControl:
         mock_open.assert_not_called()
         assert result["status"] == "block"
 
-    def test_max_level_3_checks_symbols(self, tmp_path):
+    def test_max_level_3_symbol_check_disabled(self, tmp_path):
+        """Level 3 symbol check is disabled for security — no import_module."""
         f = _write_file(tmp_path, "from os import fake_symbol_xyz\n")
         db = tmp_path / "test.db"
         result = deep_hallucination(file_path=str(f), max_level=3, db_path=str(db))
-        assert result["status"] == "block"
-        assert result["hallucinations"][0]["failed_level"] == 3
+        # Symbol check disabled → no hallucination detected at level 3
+        assert result["status"] == "pass"
 
     def test_max_level_4_checks_version(self, tmp_path):
         f = _write_file(tmp_path, "from os import path\n")

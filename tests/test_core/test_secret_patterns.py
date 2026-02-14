@@ -2,8 +2,6 @@
 
 import re
 
-import pytest
-
 from core.secret_patterns import SECRET_PATTERN_DEFS
 
 

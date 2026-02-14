@@ -56,7 +56,7 @@ logger = logging.getLogger(__name__)
 class PromptShield:
     """Detects prompt injection in text, code files, and MCP inputs."""
 
-    _MAX_TEXT_SIZE = 10 * 1024 * 1024  # 10 MB
+    _MAX_TEXT_SIZE = 1 * 1024 * 1024  # 1 MB
 
     def scan_text(self, text: str) -> list[ShieldFinding]:
         """Scan arbitrary text for all 5 injection categories."""
@@ -97,7 +97,7 @@ class PromptShield:
                 line=0,
                 matched_text="[oversized file]",
             )]
-        content = path.read_text(encoding="utf-8")
+        content = path.read_text(encoding="utf-8", errors="replace")
         return self.scan_text(content)
 
     def scan_mcp_input(

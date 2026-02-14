@@ -215,7 +215,22 @@ def main() -> None:
     file_path = tool_input.get("file_path", "")
     content = tool_input.get("content", "") or tool_input.get("new_string", "") or ""
 
-    # --- File size check (all file types) ---
+    # --- For Edit: estimate final file size ---
+    if tool_name == "Edit" and file_path:
+        old_string = tool_input.get("old_string", "")
+        new_string = tool_input.get("new_string", "")
+        try:
+            existing = Path(file_path).read_text(encoding="utf-8", errors="replace")
+            content = existing.replace(old_string, new_string, 1) if old_string else existing
+        except OSError:
+            pass  # file doesn't exist yet, use new_string as content
+
+    # --- Byte size check (1MB limit) ---
+    if content and len(content.encode("utf-8", errors="replace")) > 1_000_000:
+        sys.stdout.write("BLOCKED \u2014 Content exceeds 1MB. Split into smaller files.\n")
+        sys.exit(1)
+
+    # --- Line count check (all file types) ---
     if content:
         line_count = len(content.splitlines())
         max_lines = _load_max_file_lines()

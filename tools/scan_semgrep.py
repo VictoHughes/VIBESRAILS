@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 
 from adapters.semgrep_adapter import SemgrepAdapter, SemgrepResult
+from core.input_validator import InputValidationError, validate_string
 from core.learning_bridge import record_safe
 from core.path_validator import PathValidationError, validate_path
 
@@ -139,6 +140,12 @@ def scan_semgrep(
     Returns:
         Dict with keys: status, findings, semgrep_version, rules_used, summary, pedagogy.
     """
+    # Validate string inputs
+    try:
+        validate_string(file_path, "file_path", max_length=4096)
+    except InputValidationError as exc:
+        return _error_result(str(exc))
+
     # Validate paths
     try:
         fp = validate_path(file_path, must_exist=True, must_be_file=True)

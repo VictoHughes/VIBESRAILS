@@ -223,19 +223,21 @@ def get_guardian_stats() -> dict[str, Any]:
     by_agent: dict[str, int] = {}
 
     with open(log_file) as f:
-        for line in f:
-            try:
-                entry = json.loads(line)
-                total += 1
+        all_lines = f.readlines()
 
-                pattern = entry.get("pattern_id", "unknown")
-                by_pattern[pattern] = by_pattern.get(pattern, 0) + 1
+    for line in all_lines[-1000:]:
+        try:
+            entry = json.loads(line)
+            total += 1
 
-                agent = entry.get("agent", "unknown")
-                by_agent[agent] = by_agent.get(agent, 0) + 1
+            pattern = entry.get("pattern_id", "unknown")
+            by_pattern[pattern] = by_pattern.get(pattern, 0) + 1
 
-            except json.JSONDecodeError:
-                continue
+            agent = entry.get("agent", "unknown")
+            by_agent[agent] = by_agent.get(agent, 0) + 1
+
+        except json.JSONDecodeError:
+            continue
 
     return {
         "total_blocks": total,

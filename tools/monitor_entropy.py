@@ -13,7 +13,9 @@ from core.input_validator import (
     InputValidationError,
     validate_int,
     validate_list,
+    validate_string,
 )
+from core.path_validator import PathValidationError, validate_path
 from core.session_tracker import SessionTracker, classify_entropy
 
 logger = logging.getLogger(__name__)
@@ -112,6 +114,10 @@ def monitor_entropy(
 
     # Validate inputs
     try:
+        if project_path is not None:
+            validate_string(project_path, "project_path", max_length=4096)
+        if session_id is not None:
+            validate_string(session_id, "session_id", max_length=256)
         if changes_loc is not None:
             validate_int(changes_loc, "changes_loc", min_val=0, max_val=1_000_000)
         if violations is not None:
@@ -137,6 +143,11 @@ def _handle_start(tracker: SessionTracker, project_path: str | None) -> dict:
     """Handle action=start."""
     if not project_path:
         return _error_result("project_path is required for action='start'")
+
+    try:
+        validate_path(project_path, must_exist=True, must_be_dir=True)
+    except PathValidationError as exc:
+        return _error_result(str(exc))
 
     sid = tracker.start_session(project_path)
     return {

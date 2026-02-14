@@ -15,6 +15,7 @@ import importlib
 import importlib.metadata
 import importlib.util
 import logging
+import re
 import sqlite3
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -131,8 +132,13 @@ class DeepHallucinationChecker:
         """Check bloom filter file. Returns None if file doesn't exist."""
         return check_bloom_filter(package_name, ecosystem)
 
+    _VALID_PACKAGE_RE = re.compile(r"^[a-zA-Z0-9_.\-]+$")
+
     def _check_pypi_api(self, package_name: str) -> bool | None:
         """Query PyPI JSON API. Returns None on network error."""
+        if not self._VALID_PACKAGE_RE.match(package_name):
+            logger.warning("Invalid package name rejected: %s", package_name[:50])
+            return None
         url = f"https://pypi.org/pypi/{package_name}/json"
         try:
             req = urllib.request.Request(url, method="GET")
@@ -165,8 +171,8 @@ class DeepHallucinationChecker:
              "reason": str|None, "available_symbols": list[:10]}
         """
         try:
-            mod = importlib.import_module(package_name)  # nosemgrep: python.lang.security.audit.non-literal-import.non-literal-import
-        except ImportError:
+            importlib.metadata.distribution(package_name)
+        except importlib.metadata.PackageNotFoundError:
             return {
                 "exists": False,
                 "status": "unverifiable",
@@ -174,19 +180,13 @@ class DeepHallucinationChecker:
                 "available_symbols": [],
             }
 
-        exists = hasattr(mod, symbol_name)
-
-        # Get public API surface (up to 10 items)
-        all_symbols = getattr(mod, "__all__", None)
-        if all_symbols is None:
-            all_symbols = [s for s in dir(mod) if not s.startswith("_")]
-        available = list(all_symbols[:10])
-
+        # Package installed — symbol verification disabled for security
+        # (importlib.import_module executes __init__.py → RCE on malicious packages)
         return {
-            "exists": exists,
-            "status": "verified" if exists else "not_found",
-            "reason": None if exists else f"'{symbol_name}' not in {package_name}",
-            "available_symbols": available,
+            "exists": None,
+            "status": "installed_not_verified",
+            "reason": "symbol_check_disabled_for_security",
+            "available_symbols": [],
         }
 
     # ── Level 4: Version compatibility? ──────────────────────────────
@@ -208,17 +208,15 @@ class DeepHallucinationChecker:
         try:
             installed_version = importlib.metadata.version(package_name)
         except importlib.metadata.PackageNotFoundError:
-            # Stdlib modules don't have package metadata — check if importable
-            try:
-                importlib.import_module(package_name)  # nosemgrep: python.lang.security.audit.non-literal-import.non-literal-import
-            except ImportError:
+            # Stdlib modules don't have package metadata — check via find_spec (no code execution)
+            if importlib.util.find_spec(package_name) is not None:
+                installed_version = "stdlib"
+            else:
                 return {
                     "compatible": False,
                     "installed_version": None,
                     "reason": "not_installed",
                 }
-            # Importable but no metadata (stdlib or namespace package)
-            installed_version = "stdlib"
 
         # If no symbol to check, just confirm installation
         if symbol_name is None:
@@ -228,24 +226,11 @@ class DeepHallucinationChecker:
                 "reason": None,
             }
 
-        # Check if symbol exists in current version
-        try:
-            mod = importlib.import_module(package_name)  # nosemgrep: python.lang.security.audit.non-literal-import.non-literal-import
-        except ImportError:
-            return {
-                "compatible": False,
-                "installed_version": installed_version,
-                "reason": "import_failed",
-            }
-
-        exists = hasattr(mod, symbol_name)
+        # Symbol verification disabled for security (avoids RCE via __init__.py)
         return {
-            "compatible": exists,
+            "compatible": True,
             "installed_version": installed_version,
-            "reason": (
-                None if exists
-                else f"'{symbol_name}' not found in {package_name} v{installed_version}"
-            ),
+            "reason": "symbol_check_disabled_for_security",
         }
 
     # ── Cache helpers ────────────────────────────────────────────────

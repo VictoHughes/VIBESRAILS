@@ -109,8 +109,8 @@ def load_config(config_path: Path | str | None = None) -> dict:
 
 def _collect_patterns(config: dict) -> tuple[list, list]:
     """Collect all blocking and warning patterns from config sections."""
-    all_blocking = list(config.get("blocking", []))
-    all_warning = list(config.get("warning", []))
+    all_blocking = list(config.get("blocking") or [])
+    all_warning = list(config.get("warning") or [])
 
     for section in ["bugs", "architecture", "maintainability"]:
         for pattern in config.get(section, []):
@@ -209,6 +209,8 @@ def _scan_patterns(
     non_code_lines = _find_non_code_lines(lines)
 
     for pattern in patterns:
+        if not isinstance(pattern, dict) or "id" not in pattern or "regex" not in pattern:
+            continue
         if _should_skip_pattern(pattern, level, is_test, allowed_patterns, filepath):
             continue
 
@@ -247,8 +249,11 @@ def scan_file(filepath: str, config: dict) -> list[ScanResult]:
         return results
 
     # Check file length
-    complexity = config.get("complexity", {})
-    max_file_lines = complexity.get("max_file_lines", 0)
+    complexity = config.get("complexity") or {}
+    try:
+        max_file_lines = int(complexity.get("max_file_lines", 0))
+    except (ValueError, TypeError):
+        max_file_lines = 0
     if max_file_lines and len(lines) > max_file_lines and not is_test_file(filepath):
         results.append(ScanResult(
             file=filepath, line=len(lines), pattern_id="file_too_long",
