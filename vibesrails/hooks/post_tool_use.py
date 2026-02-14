@@ -9,9 +9,12 @@ Run as: python3 -m vibesrails.hooks.post_tool_use
 
 import json
 import os
+import signal
 import subprocess
 import sys
 from pathlib import Path
+
+SCAN_TIMEOUT = 5  # seconds — auto-scan must complete within this
 
 # ── V2 guards (per-file, AST-based) ──────────────────────────────
 # Heavy guards (mutation, dependency_audit, vulture, git_workflow, pre_deploy,
@@ -135,11 +138,26 @@ def _run_post_commit_guards() -> list[str]:
 
 
 # ── Main dispatch ─────────────────────────────────────────────────
+def _timeout_handler(signum, frame):  # noqa: ARG001
+    """Handle scan timeout — warn and exit cleanly."""
+    sys.stdout.write(
+        f"\u23f1 VibesRails: scan timeout ({SCAN_TIMEOUT}s), skipping\n"
+    )
+    sys.exit(0)
+
+
 def _handle_write_edit(tool_input: dict) -> None:
     """Scan a written/edited Python file with V1 + V2 + Senior guards."""
     file_path = tool_input.get("file_path", "")
     if not file_path.endswith(".py") or not os.path.isfile(file_path):
         sys.exit(0)
+
+    # Start scan timeout (Unix only)
+    try:
+        signal.signal(signal.SIGALRM, _timeout_handler)
+        signal.alarm(SCAN_TIMEOUT)
+    except (AttributeError, OSError):
+        pass  # Windows — no SIGALRM
 
     basename = os.path.basename(file_path)
     all_issues: list[str] = []
@@ -159,6 +177,12 @@ def _handle_write_edit(tool_input: dict) -> None:
         all_issues.extend(_run_v2_guards(Path(file_path), content))
         all_issues.extend(_run_senior_guards(file_path, content))
     except Exception:  # noqa: BLE001
+        pass
+
+    # Cancel scan timeout
+    try:
+        signal.alarm(0)
+    except (AttributeError, OSError):
         pass
 
     if all_issues:

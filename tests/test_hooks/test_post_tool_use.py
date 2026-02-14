@@ -59,3 +59,44 @@ def test_ignores_missing_file():
     })
     assert result.returncode == 0
     assert result.stdout == ""
+
+
+# --- Auto-scan behavior ---
+
+
+class TestAutoScan:
+    """PostToolUse auto-scan on Write/Edit events."""
+
+    def test_write_py_triggers_auto_scan(self, tmp_path):
+        """Writing a .py file triggers V1+V2+Senior scan automatically."""
+        f = tmp_path / "module.py"
+        f.write_text("def greet(name: str) -> str:\n    return f'Hello {name}'\n")
+        result = _run_hook(
+            {"tool_name": "Write", "tool_input": {"file_path": str(f)}},
+            cwd=str(tmp_path),
+        )
+        assert result.returncode == 0
+        assert "VibesRails" in result.stdout
+
+    def test_write_md_skipped(self, tmp_path):
+        """Writing a .md file skips scan entirely."""
+        f = tmp_path / "notes.md"
+        f.write_text("# Notes\n\nSome documentation.\n")
+        result = _run_hook(
+            {"tool_name": "Write", "tool_input": {"file_path": str(f)}},
+            cwd=str(tmp_path),
+        )
+        assert result.returncode == 0
+        assert result.stdout == ""
+
+    def test_scan_completes_within_timeout(self, tmp_path):
+        """Large .py file completes scan within 5s timeout, exits 0."""
+        f = tmp_path / "large_module.py"
+        lines = [f"def func_{i}() -> int:\n    return {i}\n" for i in range(100)]
+        f.write_text("\n".join(lines))
+        result = _run_hook(
+            {"tool_name": "Write", "tool_input": {"file_path": str(f)}},
+            cwd=str(tmp_path),
+        )
+        assert result.returncode == 0
+        assert "timeout" not in result.stdout.lower()
