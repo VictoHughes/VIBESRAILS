@@ -26,6 +26,7 @@ before the file is written.
 | Layer | Event | What it does |
 |-------|-------|-------------|
 | **PreToolUse** | Write/Edit/Bash | Blocks secrets, SQL injection, eval/exec BEFORE your AI writes them |
+| **File Size Guard** | Write/Edit | Blocks files exceeding 300 lines (configurable via `guardian.max_file_lines`) |
 | **PostToolUse** | Write/Edit | Scans every file AFTER write with 16 AST guards + 7 senior guards |
 | **Throttle** | Write/Edit | Forces verification every 5 writes, prevents runaway agents |
 | **Scope Guard** | Post-commit | Reminds rules after every commit, prevents scope creep |

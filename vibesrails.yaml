@@ -170,3 +170,4 @@ guardian:
   auto_detect: true
   warnings_as_blocking: false
   senior_mode: "auto"  # Run Senior Mode when AI session detected
+  max_file_lines: 300  # PreToolUse BLOCKS writes exceeding this (split into modules)

@@ -100,6 +100,29 @@ BASH_SECRET_PATTERNS = [
 
 COMPILED_BASH_PATTERNS = [(re.compile(p, re.IGNORECASE), msg) for p, msg in BASH_SECRET_PATTERNS]
 
+DEFAULT_MAX_FILE_LINES = 300
+
+
+def _load_max_file_lines() -> int:
+    """Load max_file_lines from vibesrails.yaml guardian config, fallback to 300."""
+    try:
+        import yaml
+
+        config_path = Path.cwd() / "vibesrails.yaml"
+        if not config_path.exists():
+            return DEFAULT_MAX_FILE_LINES
+        with open(config_path) as f:
+            config = yaml.safe_load(f)
+        if not isinstance(config, dict):
+            return DEFAULT_MAX_FILE_LINES
+        guardian = config.get("guardian", {})
+        if not isinstance(guardian, dict):
+            return DEFAULT_MAX_FILE_LINES
+        value = guardian.get("max_file_lines", DEFAULT_MAX_FILE_LINES)
+        return int(value) if isinstance(value, (int, float, str)) else DEFAULT_MAX_FILE_LINES
+    except Exception:
+        return DEFAULT_MAX_FILE_LINES
+
 
 def scan_bash_command(command: str) -> list[str]:
     """Scan a bash command for leaked secrets."""
@@ -190,6 +213,19 @@ def main() -> None:
         sys.exit(0)
 
     file_path = tool_input.get("file_path", "")
+    content = tool_input.get("content", "") or tool_input.get("new_string", "") or ""
+
+    # --- File size check (all file types) ---
+    if content:
+        line_count = len(content.splitlines())
+        max_lines = _load_max_file_lines()
+        if line_count > max_lines:
+            sys.stdout.write(
+                f"BLOCKED \u2014 File exceeds {max_lines} lines "
+                f"({line_count} lines). Split into modules.\n"
+            )
+            sys.exit(1)
+
     basename = file_path.rsplit("/", 1)[-1] if "/" in file_path else file_path
 
     # Determine file extension and scannability
@@ -209,7 +245,6 @@ def main() -> None:
     if not is_scannable:
         sys.exit(0)
 
-    content = tool_input.get("content", "") or tool_input.get("new_string", "") or ""
     if not content:
         sys.exit(0)
 

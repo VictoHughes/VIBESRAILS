@@ -20,14 +20,14 @@ def _reset_throttle():
     reset_state(state_dir)
 
 
-def _run_hook(payload: dict) -> subprocess.CompletedProcess:
+def _run_hook(payload: dict, cwd: str = PROJECT_ROOT) -> subprocess.CompletedProcess:
     return subprocess.run(
         HOOK_CMD,
         input=json.dumps(payload),
         capture_output=True,
         text=True,
         timeout=10,
-        cwd=PROJECT_ROOT,
+        cwd=cwd,
     )
 
 
@@ -365,4 +365,68 @@ class TestSecretDetectionMultiFormat:
                 "content": "DEBUG=true\nLOG_LEVEL=info\nPORT=8080\n",
             },
         })
+        assert result.returncode == 0
+
+
+# --- File size guard ---
+
+
+class TestFileSizeGuard:
+    """File size guard blocks writes exceeding max_file_lines."""
+
+    def test_write_200_lines_passes(self):
+        """Write with 200 lines passes (under 300 limit)."""
+        content = "\n".join(f"x = {i}" for i in range(200)) + "\n"
+        result = _run_hook({
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": "big_module.py",
+                "content": content,
+            },
+        })
+        assert result.returncode == 0
+
+    def test_write_301_lines_blocked(self):
+        """Write with 301 lines is BLOCKED."""
+        content = "\n".join(f"x = {i}" for i in range(301)) + "\n"
+        result = _run_hook({
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": "big_module.py",
+                "content": content,
+            },
+        })
+        assert result.returncode == 1
+        assert "BLOCKED" in result.stdout
+        assert "301 lines" in result.stdout
+
+    def test_write_500_lines_blocked(self):
+        """Write with 500 lines is BLOCKED."""
+        content = "\n".join(f"x = {i}" for i in range(500)) + "\n"
+        result = _run_hook({
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": "big_module.py",
+                "content": content,
+            },
+        })
+        assert result.returncode == 1
+        assert "BLOCKED" in result.stdout
+        assert "500 lines" in result.stdout
+
+    def test_custom_max_file_lines_passes(self, tmp_path):
+        """Custom max_file_lines: 500 allows 400-line files."""
+        config = tmp_path / "vibesrails.yaml"
+        config.write_text("guardian:\n  max_file_lines: 500\n")
+        content = "\n".join(f"x = {i}" for i in range(400)) + "\n"
+        result = _run_hook(
+            {
+                "tool_name": "Write",
+                "tool_input": {
+                    "file_path": "big_module.py",
+                    "content": content,
+                },
+            },
+            cwd=str(tmp_path),
+        )
         assert result.returncode == 0
