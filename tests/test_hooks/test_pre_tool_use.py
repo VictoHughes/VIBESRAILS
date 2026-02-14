@@ -368,6 +368,48 @@ class TestSecretDetectionMultiFormat:
         assert result.returncode == 0
 
 
+# --- Local path leak detection ---
+
+
+class TestLocalPathLeak:
+    """FIX 4: detect hardcoded local paths (/Users/*, /home/*, C:\\Users\\*)."""
+
+    def test_blocks_users_path(self):
+        """Writing /Users/john/secret is BLOCKED."""
+        result = _run_hook({
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": "config.py",
+                "content": 'DATA_DIR = "/Users/john/secret/data"\n',
+            },
+        })
+        assert result.returncode == 1
+        assert "Local path leak" in result.stdout
+
+    def test_blocks_home_path(self):
+        """Writing /home/dev/project is BLOCKED."""
+        result = _run_hook({
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": "settings.py",
+                "content": 'PROJECT = "/home/dev/project/src"\n',
+            },
+        })
+        assert result.returncode == 1
+        assert "Local path leak" in result.stdout
+
+    def test_allows_relative_path(self):
+        """Relative path is NOT blocked."""
+        result = _run_hook({
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": "config.py",
+                "content": 'DATA_DIR = "relative/path/ok"\n',
+            },
+        })
+        assert result.returncode == 0
+
+
 # --- File size guard ---
 
 

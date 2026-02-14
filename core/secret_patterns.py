@@ -49,6 +49,12 @@ SECRET_PATTERN_DEFS: list[tuple[str, str]] = [
         "Database URL with password",
     ),
 
+    # Local path leaks (filesystem info disclosure)
+    (
+        r"(?:/(?:Users|home)/\w{2,}/|[A-Z]:[\\\/]Users[\\\/]\w{2,})",
+        "Local path leak",
+    ),
+
     # Generic hardcoded secrets (assignment patterns)
     (
         r"(?:password|passwd|pwd)\s*=\s*['\"][^'\"]{8,}['\"]",
