@@ -8,7 +8,8 @@ from pathlib import Path
 # Ensure project root is importable
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from mcp_server import TOOLS, VERSION, mcp, ping  # noqa: E402
+from mcp_server import TOOLS, VERSION, mcp  # noqa: E402
+from mcp_tools_ext import ping  # noqa: E402
 
 
 class TestMCPServerInit:

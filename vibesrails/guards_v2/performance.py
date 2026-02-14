@@ -5,28 +5,30 @@ import logging
 import re
 from pathlib import Path
 
+from ._perf_patterns import (
+    DB_CALL_PATTERNS as _DB_CALL_PATTERNS,
+)
+from ._perf_patterns import (
+    LIMIT_RE as _LIMIT_RE,
+)
+from ._perf_patterns import (
+    OFFSET_RE as _OFFSET_RE,
+)
+from ._perf_patterns import (
+    RE_FUNCS as _RE_FUNCS,
+)
+from ._perf_patterns import (
+    SELECT_STAR_RE as _SELECT_STAR_RE,
+)
+from ._perf_patterns import (
+    SQL_SELECT_RE as _SQL_SELECT_RE,
+)
+from ._perf_patterns import (
+    call_name as _call_name,
+)
 from .dependency_audit import V2GuardIssue
 
 logger = logging.getLogger(__name__)
-
-# Patterns for DB calls that indicate potential N+1
-_DB_CALL_PATTERNS = (
-    "cursor.execute",
-    "session.query",
-    "objects.filter",
-    "objects.get",
-    "objects.all",
-    "objects.exclude",
-)
-
-_SELECT_STAR_RE = re.compile(r"SELECT\s+\*", re.IGNORECASE)
-_SQL_SELECT_RE = re.compile(
-    r"SELECT\s+.+?\s+FROM\s+", re.IGNORECASE | re.DOTALL
-)
-_LIMIT_RE = re.compile(r"\bLIMIT\b", re.IGNORECASE)
-_OFFSET_RE = re.compile(r"\bOFFSET\b", re.IGNORECASE)
-
-_RE_FUNCS = {"re.search", "re.match", "re.findall", "re.sub"}
 
 _IGNORE_MARKER = "# vibesrails: ignore"
 
@@ -295,18 +297,3 @@ class PerformanceGuard:
         return issues
 
 
-def _call_name(node: ast.Call) -> str | None:
-    """Extract dotted call name like 'cursor.execute' from a Call node."""
-    func = node.func
-    if isinstance(func, ast.Name):
-        return func.id
-    if isinstance(func, ast.Attribute):
-        parts: list[str] = [func.attr]
-        obj = func.value
-        while isinstance(obj, ast.Attribute):
-            parts.append(obj.attr)
-            obj = obj.value
-        if isinstance(obj, ast.Name):
-            parts.append(obj.id)
-        return ".".join(reversed(parts))
-    return None

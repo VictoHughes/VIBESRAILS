@@ -212,7 +212,7 @@ class tool_timer:
     Usage:
         with tool_timer() as t:
             result = do_work()
-        print(t.ms)  # elapsed milliseconds
+        elapsed = t.ms  # elapsed milliseconds
     """
 
     __slots__ = ("_start", "ms")

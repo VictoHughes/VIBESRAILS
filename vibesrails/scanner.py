@@ -16,30 +16,40 @@ Usage:
 
 import logging
 import re
-import subprocess
 import sys
 from pathlib import Path
-from typing import NamedTuple
 
 import yaml
 
+# Re-export all public names so existing imports continue to work
+from .scanner_cli import (  # noqa: F401
+    get_all_python_files,
+    main,
+    show_patterns,
+    validate_config,
+)
+from .scanner_git import get_staged_files, is_git_repo  # noqa: F401
+from .scanner_types import (  # noqa: F401
+    BLUE,
+    GREEN,
+    NC,
+    RED,
+    YELLOW,
+    ScanResult,
+)
+from .scanner_utils import (  # noqa: F401
+    SUPPRESS_NEXT_LINE_REGEX,
+    SUPPRESS_PATTERN_REGEX,
+    SUPPRESS_PATTERNS,
+    SUPPRESS_REGEX,
+    is_line_suppressed,
+    is_path_safe,
+    is_test_file,
+    matches_pattern,
+    safe_regex_search,
+)
+
 logger = logging.getLogger(__name__)
-
-# Colors for terminal output
-RED = "\033[0;31m"
-YELLOW = "\033[1;33m"
-GREEN = "\033[0;32m"
-BLUE = "\033[0;34m"
-NC = "\033[0m"  # No Color
-
-class ScanResult(NamedTuple):
-    """Result from scanning a file for pattern violations."""
-
-    file: str
-    line: int
-    pattern_id: str
-    message: str
-    level: str  # "BLOCK" or "WARN"
 
 
 def load_config(config_path: Path | str | None = None) -> dict:
@@ -95,108 +105,6 @@ def load_config(config_path: Path | str | None = None) -> dict:
                     RED, config_path, NC,
                 )
             sys.exit(1)
-
-
-def is_git_repo() -> bool:
-    """Check if current directory is a git repository."""
-    result = subprocess.run(
-        ["git", "rev-parse", "--git-dir"],
-        capture_output=True,
-        text=True,
-    )
-    return result.returncode == 0
-
-
-def get_staged_files() -> list[str]:
-    """Get list of staged Python files."""
-    # Validate git repository first
-    if not is_git_repo():
-        return []
-
-    result = subprocess.run(
-        ["git", "diff", "--cached", "--name-only", "--diff-filter=ACM"],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        return []
-
-    files = [f for f in result.stdout.strip().split("\n") if f.endswith(".py")]
-    return [f for f in files if f and Path(f).exists()]
-
-
-def matches_pattern(filepath: str, patterns: list[str]) -> bool:
-    """Check if filepath matches any glob pattern (supports **)."""
-    from fnmatch import fnmatch
-    path = Path(filepath)
-    for p in patterns:
-        # Use Path.match for ** patterns, fnmatch for simple patterns
-        if "**" in p:
-            if path.match(p):
-                return True
-        elif fnmatch(filepath, p) or fnmatch(path.name, p):
-            return True
-    return False
-
-
-def is_test_file(filepath: str) -> bool:
-    """Check if file is a test file."""
-    name = Path(filepath).name
-    return name.startswith("test_") or name.endswith("_test.py") or "/tests/" in filepath
-
-
-# Suppression comment patterns
-SUPPRESS_PATTERNS = [
-    r"#\s*vibesrails:\s*ignore\b",           # vibesrails: ignore
-    r"#\s*vibesrails:\s*disable\b",          # vibesrails: disable (alias)
-    r"#\s*noqa:\s*vibesrails\b",             # noqa: vibesrails (familiar syntax)
-]
-SUPPRESS_REGEX = re.compile("|".join(SUPPRESS_PATTERNS), re.IGNORECASE)
-SUPPRESS_NEXT_LINE_REGEX = re.compile(
-    r"#\s*vibesrails:\s*ignore[_-]?next[_-]?line\b", re.IGNORECASE
-)
-SUPPRESS_PATTERN_REGEX = re.compile(
-    r"#\s*vibesrails:\s*ignore\s*\[([^\]]+)\]", re.IGNORECASE
-)
-
-
-def is_line_suppressed(line: str, pattern_id: str, prev_line: str | None = None) -> bool:
-    """Check if a line has inline or previous-line suppression comments."""
-    # Check same-line suppression
-    if SUPPRESS_REGEX.search(line):
-        # Check if it's pattern-specific
-        match = SUPPRESS_PATTERN_REGEX.search(line)
-        if match:
-            # Only suppress if pattern_id matches
-            suppressed_ids = [p.strip() for p in match.group(1).split(",")]
-            return pattern_id in suppressed_ids
-        return True  # Suppress all patterns
-
-    # Check previous line for ignore-next-line
-    if prev_line and SUPPRESS_NEXT_LINE_REGEX.search(prev_line):
-        return True
-
-    return False
-
-
-def safe_regex_search(pattern: str, text: str, flags: int = 0) -> bool:
-    """Safely execute regex search with error handling for ReDoS protection."""
-    try:
-        # Limit search to first 10000 chars per line to prevent ReDoS
-        return bool(re.search(pattern, text[:10000], flags))
-    except (re.error, RecursionError, MemoryError):
-        return False
-
-
-def is_path_safe(filepath: str) -> bool:
-    """Check if filepath is within current working directory (path traversal protection)."""
-    try:
-        file_path = Path(filepath).resolve()
-        cwd = Path.cwd().resolve()
-        file_path.relative_to(cwd)
-        return True
-    except (ValueError, RuntimeError):
-        return False
 
 
 def _collect_patterns(config: dict) -> tuple[list, list]:
@@ -360,165 +268,6 @@ def scan_file(filepath: str, config: dict) -> list[ScanResult]:
     results.extend(_scan_patterns(lines, filepath, all_warning, "WARN", allowed_patterns))
 
     return results
-
-
-def _show_section_patterns(patterns: list[dict]) -> None:
-    """Display patterns for a pro-coding section."""
-    for p in patterns:
-        level = p.get("level", "WARN")
-        scope = f" [scope: {p['scope']}]" if p.get("scope") else ""
-        skip = " (skip tests)" if p.get("skip_in_tests") else ""
-        logger.info(f"  [{level}] [{p['id']}] {p['name']}{scope}{skip}")
-        logger.info(f"    {p['message']}")
-
-
-def show_patterns(config: dict) -> None:
-    """Display all configured patterns."""
-    logger.info("=== vibesrails patterns ===")
-
-    logger.info("SECURITY (BLOCKING):")
-    for p in config.get("blocking", []):
-        logger.info(f"  [{p['id']}] {p['name']}")
-        logger.info(f"    {p['message']}")
-
-    logger.info("SECURITY (WARNINGS):")
-    for p in config.get("warning", []):
-        skip = " (skip tests)" if p.get("skip_in_tests") else ""
-        logger.info(f"  [{p['id']}] {p['name']}{skip}")
-        logger.info(f"    {p['message']}")
-
-    for section, emoji, title in [
-        ("bugs", "🐛", "BUGS SILENCIEUX"),
-        ("architecture", "🏗️", "ARCHITECTURE"),
-        ("maintainability", "🔧", "MAINTENABILITÉ"),
-    ]:
-        patterns = config.get(section, [])
-        if patterns:
-            logger.info(f"{emoji} {title}:")
-            _show_section_patterns(patterns)
-
-    logger.info("EXCEPTIONS:")
-    for name, exc in config.get("exceptions", {}).items():
-        logger.info(f"  {name}: {exc.get('reason', '')}")
-        logger.info(f"    files: {exc['patterns']}")
-        logger.info(f"    allowed: {exc['allowed']}")
-
-
-def validate_config(config: dict) -> bool:
-    """Validate vibesrails.yaml structure."""
-    errors = []
-
-    # Check required sections
-    if "blocking" not in config:
-        errors.append("Missing 'blocking' section")
-
-    if "version" not in config:
-        errors.append("Missing 'version' field")
-
-    # Check each blocking pattern
-    for i, p in enumerate(config.get("blocking", [])):
-        if "id" not in p:
-            errors.append(f"blocking[{i}]: missing 'id'")
-        if "regex" not in p:
-            errors.append(f"blocking[{i}]: missing 'regex'")
-        if "message" not in p:
-            errors.append(f"blocking[{i}]: missing 'message'")
-
-        # Validate regex compiles
-        try:
-            re.compile(p.get("regex", ""))
-        except re.error as e:
-            errors.append(f"blocking[{i}]: invalid regex: {e}")
-
-    if errors:
-        logger.info("Validation errors:")
-        for e in errors:
-            logger.info(f"  - {e}")
-        return False
-
-    logger.info("vibesrails.yaml is valid")
-    return True
-
-
-def get_all_python_files() -> list[str]:
-    """Get all Python files in project (excluding venv, archive, cache)."""
-    exclude = [
-        ".venv", "venv", "__pycache__", "_archive", "archive",
-        "node_modules", ".git", "build", "dist", ".egg-info",
-        ".mypy_cache", ".ruff_cache", ".pytest_cache",
-    ]
-    files = []
-    for p in Path(".").rglob("*.py"):
-        path_str = str(p)
-        if not any(ex in path_str for ex in exclude):
-            files.append(path_str)
-    return files
-
-
-def _determine_files(args) -> list[str]:
-    """Determine which files to scan based on CLI args."""
-    if args.file:
-        return [args.file] if Path(args.file).exists() else []
-    if args.all:
-        return get_all_python_files()
-    return get_staged_files()
-
-
-def _report_results(all_results: list[ScanResult]) -> int:
-    """Print scan results and return exit code."""
-    blocking = [r for r in all_results if r.level == "BLOCK"]
-    warnings = [r for r in all_results if r.level == "WARN"]
-
-    for r in blocking:
-        logger.info(f"BLOCK {r.file}:{r.line}")
-        logger.info(f"  [{r.pattern_id}] {r.message}")
-    for r in warnings:
-        logger.info(f"WARN {r.file}:{r.line}")
-        logger.info(f"  [{r.pattern_id}] {r.message}")
-
-    logger.info("=" * 30)
-    logger.info(f"BLOCKING: {len(blocking)} | WARNINGS: {len(warnings)}")
-
-    if blocking:
-        logger.info("Fix blocking issues before committing.")
-        return 1
-    logger.info("vibesrails: PASSED")
-    return 0
-
-
-def main() -> None:
-    """CLI entry point."""
-    import argparse
-
-    parser = argparse.ArgumentParser(description="vibesrails - Scale up your vibe coding safely")
-    parser.add_argument("--validate", action="store_true", help="Validate YAML config")
-    parser.add_argument("--show", action="store_true", help="Show all patterns")
-    parser.add_argument("--all", action="store_true", help="Scan all Python files")
-    parser.add_argument("--file", "-f", help="Scan specific file")
-    args = parser.parse_args()
-
-    config = load_config()
-
-    if args.validate:
-        sys.exit(0 if validate_config(config) else 1)
-    if args.show:
-        show_patterns(config)
-        sys.exit(0)
-
-    files = _determine_files(args)
-    logger.info("vibesrails - Security Scan")
-    logger.info("=" * 30)
-
-    if not files:
-        logger.info("No Python files to scan")
-        sys.exit(0)
-    logger.info(f"Scanning {len(files)} file(s)...")
-
-    all_results = []
-    for filepath in files:
-        all_results.extend(scan_file(filepath, config))
-
-    sys.exit(_report_results(all_results))
 
 
 if __name__ == "__main__":

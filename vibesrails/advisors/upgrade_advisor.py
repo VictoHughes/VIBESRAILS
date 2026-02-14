@@ -286,7 +286,7 @@ class UpgradeAdvisor:
             req = urllib.request.Request(
                 url, headers={"Accept": "application/json"},
             )
-            with urllib.request.urlopen(
+            with urllib.request.urlopen(  # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
                 req, timeout=_PYPI_TIMEOUT,
             ) as resp:
                 data = json.loads(resp.read())

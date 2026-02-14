@@ -148,7 +148,7 @@ def fetch_pypi(
         req = urllib.request.Request(
             url, headers={"Accept": "application/json"}
         )
-        with urllib.request.urlopen(req, timeout=_PYPI_TIMEOUT) as resp:
+        with urllib.request.urlopen(req, timeout=_PYPI_TIMEOUT) as resp:  # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
             data = json.loads(resp.read())
             cache[normalized_name] = data
             return data

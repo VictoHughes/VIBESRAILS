@@ -1,11 +1,7 @@
 """MCP tool: deep_hallucination — multi-level import hallucination analysis.
 
-Wraps core/hallucination_deep.py as an MCP-callable tool.
-Parses imports from a Python file and verifies them at up to 4 levels:
-  Level 1: Module importable locally?
-  Level 2: Package exists on PyPI? (slopsquatting detection)
-  Level 3: Specific symbol exists in the package?
-  Level 4: Symbol available in the installed version?
+Verifies imports at up to 4 levels: local import, PyPI registry (slopsquatting),
+symbol existence, and version compatibility.
 """
 
 from __future__ import annotations
@@ -18,6 +14,25 @@ from core.hallucination_deep import DeepHallucinationChecker
 from core.input_validator import InputValidationError, validate_enum, validate_int
 from core.learning_bridge import record_safe
 from core.path_validator import PathValidationError, validate_path
+
+from .deep_hallucination_pedagogy import (
+    error_result as _error_result,
+)
+from .deep_hallucination_pedagogy import (
+    pedagogy_level1 as _pedagogy_level1,
+)
+from .deep_hallucination_pedagogy import (
+    pedagogy_level2 as _pedagogy_level2,
+)
+from .deep_hallucination_pedagogy import (
+    pedagogy_level3 as _pedagogy_level3,
+)
+from .deep_hallucination_pedagogy import (
+    pedagogy_level4 as _pedagogy_level4,
+)
+from .deep_hallucination_pedagogy import (
+    pedagogy_slopsquatting as _pedagogy_slopsquatting,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -32,81 +47,6 @@ class _ParsedImport:
     full_module: str   # full dotted path (e.g. "requests.adapters")
     symbols: list[str] # imported names (e.g. ["HTTPAdapter"])
     line: int
-
-
-# ── Pedagogy templates ───────────────────────────────────────────────
-
-def _pedagogy_level1(module: str) -> dict:
-    return {
-        "why": (
-            f"L'import '{module}' n'existe pas dans l'environnement. "
-            "Ton IA a probablement invente ce module. Verifie sur PyPI."
-        ),
-        "how_to_fix": f"pip install {module} — or remove the import if it's hallucinated.",
-        "prevention": "Always verify unfamiliar imports before using AI-generated code.",
-    }
-
-
-def _pedagogy_level2(package: str, similar: list[str]) -> dict:
-    return {
-        "why": (
-            f"Le package '{package}' n'existe pas sur PyPI. C'est une "
-            "hallucination classique des LLMs. "
-            f"Packages similaires: {', '.join(similar) if similar else 'aucun'}."
-        ),
-        "how_to_fix": (
-            f"Remove '{package}' from your imports. "
-            + (f"Did you mean: {', '.join(similar)}?" if similar else "Search PyPI for alternatives.")
-        ),
-        "prevention": "Cross-reference AI-suggested packages on pypi.org before installing.",
-    }
-
-
-def _pedagogy_slopsquatting(package: str, similar: list[str]) -> dict:
-    return {
-        "why": (
-            f"ATTENTION: '{package}' n'existe pas mais "
-            f"'{', '.join(similar)}' oui. Un attaquant pourrait enregistrer "
-            f"'{package}' comme malware (slopsquatting). Ne l'installez PAS."
-        ),
-        "how_to_fix": (
-            f"Do NOT install '{package}'. Use the correct package name: "
-            f"{', '.join(similar)}."
-        ),
-        "prevention": (
-            "Slopsquatting exploits LLM typos in package names. "
-            "Always copy package names from the official registry, never from AI output."
-        ),
-    }
-
-
-def _pedagogy_level3(package: str, symbol: str, available: list[str]) -> dict:
-    return {
-        "why": (
-            f"Le package '{package}' existe mais '{symbol}' n'y est pas. "
-            f"Symboles disponibles: {', '.join(available[:5])}. "
-            "L'IA a invente cette API."
-        ),
-        "how_to_fix": (
-            f"Check {package}'s documentation for the correct API. "
-            f"Available: {', '.join(available[:5])}..."
-        ),
-        "prevention": "Always verify function/class names against official documentation.",
-    }
-
-
-def _pedagogy_level4(package: str, symbol: str, version: str | None) -> dict:
-    return {
-        "why": (
-            f"'{symbol}' n'existe pas dans {package} v{version or '?'}. "
-            "The AI may have referenced an API from a different version."
-        ),
-        "how_to_fix": (
-            f"Check which version of {package} introduced '{symbol}'. "
-            f"Currently installed: v{version or 'unknown'}."
-        ),
-        "prevention": "Pin package versions and verify API availability for your version.",
-    }
 
 
 # ── Import parser ────────────────────────────────────────────────────
@@ -355,13 +295,3 @@ def _check_import(
     }
 
 
-def _error_result(message: str) -> dict:
-    """Return a standardized error result."""
-    return {
-        "status": "error",
-        "imports_checked": 0,
-        "hallucinations": [],
-        "verified": [],
-        "unverifiable": [],
-        "error": message,
-    }

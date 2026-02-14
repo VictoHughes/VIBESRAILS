@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vibesrails"
-version = "2.1.1"
+version = "2.1.2"
 description = "Security guardrails for AI-assisted development"
 readme = "README.md"
 license = {text = "Apache-2.0"}
@@ -52,7 +52,7 @@ Repository = "https://github.com/VictoHughes/VIBESRAILS"
 "Buy Me a Coffee" = "https://buymeacoffee.com/vibesrails"
 
 [tool.setuptools]
-py-modules = ["mcp_server"]
+py-modules = ["mcp_server", "mcp_tools", "mcp_tools_ext"]
 
 [tool.setuptools.packages.find]
 where = ["."]

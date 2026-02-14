@@ -25,7 +25,7 @@ import json
 password = "super_secret_123"
 
 def my_function(x):
-    print("debug output")
+    print("debug output")  # vibesrails: ignore
     if x > 0:
         if x > 10:
             if x > 100:

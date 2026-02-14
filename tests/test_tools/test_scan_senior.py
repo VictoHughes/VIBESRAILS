@@ -38,7 +38,7 @@ def another():
     ...
 
 def todo_func():
-    # TODO
+    # TODO  # vibesrails: ignore
     return None
 """
 

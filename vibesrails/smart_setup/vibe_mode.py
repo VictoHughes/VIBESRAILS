@@ -9,50 +9,11 @@ import re
 from pathlib import Path
 
 from ..scanner import BLUE, GREEN, NC, RED, YELLOW
+from ._vibe_patterns import SKIP_DIRS as _SKIP_DIRS
+from ._vibe_patterns import VIBE_PROTECTIONS
 from .i18n import LANG, msg
 
 logger = logging.getLogger(__name__)
-
-# =============================================================================
-# PREDEFINED PROTECTION CATEGORIES
-# =============================================================================
-
-VIBE_PROTECTIONS = {
-    "api_keys": {
-        "name": "Clés API (OpenAI, Anthropic, AWS, Google...)",
-        "patterns": [
-            {"id": "openai_key", "regex": r"sk-[a-zA-Z0-9]{20,}", "message": "Clé OpenAI détectée"},
-            {"id": "anthropic_key", "regex": r"sk-ant-[a-zA-Z0-9-]{20,}", "message": "Clé Anthropic détectée"},
-            {"id": "aws_key", "regex": r"AKIA[0-9A-Z]{16}", "message": "Clé AWS détectée"},
-            {"id": "google_key", "regex": r"AIza[0-9A-Za-z-_]{35}", "message": "Clé Google API détectée"},
-            {"id": "github_token", "regex": r"ghp_[a-zA-Z0-9]{36}", "message": "Token GitHub détecté"},
-            {"id": "generic_api_key", "regex": r"['\"][a-zA-Z0-9]{32,}['\"]", "message": "Possible clé API détectée"},
-        ],
-    },
-    "passwords": {
-        "name": "Mots de passe hardcodés",
-        "patterns": [
-            {"id": "password_assign", "regex": r"password\s*=\s*['\"][^'\"]+['\"]", "message": "Mot de passe hardcodé"},
-            {"id": "pwd_assign", "regex": r"pwd\s*=\s*['\"][^'\"]+['\"]", "message": "Mot de passe hardcodé"},
-            {"id": "passwd_assign", "regex": r"passwd\s*=\s*['\"][^'\"]+['\"]", "message": "Mot de passe hardcodé"},
-        ],
-    },
-    "tokens": {
-        "name": "Tokens et secrets",
-        "patterns": [
-            {"id": "bearer_token", "regex": r"Bearer\s+[a-zA-Z0-9._-]+", "message": "Bearer token détecté"},
-            {"id": "jwt_token", "regex": r"eyJ[a-zA-Z0-9_-]*\.eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*", "message": "JWT token détecté"},
-            {"id": "secret_assign", "regex": r"secret\s*=\s*['\"][^'\"]+['\"]", "message": "Secret hardcodé"},
-        ],
-    },
-    "urls": {
-        "name": "URLs avec credentials",
-        "patterns": [
-            {"id": "url_with_creds", "regex": r"://[^:]+:[^@]+@", "message": "URL avec credentials détectée"},
-            {"id": "localhost_creds", "regex": r"localhost:[0-9]+.*password", "message": "Credentials localhost"},
-        ],
-    },
-}
 
 
 # =============================================================================
@@ -91,9 +52,6 @@ def _scan_line(line: str, rel_path: str, line_num: int, found: dict) -> None:
                     "preview": _mask_secret(match.group(0)),
                     "pattern_id": pattern_info["id"],
                 })
-
-
-_SKIP_DIRS = {".venv", "venv", "__pycache__", ".git", "node_modules"}
 
 
 def scan_for_secrets(project_root: Path) -> dict[str, list[dict]]:

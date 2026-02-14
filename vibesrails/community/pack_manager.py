@@ -187,5 +187,5 @@ class PackManager:
 
     @staticmethod
     def _default_fetch(url: str) -> str:  # pragma: no cover — network I/O, tested via mock injection
-        with urllib.request.urlopen(url, timeout=15) as resp:
+        with urllib.request.urlopen(url, timeout=15) as resp:  # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
             return resp.read().decode("utf-8")

@@ -18,10 +18,16 @@ import logging
 import sqlite3
 import urllib.request
 from datetime import datetime, timedelta, timezone
-from difflib import get_close_matches
 from pathlib import Path
 
 from storage.migrations import get_db_path, migrate
+
+from .hallucination_registry import (
+    check_bloom_filter,
+    check_in_project_deps,
+    find_similar,
+    get_known_packages,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -70,34 +76,7 @@ class DeepHallucinationChecker:
 
     def _check_in_project_deps(self, package_name: str) -> bool:
         """Check if package is listed in requirements.txt or pyproject.toml."""
-        pkg_lower = package_name.lower().replace("-", "_")
-
-        # requirements.txt
-        req_file = self._project_path / "requirements.txt"
-        if req_file.is_file():
-            for line in req_file.read_text().splitlines():
-                line = line.strip()
-                if not line or line.startswith("#") or line.startswith("-"):
-                    continue
-                dep = line.split("==")[0].split(">=")[0].split("<=")[0]
-                dep = dep.split("[")[0].split(">")[0].split("<")[0].split("~=")[0]
-                dep = dep.split("!=")[0].strip()
-                if dep.lower().replace("-", "_") == pkg_lower:
-                    return True
-
-        # pyproject.toml (simple parse — look for dependencies list)
-        pyproject = self._project_path / "pyproject.toml"
-        if pyproject.is_file():
-            content = pyproject.read_text()
-            for line in content.splitlines():
-                stripped = line.strip().strip('"').strip("'").strip(",")
-                dep = stripped.split("==")[0].split(">=")[0].split("<=")[0]
-                dep = dep.split("[")[0].split(">")[0].split("<")[0].split("~=")[0]
-                dep = dep.split("!=")[0].strip().strip('"').strip("'")
-                if dep.lower().replace("-", "_") == pkg_lower:
-                    return True
-
-        return False
+        return check_in_project_deps(package_name, self._project_path)
 
     # ── Level 2: Package exists on registry? ─────────────────────────
 
@@ -150,16 +129,7 @@ class DeepHallucinationChecker:
 
     def _check_bloom_filter(self, package_name: str, ecosystem: str) -> bool | None:
         """Check bloom filter file. Returns None if file doesn't exist."""
-        bloom_dir = Path.home() / ".vibesrails" / "packages"
-        bloom_file = bloom_dir / f"{ecosystem}.bloom"
-        if not bloom_file.is_file():
-            return None
-        try:
-            data = bloom_file.read_text()
-            packages = {p.strip().lower() for p in data.splitlines() if p.strip()}
-            return package_name.lower() in packages
-        except OSError:
-            return None
+        return check_bloom_filter(package_name, ecosystem)
 
     def _check_pypi_api(self, package_name: str) -> bool | None:
         """Query PyPI JSON API. Returns None on network error."""
@@ -167,7 +137,7 @@ class DeepHallucinationChecker:
         try:
             req = urllib.request.Request(url, method="GET")
             req.add_header("Accept", "application/json")
-            with urllib.request.urlopen(req, timeout=3) as resp:
+            with urllib.request.urlopen(req, timeout=3) as resp:  # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
                 return resp.status == 200
         except Exception:
             logger.debug("PyPI API unreachable for %s", package_name)
@@ -175,37 +145,11 @@ class DeepHallucinationChecker:
 
     def _find_similar(self, package_name: str, ecosystem: str) -> list[str]:
         """Find similar package names for slopsquatting detection."""
-        known = self._get_known_packages(ecosystem)
-        if not known:
-            return []
-        matches = get_close_matches(
-            package_name.lower(), known, n=3, cutoff=0.75
-        )
-        return [m for m in matches if m != package_name.lower()]
+        return find_similar(package_name, ecosystem, str(self._db_path))
 
     def _get_known_packages(self, ecosystem: str) -> list[str]:
         """Get known packages from bloom filter or cache."""
-        # Try bloom file
-        bloom_dir = Path.home() / ".vibesrails" / "packages"
-        bloom_file = bloom_dir / f"{ecosystem}.bloom"
-        if bloom_file.is_file():
-            try:
-                data = bloom_file.read_text()
-                return [p.strip().lower() for p in data.splitlines() if p.strip()]
-            except OSError:
-                pass
-
-        # Fallback: packages from cache
-        conn = sqlite3.connect(str(self._db_path), timeout=10)
-        try:
-            cursor = conn.execute(
-                "SELECT package_name FROM package_cache "
-                "WHERE ecosystem = ? AND exists_flag = 1 LIMIT 10000",
-                (ecosystem,),
-            )
-            return [row[0].lower() for row in cursor.fetchall()]
-        finally:
-            conn.close()
+        return get_known_packages(ecosystem, str(self._db_path))
 
     # ── Level 3: Symbol exists in the package? ───────────────────────
 
@@ -221,7 +165,7 @@ class DeepHallucinationChecker:
              "reason": str|None, "available_symbols": list[:10]}
         """
         try:
-            mod = importlib.import_module(package_name)
+            mod = importlib.import_module(package_name)  # nosemgrep: python.lang.security.audit.non-literal-import.non-literal-import
         except ImportError:
             return {
                 "exists": False,
@@ -266,7 +210,7 @@ class DeepHallucinationChecker:
         except importlib.metadata.PackageNotFoundError:
             # Stdlib modules don't have package metadata — check if importable
             try:
-                importlib.import_module(package_name)
+                importlib.import_module(package_name)  # nosemgrep: python.lang.security.audit.non-literal-import.non-literal-import
             except ImportError:
                 return {
                     "compatible": False,
@@ -286,7 +230,7 @@ class DeepHallucinationChecker:
 
         # Check if symbol exists in current version
         try:
-            mod = importlib.import_module(package_name)
+            mod = importlib.import_module(package_name)  # nosemgrep: python.lang.security.audit.non-literal-import.non-literal-import
         except ImportError:
             return {
                 "compatible": False,

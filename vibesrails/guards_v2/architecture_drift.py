@@ -8,62 +8,17 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from ._arch_layers import (
+    allowed_deps as _allowed_deps,
+)
+from ._arch_layers import (
+    layer_for_dir as _layer_for_dir,
+)
 from .dependency_audit import V2GuardIssue
 
 logger = logging.getLogger(__name__)
 
 GUARD = "ArchitectureDriftGuard"
-
-LAYER_DEFS: dict[str, tuple[list[str], list[str]]] = {
-    "domain": (
-        ["domain", "models"],
-        [],
-    ),
-    "infrastructure": (
-        ["infrastructure", "adapters"],
-        ["domain"],
-    ),
-    "service": (
-        ["services", "application"],
-        ["domain"],
-    ),
-    "presentation": (
-        ["api", "routes", "views"],
-        ["service"],
-    ),
-}
-
-
-def _layer_for_dir(dirname: str) -> str | None:
-    """Return layer name for a directory, or None."""
-    for layer, (dirs, _) in LAYER_DEFS.items():
-        if dirname in dirs:
-            return layer
-    return None
-
-
-def _allowed_deps(layer: str) -> list[str]:
-    """Return allowed dependency layers for a given layer."""
-    for name, (_, deps) in LAYER_DEFS.items():
-        if name == layer:
-            return deps
-    return []
-
-
-def _all_layer_dirs() -> set[str]:
-    """All directory names that map to a layer."""
-    result: set[str] = set()
-    for _, (dirs, _) in LAYER_DEFS.items():
-        result.update(dirs)
-    return result
-
-
-def _dirs_for_layer(layer: str) -> list[str]:
-    """Return directory names for a layer."""
-    for name, (dirs, _) in LAYER_DEFS.items():
-        if name == layer:
-            return dirs
-    return []
 
 
 class ArchitectureDriftGuard:

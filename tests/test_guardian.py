@@ -349,7 +349,7 @@ class TestApplyGuardianRules:
     def test_applies_stricter_patterns_to_file(self, tmp_path):
         """Apply stricter_patterns regex to file content."""
         target = tmp_path / "code.py"
-        target.write_text("x = 1\n# TODO fix later\ny = 2\n")
+        target.write_text("x = 1\n# TODO fix later\ny = 2\n")  # vibesrails: ignore
         config = {
             "guardian": {
                 "enabled": True,

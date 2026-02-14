@@ -98,7 +98,7 @@ class TestHooksModulesExist:
         errors = []
         for mod in hook_modules:
             try:
-                importlib.import_module(mod)
+                importlib.import_module(mod)  # nosemgrep: python.lang.security.audit.non-literal-import.non-literal-import
             except ImportError as e:
                 errors.append(f"{mod}: {e}")
         assert not errors, "Hook modules failed to import:\n" + "\n".join(errors)

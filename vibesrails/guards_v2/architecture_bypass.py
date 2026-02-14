@@ -13,8 +13,8 @@ GUARD = "ArchitectureDriftGuard"
 
 def _all_layer_dirs() -> set[str]:
     """All directory names that map to a layer."""
-    from .architecture_drift import _all_layer_dirs as _impl
-    return _impl()
+    from ._arch_layers import all_layer_dirs
+    return all_layer_dirs()
 
 
 def _has_all_assignment(stmts: list[ast.stmt]) -> bool:

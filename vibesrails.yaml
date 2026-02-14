@@ -149,6 +149,14 @@ exceptions:
       - "mutable_default"
     reason: "Tests peuvent mocker patterns dangereux"
 
+  cli_files:
+    patterns:
+      - "**/cli.py"
+      - "mcp_server.py"
+    allowed:
+      - "print_statement"
+    reason: "CLI/MCP entry points use print() for user output"
+
   config_files:
     patterns:
       - "**/settings.py"

@@ -6,7 +6,7 @@ vibesrails - Scale up your vibe coding safely.
 A YAML-driven security and quality scanner for Python projects.
 """
 
-__version__ = "2.1.1"
+__version__ = "2.1.2"
 
 from .scanner import (
     ScanResult,

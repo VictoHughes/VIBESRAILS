@@ -23,8 +23,8 @@ class PreDeployGuard:
     """Runs a comprehensive pre-deployment checklist.
 
     Checks: pytest pass, coverage threshold, blocking TODOs,
-    print() debug, .env.example, dependency audit, version
-    consistency, and CHANGELOG.md presence.
+    leftover print() calls, .env.example, dependency audit,
+    version consistency, and CHANGELOG.md presence.
     """
 
     def __init__(

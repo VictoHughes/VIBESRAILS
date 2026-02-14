@@ -1,95 +1,48 @@
 """Pre-Generation Discipline — enforce structured briefs before code generation.
 
-Validates that AI coding briefs contain sufficient context to produce
-reliable code. Scores briefs on required + optional fields, detects
-vague/lazy prompts, and suggests improvements.
-
-Scoring:
-  Required fields (intent, constraints, affects): 20 points each = max 60
-  Optional fields (tradeoffs, rollback, dependencies): ~13.33 each = max 40
-  Total: 0-100
-
-Levels:
-  0-39:  insufficient (block) — brief too vague
-  40-59: minimal (warn) — passable but risky
-  60-79: adequate (pass) — acceptable
-  80-100: strong (pass) — solid brief
+Scores briefs 0-100 on required (intent, constraints, affects) and optional
+(tradeoffs, rollback, dependencies) fields. Levels: insufficient (<40),
+minimal (40-59), adequate (60-79), strong (80+).
 """
 
 from __future__ import annotations
 
 import json
 import logging
-import re
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
 from storage.migrations import get_db_path, migrate
 
+from .brief_enforcer_patterns import (  # noqa: I001
+    ACTION_VERBS as _ACTION_VERBS,
+)
+from .brief_enforcer_patterns import (
+    FILE_PATTERN as _FILE_PATTERN,
+)
+from .brief_enforcer_patterns import (
+    MIN_FIELD_LENGTH as _MIN_FIELD_LENGTH,
+)
+from .brief_enforcer_patterns import (
+    OPTIONAL_FIELDS,
+    REQUIRED_FIELDS,
+    classify_level,
+)
+from .brief_enforcer_patterns import (
+    OPTIONAL_POINTS as _OPTIONAL_POINTS,
+)
+from .brief_enforcer_patterns import (
+    REQUIRED_POINTS as _REQUIRED_POINTS,
+)
+from .brief_enforcer_patterns import (
+    TECH_PATTERN as _TECH_PATTERN,
+)
+from .brief_enforcer_patterns import (
+    VAGUE_PATTERNS as _VAGUE_PATTERNS,
+)
+
 logger = logging.getLogger(__name__)
-
-# ── Field definitions ────────────────────────────────────────────────
-
-REQUIRED_FIELDS = {
-    "intent": "What should the AI generate?",
-    "constraints": "What constraints or limits apply?",
-    "affects": "Which files or modules are impacted?",
-}
-
-OPTIONAL_FIELDS = {
-    "tradeoffs": "What tradeoffs are acceptable?",
-    "rollback": "How to undo if something breaks?",
-    "dependencies": "What existing dependencies are relevant?",
-}
-
-# Points per field
-_REQUIRED_POINTS = 20.0  # 3 fields * 20 = 60
-_OPTIONAL_POINTS = 40.0 / 3  # ~13.33 per field, 3 fields = 40
-
-_MIN_FIELD_LENGTH = 10
-
-# ── Vague patterns ───────────────────────────────────────────────────
-
-_VAGUE_PATTERNS = [
-    re.compile(r"^fix\s+it\b", re.IGNORECASE),
-    re.compile(r"^make\s+it\s+work\b", re.IGNORECASE),
-    re.compile(r"^do\s+(the|this)\s+thing\b", re.IGNORECASE),
-    re.compile(r"^just\s+(do|fix|make)\b", re.IGNORECASE),
-    re.compile(r"^update\s+it\b", re.IGNORECASE),
-    re.compile(r"^change\s+it\b", re.IGNORECASE),
-    re.compile(r"^handle\s+it\b", re.IGNORECASE),
-    re.compile(r"^idk\b", re.IGNORECASE),
-    re.compile(r"^whatever\b", re.IGNORECASE),
-]
-
-_ACTION_VERBS = re.compile(
-    r"\b(add|create|implement|build|remove|delete|refactor|extract|"
-    r"migrate|replace|split|merge|move|rename|convert|validate|"
-    r"check|test|scan|parse|generate|compute|calculate|return)\b",
-    re.IGNORECASE,
-)
-
-_FILE_PATTERN = re.compile(r"\b[\w/]+\.\w{1,4}\b")
-_TECH_PATTERN = re.compile(
-    r"\b(timeout|retry|cache|async|sync|thread|queue|api|rest|"
-    r"sql|orm|jwt|oauth|http|tcp|udp|ssl|tls|json|xml|yaml|"
-    r"utf|ascii|regex|hash|encrypt|compress|index|schema)\b",
-    re.IGNORECASE,
-)
-
-
-# ── Classification ───────────────────────────────────────────────────
-
-def classify_level(score: int) -> str:
-    """Classify a brief score into a level."""
-    if score < 40:
-        return "insufficient"
-    if score < 60:
-        return "minimal"
-    if score < 80:
-        return "adequate"
-    return "strong"
 
 
 # ── BriefEnforcer ────────────────────────────────────────────────────
@@ -254,41 +207,19 @@ class BriefEnforcer:
     # ── Suggestions ──────────────────────────────────────────────
 
     def suggest_improvement(self, brief: dict) -> list[str]:
-        """Generate improvement suggestions for a brief.
+        """Generate improvement suggestions for a brief."""
+        from .brief_enforcer_patterns import IMPROVEMENT_SUGGESTIONS
 
-        Returns a list of actionable questions/tips.
-        """
         validation = self.validate_brief(brief)
         suggestions: list[str] = []
 
-        _SUGGESTIONS = {
-            "intent": "Decris en une phrase ce que le code doit faire.",
-            "constraints": (
-                "Quelles sont les limites ? (perf, compat, taille, "
-                "no external deps...)"
-            ),
-            "affects": "Quels fichiers ou modules seront modifies ?",
-            "tradeoffs": (
-                "Quel compromis acceptes-tu ? "
-                "(vitesse vs lisibilite, simplicite vs flexibilite...)"
-            ),
-            "rollback": (
-                "Comment annuler si ca casse ? "
-                "(git revert, feature flag, migration down...)"
-            ),
-            "dependencies": (
-                "Quelles dependances existantes sont concernees ? "
-                "(packages, modules internes, APIs...)"
-            ),
-        }
-
         for field in validation["missing_required"]:
-            if field in _SUGGESTIONS:
-                suggestions.append(f"[REQUIRED] {field}: {_SUGGESTIONS[field]}")
+            if field in IMPROVEMENT_SUGGESTIONS:
+                suggestions.append(f"[REQUIRED] {field}: {IMPROVEMENT_SUGGESTIONS[field]}")
 
         for field in validation["missing_optional"]:
-            if field in _SUGGESTIONS:
-                suggestions.append(f"[OPTIONAL] {field}: {_SUGGESTIONS[field]}")
+            if field in IMPROVEMENT_SUGGESTIONS:
+                suggestions.append(f"[OPTIONAL] {field}: {IMPROVEMENT_SUGGESTIONS[field]}")
 
         for field, flags in validation["field_issues"].items():
             if "too_vague" in flags:

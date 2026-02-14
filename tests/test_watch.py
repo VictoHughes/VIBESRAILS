@@ -573,7 +573,7 @@ class TestWatchIntegration:
                 {
                     "id": "todo",
                     "name": "TODO",
-                    "regex": r"# TODO:",
+                    "regex": r"# TODO:",  # vibesrails: ignore
                     "message": "Address TODO",
                 }
             ],
@@ -584,7 +584,7 @@ class TestWatchIntegration:
 
         # Create multiple test files
         file1 = tmp_path / "file1.py"
-        file1.write_text("# TODO: fix this")
+        file1.write_text("# TODO: fix this")  # vibesrails: ignore
 
         file2 = tmp_path / "file2.py"
         file2.write_text("# Clean file")
@@ -719,13 +719,13 @@ class TestHandlerConfig:
             "blocking": [],
             "warning": [
                 {"id": "todo", "name": "TODO",
-                 "regex": r"# TODO", "message": "Fix TODO"}
+                 "regex": r"# TODO", "message": "Fix TODO"}  # vibesrails: ignore
             ],
             "exceptions": {},
         }
         handler = VibesRailsHandler(config)
         f = tmp_path / "todo.py"
-        f.write_text("# TODO fix this\n")
+        f.write_text("# TODO fix this\n")  # vibesrails: ignore
         original_cwd = os.getcwd()
         os.chdir(tmp_path)
         try:

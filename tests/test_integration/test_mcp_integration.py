@@ -13,6 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 import mcp_server  # noqa: E402
+from mcp_tools_ext import ping as mcp_ping  # noqa: E402
 from tools.check_session import check_session  # noqa: E402
 from tools.monitor_entropy import monitor_entropy  # noqa: E402
 from tools.scan_code import scan_code  # noqa: E402
@@ -133,7 +134,7 @@ class TestCombinedScan:
             )
 
     def test_ping_returns_version(self):
-        result = mcp_server.ping()
+        result = mcp_ping()
         assert result["status"] == "ok"
         assert result["version"] == mcp_server.VERSION
 
