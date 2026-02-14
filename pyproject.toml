@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vibesrails"
-version = "2.1.2"
+version = "2.1.3"
 description = "Security guardrails for AI-assisted development"
 readme = "README.md"
 license = {text = "Apache-2.0"}
