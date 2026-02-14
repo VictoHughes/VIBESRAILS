@@ -362,3 +362,31 @@ class TestPersistence:
         assert session["total_changes_loc"] == 50
         assert session["violations_count"] == 2
         assert session["files_modified"] == ["a.py"]
+
+
+# ── Log redaction ────────────────────────────────────────────────────
+
+
+class TestLogRedaction:
+    """Verify project_path is not leaked in logs."""
+
+    def test_start_session_logs_basename_only(self, tmp_path, caplog):
+        """start_session must log only the project basename, not the full path."""
+        import logging
+        db = tmp_path / "test.db"
+        tracker = SessionTracker(db_path=db)
+        full_path = "/home/alice/secret_org/internal_project"
+        with caplog.at_level(logging.INFO, logger="core.session_tracker"):
+            tracker.start_session(full_path, ai_tool="test")
+        log_text = caplog.text
+        assert "internal_project" in log_text
+        assert "/home/alice/secret_org" not in log_text
+
+    def test_start_session_does_not_leak_username(self, tmp_path, caplog):
+        """Ensure the log does not contain parent directories."""
+        import logging
+        db = tmp_path / "test.db"
+        tracker = SessionTracker(db_path=db)
+        with caplog.at_level(logging.INFO, logger="core.session_tracker"):
+            tracker.start_session("/Users/bob/Dev/myapp", ai_tool="claude")
+        assert "/Users/bob/Dev" not in caplog.text

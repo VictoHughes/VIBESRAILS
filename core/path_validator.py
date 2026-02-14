@@ -84,6 +84,36 @@ def _check_sandbox(resolved: Path) -> None:
         raise PathValidationError("Path outside allowed roots.")
 
 
+def _check_nested_symlinks(original_path: str) -> None:
+    """Check that no component of the original path is a symlink to a denied root.
+
+    Prevents attacks where a directory inside the path is symlinked
+    to an external location (e.g. /project/config -> /etc).
+    We walk the original (unresolved) path components because
+    os.path.realpath() would hide the symlink.
+
+    Skips benign OS-level symlinks (e.g. macOS /tmp -> /private/tmp)
+    by verifying that the symlink target does not resolve to a denied root.
+    """
+    current = Path(original_path).absolute()
+    for parent in current.parents:
+        if parent == parent.parent:
+            break  # reached filesystem root
+        if parent.is_symlink():
+            # Check if this symlink leads to a denied root
+            target = Path(os.path.realpath(str(parent)))
+            target_str = str(target)
+            for denied in DENIED_ROOTS:
+                denied_resolved = os.path.realpath(denied)
+                if (
+                    target_str == denied
+                    or target_str.startswith(denied + "/")
+                    or target_str == denied_resolved
+                    or target_str.startswith(denied_resolved + "/")
+                ):
+                    raise PathValidationError("Symlinks are not allowed.")
+
+
 def validate_path(
     path: str,
     *,
@@ -128,6 +158,8 @@ def validate_path(
         original = Path(path)
         if original.is_symlink():
             raise PathValidationError("Symlinks are not allowed.")
+        # Check all components of the original path for nested symlinks
+        _check_nested_symlinks(path)
 
     if must_exist and not resolved.exists():
         raise PathValidationError("Path does not exist.")

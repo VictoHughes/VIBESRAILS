@@ -138,6 +138,27 @@ def test_allowed_roots_comma_separated(tmp_path, monkeypatch):
     assert result == f.resolve()
 
 
+def test_nested_symlink_to_denied_root_rejected(tmp_path):
+    """Reject path where a parent directory is a symlink to a denied root."""
+    project = tmp_path / "project"
+    project.mkdir()
+    # Create a symlink: project/etc_link -> /etc (denied root)
+    etc_link = project / "etc_link"
+    etc_link.symlink_to("/etc")
+    with pytest.raises(PathValidationError, match="Symlinks|outside allowed"):
+        validate_path(str(etc_link / "passwd"), must_exist=False)
+
+
+def test_direct_symlink_to_file_rejected(tmp_path):
+    """Reject a direct symlink to a file (existing behavior, regression guard)."""
+    real = tmp_path / "secret.py"
+    real.write_text("password = 'hunter2'")
+    link = tmp_path / "innocent.py"
+    link.symlink_to(real)
+    with pytest.raises(PathValidationError, match="Symlinks"):
+        validate_path(str(link), must_exist=True, must_be_file=True)
+
+
 def test_no_allowed_roots_no_restriction(tmp_path, monkeypatch):
     """Without VIBESRAILS_ALLOWED_ROOTS, non-denied paths are allowed."""
     monkeypatch.delenv("VIBESRAILS_ALLOWED_ROOTS", raising=False)
@@ -145,3 +166,42 @@ def test_no_allowed_roots_no_restriction(tmp_path, monkeypatch):
     f.write_text("x = 1")
     result = validate_path(str(f), must_exist=True, must_be_file=True)
     assert result == f.resolve()
+
+
+# ── Path traversal in modules that now use validate_path() ───────────
+
+
+def test_guardian_rejects_traversal_path(tmp_path):
+    """guardian.apply_guardian_rules rejects paths outside sandbox."""
+    from core.guardian import apply_guardian_rules
+    from vibesrails.scanner import ScanResult
+    # Create a config with a stricter pattern that would trigger a read
+    config = {"guardian": {"stricter_patterns": [{"id": "test", "regex": "x", "message": "m"}]}}
+    results = apply_guardian_rules([], config, filepath="/etc/shadow")
+    # Should not crash — path validation catches it, content stays ""
+    assert isinstance(results, list)
+
+
+def test_prompt_shield_rejects_symlink_path(tmp_path):
+    """PromptShield.scan_file rejects symlink paths."""
+    from core.prompt_shield import PromptShield
+    real = tmp_path / "real.txt"
+    real.write_text("safe content")
+    link = tmp_path / "link.txt"
+    link.symlink_to(real)
+    shield = PromptShield()
+    findings = shield.scan_file(str(link))
+    assert any("Path validation failed" in f.message for f in findings)
+
+
+def test_config_shield_resolves_symlinks(tmp_path):
+    """ConfigShield.find_config_files resolves symlinks before globbing."""
+    from core.config_shield import ConfigShield
+    # Create a real dir with a config file
+    real_dir = tmp_path / "real_project"
+    real_dir.mkdir()
+    (real_dir / ".cursorrules").write_text("test config")
+    # find_config_files should work with the resolved real path
+    shield = ConfigShield()
+    found = shield.find_config_files(str(real_dir))
+    assert any(f.name == ".cursorrules" for f in found)

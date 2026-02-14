@@ -139,8 +139,10 @@ def apply_guardian_rules(
     stricter = get_stricter_patterns(config)
     if stricter and filepath:
         try:
-            content = Path(filepath).read_text(encoding="utf-8", errors="replace")
-        except OSError:
+            from core.path_validator import PathValidationError, validate_path
+            validated = validate_path(filepath, must_exist=True, must_be_file=True)
+            content = validated.read_text(encoding="utf-8", errors="replace")
+        except (OSError, PathValidationError):
             content = ""
         for pattern_def in stricter:
             pat_id = pattern_def.get("id", "custom")

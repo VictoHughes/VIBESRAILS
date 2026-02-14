@@ -110,7 +110,8 @@ class SessionTracker:
         finally:
             conn.close()
 
-        logger.info("Session started: %s (project=%s, ai=%s)", session_id, project_path, ai_tool)
+        project_name = Path(project_path).name if project_path else "unknown"
+        logger.info("Session started: %s (project=%s, ai=%s)", session_id, project_name, ai_tool)
         return session_id
 
     def update_session(

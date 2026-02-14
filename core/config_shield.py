@@ -142,7 +142,8 @@ class ConfigShield:
 
     def find_config_files(self, project_path: str | Path) -> list[Path]:
         """Find all AI config files in a project directory."""
-        root = Path(project_path)
+        import os
+        root = Path(os.path.realpath(str(project_path)))
         found: list[Path] = []
 
         for pattern in AI_CONFIG_PATTERNS:

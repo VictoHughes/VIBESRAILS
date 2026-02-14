@@ -78,7 +78,17 @@ class PromptShield:
 
     def scan_file(self, file_path: str | Path) -> list[ShieldFinding]:
         """Read and scan a file for prompt injection."""
-        path = Path(file_path)
+        from core.path_validator import PathValidationError, validate_path
+        try:
+            path = validate_path(str(file_path), must_exist=True, must_be_file=True)
+        except PathValidationError as exc:
+            return [ShieldFinding(
+                category="system_override",
+                severity="block",
+                message=f"Path validation failed: {exc}",
+                line=0,
+                matched_text="[invalid path]",
+            )]
         if path.stat().st_size > self._MAX_TEXT_SIZE:
             return [ShieldFinding(
                 category="system_override",

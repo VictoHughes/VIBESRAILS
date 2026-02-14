@@ -252,7 +252,7 @@ def _prompt_custom_patterns(project_name: str) -> list[dict]:
             pattern = natural_language_to_pattern(user_input, project_name)
 
             if pattern:
-                logger.info(f"  {BLUE}→ {msg('will_block')}: {pattern['regex']}{NC}")
+                logger.info(f"  {BLUE}→ {msg('will_block')}: {_mask_secret(pattern['regex'])}{NC}")
                 if prompt_user(f"  {msg('confirm')}", default="y"):
                     selected.append(pattern)
                     logger.info(f"  {GREEN}✓ {msg('added')}{NC}")
