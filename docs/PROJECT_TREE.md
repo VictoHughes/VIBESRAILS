@@ -1,4 +1,4 @@
-~/Dev/vibesrails
+.
 ├── adapters
 │   ├── __init__.py
 │   └── semgrep_adapter.py
