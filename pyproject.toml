@@ -61,6 +61,7 @@ include = ["vibesrails*", "tools*", "core*", "adapters*", "storage*"]
 [tool.setuptools.package-data]
 vibesrails = [
     "config/*.yaml",
+    "config/*.template",
     "packs/*.yaml",
     "claude_integration/*.json",
     "claude_integration/*.md",

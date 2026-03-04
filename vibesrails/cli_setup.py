@@ -31,6 +31,36 @@ def get_default_config_path() -> Path:
     return Path(__file__).parent / "config" / "default.yaml"
 
 
+def get_decisions_template_path() -> Path:
+    """Get path to bundled decisions.md template."""
+    return Path(__file__).parent / "config" / "decisions.md.template"
+
+
+def create_decisions_md(project_root: Path) -> bool:
+    """Create decisions.md from template if it doesn't exist anywhere."""
+    candidates = [
+        project_root / "docs" / "decisions.md",
+        project_root / "decisions.md",
+        project_root / ".vibesrails" / "decisions.md",
+    ]
+    for path in candidates:
+        if path.exists():
+            logger.info(f"{YELLOW}decisions.md already exists at {path}{NC}")
+            return False
+
+    template = get_decisions_template_path()
+    if not template.exists():
+        logger.debug("decisions.md template not found at %s", template)
+        return False
+
+    target_dir = project_root / "docs"
+    target_dir.mkdir(exist_ok=True)
+    target = target_dir / "decisions.md"
+    shutil.copy(template, target)
+    logger.info(f"{GREEN}Created {target}{NC}")
+    return True
+
+
 def init_config(target: Path = Path("vibesrails.yaml")) -> bool:
     """Initialize vibesrails.yaml in current project."""
     if target.exists():
@@ -44,10 +74,14 @@ def init_config(target: Path = Path("vibesrails.yaml")) -> bool:
 
     shutil.copy(default_config, target)
     logger.info(f"{GREEN}Created {target}{NC}")
+
+    create_decisions_md(Path.cwd())
+
     logger.info("Next steps:")
     logger.info(f"  1. Edit {target} to customize patterns")
-    logger.info("  2. Run: vibesrails --hook  (install git pre-commit)")
-    logger.info("  3. Code freely - vibesrails runs on every commit")
+    logger.info("  2. Edit docs/decisions.md with your project decisions")
+    logger.info("  3. Run: vibesrails --hook  (install git pre-commit)")
+    logger.info("  4. Code freely - vibesrails runs on every commit")
     return True
 
 

@@ -150,6 +150,11 @@ def _create_config_files(project_root: Path, config_content: str, architecture_c
 
     result["claude_md_created"] = True
 
+    # decisions.md
+    from ..cli_setup import create_decisions_md
+    if create_decisions_md(project_root):
+        result["decisions_md_created"] = True
+
     # Claude Code hooks
     result["hooks_installed"] = False
     if interactive:
@@ -249,6 +254,8 @@ def smart_setup(
     logger.info(f"  - vibesrails.yaml ({msg('config_file')})")
     logger.info(f"  - .git/hooks/pre-commit ({msg('auto_scan')})")
     logger.info(f"  - CLAUDE.md ({msg('claude_instructions')})")
+    if result.get("decisions_md_created"):
+        logger.info("  - docs/decisions.md (project decisions)")
     if result.get("hooks_installed"):
         logger.info(f"  - .claude/hooks.json ({msg('claude_hooks')})")
     logger.info(f"\n{msg('next_steps')}:")
