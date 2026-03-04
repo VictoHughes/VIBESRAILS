@@ -32,12 +32,9 @@ ENTROPY_LEVELS = {
 
 def classify_entropy(score: float) -> str:
     """Classify an entropy score into a level."""
-    if score < 0.3:
-        return "safe"
-    if score < 0.6:
-        return "warning"
-    if score < 0.8:
-        return "elevated"
+    for level, (low, high) in ENTROPY_LEVELS.items():
+        if low <= score < high:
+            return level
     return "critical"
 
 

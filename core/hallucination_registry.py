@@ -6,6 +6,8 @@ import sqlite3
 from difflib import get_close_matches
 from pathlib import Path
 
+_SIMILARITY_CUTOFF = 0.75  # Minimum similarity score for slopsquatting detection
+
 
 def check_bloom_filter(package_name: str, ecosystem: str) -> bool | None:
     """Check bloom filter file. Returns None if file doesn't exist."""
@@ -27,7 +29,7 @@ def find_similar(package_name: str, ecosystem: str, db_path: str) -> list[str]:
     if not known:
         return []
     matches = get_close_matches(
-        package_name.lower(), known, n=3, cutoff=0.75
+        package_name.lower(), known, n=3, cutoff=_SIMILARITY_CUTOFF
     )
     return [m for m in matches if m != package_name.lower()]
 

@@ -44,6 +44,16 @@ from .brief_enforcer_patterns import (
 
 logger = logging.getLogger(__name__)
 
+# ── Scoring constants ────────────────────────────────────────────────
+_TEXT_FIELD_BASE_SCORE = 0.6      # Starting score for a text field with content
+_ACTION_VERB_BONUS = 0.15         # Bonus when action verb detected
+_FILE_REF_BONUS = 0.15            # Bonus when file reference found
+_TECH_TERM_BONUS = 0.10           # Bonus when technical terms present
+_LIST_FIELD_BASE_SCORE = 0.6      # Starting score for a list field with content
+_LIST_MULTI_ITEM_BONUS = 0.2      # Bonus for 2+ valid items
+_LIST_EXTRA_ITEM_BONUS = 0.1      # Bonus for 3+ valid items
+_LIST_FILE_REF_BONUS = 0.1        # Bonus when list items reference files
+
 
 # ── BriefEnforcer ────────────────────────────────────────────────────
 
@@ -148,21 +158,21 @@ class BriefEnforcer:
             return {"score": 0.0, "flags": ["too_short"]}
 
         # Base score
-        base = 0.6
+        base = _TEXT_FIELD_BASE_SCORE
 
         # Bonus: action verb detected
         if _ACTION_VERBS.search(text):
-            base += 0.15
+            base += _ACTION_VERB_BONUS
         else:
             flags.append("no_action")
 
         # Bonus: file references
         if _FILE_PATTERN.search(text):
-            base += 0.15
+            base += _FILE_REF_BONUS
 
         # Bonus: technical terms
         if _TECH_PATTERN.search(text):
-            base += 0.10
+            base += _TECH_TERM_BONUS
 
         return {"score": min(1.0, base), "flags": flags}
 
@@ -189,18 +199,18 @@ class BriefEnforcer:
 
         # Score based on quality of items
         flags: list[str] = []
-        base = 0.6
+        base = _LIST_FIELD_BASE_SCORE
 
         # More items = better
         if len(valid_items) >= 2:
-            base += 0.2
+            base += _LIST_MULTI_ITEM_BONUS
         if len(valid_items) >= 3:
-            base += 0.1
+            base += _LIST_EXTRA_ITEM_BONUS
 
         # Check for specificity
         all_text = " ".join(valid_items)
         if _FILE_PATTERN.search(all_text):
-            base += 0.1
+            base += _LIST_FILE_REF_BONUS
 
         return {"score": min(1.0, base), "flags": flags}
 
