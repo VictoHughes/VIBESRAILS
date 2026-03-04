@@ -44,7 +44,8 @@ def _check_rate_limit(tool_name: str) -> dict | None:
 async def lifespan(server: FastMCP):
     """Run database migrations at startup."""
     migrate()
-    log_server_start(VERSION, tools_count=12)
+    tools = await mcp.list_tools()
+    log_server_start(VERSION, tools_count=len(tools))
     yield
 
 
