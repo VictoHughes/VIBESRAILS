@@ -187,6 +187,12 @@ def _dispatch_single_guard(args) -> None:
         logger.info(guard.generate_report(issues))
         sys.exit(1 if any(i.severity == "block" for i in issues) else 0)
 
+    if args.preflight:
+        from .preflight import exit_code, format_report, run_preflight
+        results = run_preflight(Path.cwd())
+        logger.info(format_report(results))
+        sys.exit(exit_code(results))
+
     if args.upgrade:
         from .advisors.upgrade_advisor import UpgradeAdvisor
         logger.info(UpgradeAdvisor().generate_report(Path.cwd()))

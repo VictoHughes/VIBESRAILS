@@ -88,6 +88,8 @@ def _parse_args():
                           help="Mutation testing on changed functions only")
     g_guards.add_argument("--pr-check", action="store_true", help="Generate PR review checklist")
     g_guards.add_argument("--pre-deploy", action="store_true", help="Pre-deployment verification")
+    g_guards.add_argument("--preflight", action="store_true",
+                          help="Pre-session preflight check (git, tests, config)")
 
     # --- Community & Extensions ---
     g_community = parser.add_argument_group("Community & Extensions")

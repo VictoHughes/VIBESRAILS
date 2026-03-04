@@ -1,4 +1,4 @@
-.PHONY: install install-dev test lint format clean mcp audit help
+.PHONY: install install-dev test lint format clean mcp audit preflight help
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -28,3 +28,6 @@ mcp: ## Start MCP server (stdio)
 
 audit: ## Run full vibesrails security scan
 	vibesrails --all
+
+preflight: ## Run pre-session preflight check
+	vibesrails --preflight
