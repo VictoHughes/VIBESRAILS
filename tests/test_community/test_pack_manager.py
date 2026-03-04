@@ -26,11 +26,11 @@ INVALID_YAML_SYNTAX = ":::\nbad yaml{{{\n"
 
 
 def test_parse_pack_id_valid():
-    assert _parse_pack_id("@alice/rules") == ("alice", "rules")
+    assert _parse_pack_id("@alice/rules") == ("alice", "rules", "main")
 
 
 def test_parse_pack_id_complex_repo():
-    assert _parse_pack_id("@org/my-pack-name") == ("org", "my-pack-name")
+    assert _parse_pack_id("@org/my-pack-name") == ("org", "my-pack-name", "main")
 
 
 def test_parse_pack_id_missing_at():
@@ -241,3 +241,140 @@ def test_installed_file_is_valid_yaml(tmp_path):
     data = yaml.safe_load(pack_file.read_text())
     assert "blocking" in data
     assert "warning" in data
+
+
+# ── Versioned refs ────────────────────────────────────────
+
+
+def test_parse_pack_id_with_tag():
+    assert _parse_pack_id("@alice/rules@v1.2.0") == ("alice", "rules", "v1.2.0")
+
+
+def test_parse_pack_id_with_sha():
+    assert _parse_pack_id("@alice/rules@abc1234") == ("alice", "rules", "abc1234")
+
+
+def test_parse_pack_id_empty_ref():
+    with pytest.raises(ValueError, match="Empty ref"):
+        _parse_pack_id("@alice/rules@")
+
+
+def test_github_raw_url_with_ref():
+    url = _github_raw_url("alice", "rules", "v2.0.0")
+    assert "/v2.0.0/" in url
+    assert "raw.githubusercontent.com" in url
+
+
+def test_github_raw_url_default_main():
+    url = _github_raw_url("alice", "rules")
+    assert "/main/" in url
+
+
+def test_install_with_ref(tmp_path):
+    mgr = PackManager(fetch_fn=lambda _url: VALID_YAML)
+    assert mgr.install("@alice/rules@v1.0.0", tmp_path) is True
+    meta_file = tmp_path / PACKS_DIR / "alice-rules.meta.json"
+    meta = json.loads(meta_file.read_text())
+    assert meta["ref"] == "v1.0.0"
+
+
+# ── SHA256 checksums + lockfile ───────────────────────────
+
+
+def test_install_creates_lockfile(tmp_path):
+    mgr = PackManager(fetch_fn=lambda _url: VALID_YAML)
+    mgr.install("@alice/rules", tmp_path)
+    lockfile = tmp_path / PACKS_DIR / "packs.lock"
+    assert lockfile.exists()
+    data = json.loads(lockfile.read_text())
+    assert "alice/rules" in data
+    assert "sha256" in data["alice/rules"]
+    assert len(data["alice/rules"]["sha256"]) == 64  # SHA256 hex length
+
+
+def test_install_stores_sha256_in_meta(tmp_path):
+    mgr = PackManager(fetch_fn=lambda _url: VALID_YAML)
+    mgr.install("@alice/rules", tmp_path)
+    meta_file = tmp_path / PACKS_DIR / "alice-rules.meta.json"
+    meta = json.loads(meta_file.read_text())
+    assert "sha256" in meta
+    assert len(meta["sha256"]) == 64
+
+
+def test_uninstall_removes_from_lockfile(tmp_path):
+    mgr = PackManager(fetch_fn=lambda _url: VALID_YAML)
+    mgr.install("@alice/rules", tmp_path)
+    mgr.install("@bob/checks", tmp_path)
+    mgr.uninstall("@alice/rules", tmp_path)
+    lockfile = tmp_path / PACKS_DIR / "packs.lock"
+    data = json.loads(lockfile.read_text())
+    assert "alice/rules" not in data
+    assert "bob/checks" in data
+
+
+def test_verify_integrity_clean(tmp_path):
+    mgr = PackManager(fetch_fn=lambda _url: VALID_YAML)
+    mgr.install("@alice/rules", tmp_path)
+    mismatches = mgr.verify_integrity(tmp_path)
+    assert mismatches == []
+
+
+def test_verify_integrity_detects_tamper(tmp_path):
+    mgr = PackManager(fetch_fn=lambda _url: VALID_YAML)
+    mgr.install("@alice/rules", tmp_path)
+    # Tamper with the pack file
+    pack_file = tmp_path / PACKS_DIR / "alice-rules.yaml"
+    pack_file.write_text("blocking:\n  - pattern: tampered\n")
+    mismatches = mgr.verify_integrity(tmp_path)
+    assert len(mismatches) == 1
+    assert "checksum mismatch" in mismatches[0]
+
+
+def test_verify_integrity_detects_missing_file(tmp_path):
+    mgr = PackManager(fetch_fn=lambda _url: VALID_YAML)
+    mgr.install("@alice/rules", tmp_path)
+    # Delete pack file but keep lockfile
+    pack_file = tmp_path / PACKS_DIR / "alice-rules.yaml"
+    pack_file.unlink()
+    mismatches = mgr.verify_integrity(tmp_path)
+    assert len(mismatches) == 1
+    assert "file missing" in mismatches[0]
+
+
+def test_verify_integrity_no_lockfile(tmp_path):
+    mgr = PackManager()
+    assert mgr.verify_integrity(tmp_path) == []
+
+
+# ── Pattern conflict detection ────────────────────────────
+
+
+def test_no_conflicts_fresh_install(tmp_path):
+    mgr = PackManager(fetch_fn=lambda _url: VALID_YAML)
+    assert mgr.install("@alice/rules", tmp_path) is True
+
+
+def test_conflict_detected_on_overlapping_patterns(tmp_path):
+    mgr = PackManager(fetch_fn=lambda _url: VALID_YAML)
+    mgr.install("@alice/rules", tmp_path)
+    # Install second pack with overlapping "secret" pattern
+    other_yaml = "blocking:\n  - pattern: secret\n  - pattern: new-thing\n"
+    mgr2 = PackManager(fetch_fn=lambda _url: other_yaml)
+    # Should still succeed but log warnings
+    assert mgr2.install("@bob/checks", tmp_path) is True
+
+
+def test_no_conflict_different_patterns(tmp_path):
+    yaml_a = "blocking:\n  - pattern: secret\n"
+    yaml_b = "blocking:\n  - pattern: password\n"
+    PackManager(fetch_fn=lambda _url: yaml_a).install("@alice/rules", tmp_path)
+    mgr = PackManager(fetch_fn=lambda _url: yaml_b)
+    # No conflicts — install silently
+    assert mgr.install("@bob/checks", tmp_path) is True
+
+
+def test_reinstall_same_pack_no_conflict(tmp_path):
+    mgr = PackManager(fetch_fn=lambda _url: VALID_YAML)
+    mgr.install("@alice/rules", tmp_path)
+    # Re-install same pack should not flag self as conflict
+    assert mgr.install("@alice/rules", tmp_path) is True
