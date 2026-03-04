@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 import sys
+import urllib.error
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
@@ -78,7 +79,7 @@ class TestLevel2PackageRegistry:
     def test_nonexistent_package_via_api(self, tmp_path):
         c = _checker(tmp_path)
         with patch("core.hallucination_deep.urllib.request.urlopen") as mock_open:
-            mock_open.side_effect = Exception("404")
+            mock_open.side_effect = urllib.error.URLError("404")
             result = c.check_package_registry("asdkjhqwelkjh")
         # API error → unknown (None)
         assert result["exists"] is None
@@ -149,7 +150,7 @@ class TestLevel2PackageRegistry:
                 bloom_file.rename(bloom_file.with_suffix(".bloom.bak"))
 
             with patch("core.hallucination_deep.urllib.request.urlopen") as mock_open:
-                mock_open.side_effect = Exception("Network error")
+                mock_open.side_effect = urllib.error.URLError("Network error")
                 result = c.check_package_registry("somepackage")
             assert result["source"] == "unknown"
             assert result["exists"] is None

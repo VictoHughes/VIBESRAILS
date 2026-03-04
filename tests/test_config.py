@@ -305,7 +305,7 @@ class TestIsAllowedRemoteDomain:
     def test_exception_during_parsing(self):
         """Exception during URL parsing returns False."""
         # Mock urlparse to raise an exception (imported inside the function)
-        with mock.patch('urllib.parse.urlparse', side_effect=Exception("Parse error")):
+        with mock.patch('urllib.parse.urlparse', side_effect=ValueError("Parse error")):
             result = is_allowed_remote_domain("https://github.com/test")
             assert result is False
 

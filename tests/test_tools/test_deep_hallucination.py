@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import urllib.error
 from pathlib import Path
 from unittest.mock import patch
 
@@ -29,7 +30,7 @@ def _mock_urlopen_200(*args, **kwargs):
 
 def _mock_urlopen_error(*args, **kwargs):
     """Mock that simulates network failure."""
-    raise Exception("Network unavailable")
+    raise urllib.error.URLError("Network unavailable")
 
 
 # ── Valid imports ────────────────────────────────────────────────────

@@ -98,8 +98,8 @@ def detect_project_type(project_root: Path) -> list[str]:
                         if f"import {imp}" in content or f"from {imp}" in content:
                             detected.append(project_type)
                             break
-                except Exception:
-                    logger.debug("Failed to read file during project detection")
+                except (OSError, UnicodeDecodeError) as e:
+                    logger.debug("Failed to read file during project detection: %s", e)
                     continue
                 if project_type in detected:
                     break
@@ -136,8 +136,8 @@ def detect_secrets_risk(project_root: Path) -> bool:
             for pattern in SECRET_INDICATORS:
                 if re.search(pattern, content, re.IGNORECASE):
                     return True
-        except Exception:
-            logger.debug("Failed to read file during secret detection")
+        except (OSError, UnicodeDecodeError) as e:
+            logger.debug("Failed to read file during secret detection: %s", e)
             continue
 
     return False

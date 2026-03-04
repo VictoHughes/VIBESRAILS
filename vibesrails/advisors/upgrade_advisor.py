@@ -254,8 +254,8 @@ class UpgradeAdvisor:
             data = tomllib.loads(
                 filepath.read_text(encoding="utf-8", errors="ignore")
             )
-        except Exception:
-            logger.debug("Failed to parse pyproject.toml")
+        except (tomllib.TOMLDecodeError, OSError) as e:
+            logger.debug("Failed to parse pyproject.toml: %s", e)
             return []
 
         results: list[tuple[str, str | None, str]] = []
@@ -292,7 +292,7 @@ class UpgradeAdvisor:
                 data = json.loads(resp.read())
                 self._cache[normalized_name] = data
                 return data
-        except Exception:
-            logger.debug("Failed to fetch PyPI info for %s", normalized_name)
+        except (urllib.error.URLError, json.JSONDecodeError, OSError) as e:
+            logger.debug("Failed to fetch PyPI info for %s: %s", normalized_name, e)
             self._cache[normalized_name] = None
             return None

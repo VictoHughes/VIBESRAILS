@@ -144,8 +144,8 @@ def _read_file_contents(files: list[str]) -> list[tuple[str, str]]:
     for f in files:
         try:
             contents.append((f, Path(f).read_text()))
-        except Exception:
-            logger.debug("Failed to read file for senior mode: %s", f)
+        except (OSError, UnicodeDecodeError) as e:
+            logger.debug("Failed to read file for senior mode: %s (%s)", f, e)
     return contents
 
 

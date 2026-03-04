@@ -46,8 +46,8 @@ def _get_staged_diff() -> str:
             capture_output=True, text=True, timeout=30
         )
         return result.stdout
-    except Exception:
-        logger.debug("Failed to get staged diff")
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as e:
+        logger.debug("Failed to get staged diff: %s", e)
         return ""
 
 
@@ -62,8 +62,8 @@ def _collect_v1_files(root: Path) -> list[tuple[str, str]]:
             continue
         try:
             files.append((str(py_file), py_file.read_text()))
-        except Exception:
-            logger.debug("Failed to read file for senior scan")
+        except (OSError, UnicodeDecodeError) as e:
+            logger.debug("Failed to read file for senior scan: %s", e)
     return files[:50]
 
 

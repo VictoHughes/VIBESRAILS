@@ -157,7 +157,8 @@ def _run_single_mutation(
     report.total += 1
     try:
         mutant_code = ast.unparse(mutated)
-    except Exception:
+    except (ValueError, RecursionError) as e:
+        logger.debug("Failed to unparse mutant: %s", e)
         report.total -= 1
         return
     tmp_src.write_text(mutant_code, encoding="utf-8")

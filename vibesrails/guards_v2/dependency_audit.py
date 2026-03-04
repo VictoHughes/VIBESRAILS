@@ -110,7 +110,8 @@ class DependencyAuditGuard:
                     encoding="utf-8", errors="ignore"
                 )
             )
-        except Exception:
+        except (tomllib.TOMLDecodeError, OSError) as e:
+            logger.debug("Failed to parse pyproject.toml: %s", e)
             return issues
         deps = data.get("project", {}).get(
             "dependencies", []

@@ -17,6 +17,7 @@ import importlib.util
 import logging
 import re
 import sqlite3
+import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -145,8 +146,8 @@ class DeepHallucinationChecker:
             req.add_header("Accept", "application/json")
             with urllib.request.urlopen(req, timeout=3) as resp:  # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
                 return resp.status == 200
-        except Exception:
-            logger.debug("PyPI API unreachable for %s", package_name)
+        except (urllib.error.URLError, OSError) as e:
+            logger.debug("PyPI API unreachable for %s: %s", package_name, e)
             return None
 
     def _find_similar(self, package_name: str, ecosystem: str) -> list[str]:

@@ -75,8 +75,8 @@ def scan_for_secrets(project_root: Path) -> dict[str, list[dict]]:
                 if _should_skip_line(line):
                     continue
                 _scan_line(line, rel_path, line_num, found)
-        except Exception:
-            logger.debug("Failed to read file during secret scan")
+        except (OSError, UnicodeDecodeError) as e:
+            logger.debug("Failed to read file during secret scan: %s", e)
             continue
 
     return {k: v for k, v in found.items() if v}

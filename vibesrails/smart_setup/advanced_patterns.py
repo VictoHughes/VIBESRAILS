@@ -40,8 +40,8 @@ def _preview_matches_in_file(
                 matches.append(f"  {rel_path}:{i}: {line[:60]}...")
                 if len(matches) >= max_lines:
                     break
-    except Exception:
-        logger.debug("Failed to read file during pattern preview")
+    except (OSError, UnicodeDecodeError) as e:
+        logger.debug("Failed to read file during pattern preview: %s", e)
     return matches
 
 

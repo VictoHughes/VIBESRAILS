@@ -106,7 +106,8 @@ def check_print_debug(
         from .observability import ObservabilityGuard
         guard = ObservabilityGuard()
         return guard.scan(project_root)
-    except Exception:
+    except Exception as e:
+        logger.debug("check_print_debug failed: %s", e)
         return []
 
 
@@ -118,7 +119,8 @@ def check_env_example(
         from .env_safety import EnvSafetyGuard
         guard = EnvSafetyGuard()
         return guard.scan(project_root)
-    except Exception:
+    except Exception as e:
+        logger.debug("check_env_example failed: %s", e)
         return []
 
 
@@ -130,7 +132,8 @@ def check_dependency_audit(
         from .dependency_audit import DependencyAuditGuard
         guard = DependencyAuditGuard()
         return guard.scan(project_root)
-    except Exception:
+    except Exception as e:
+        logger.debug("check_dependency_audit failed: %s", e)
         return []
 
 

@@ -114,7 +114,8 @@ def is_allowed_remote_domain(url: str, extra_domains: set[str] | None = None) ->
             allowed.update(extra_domains)
 
         return domain in allowed
-    except Exception:
+    except (ValueError, AttributeError) as e:
+        logger.debug("Domain validation failed for URL: %s", e)
         return False
 
 

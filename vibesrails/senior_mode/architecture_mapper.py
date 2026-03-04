@@ -69,8 +69,8 @@ class ArchitectureMapper:
                     "functions": functions,
                     "lines": lines,
                 })
-            except Exception:
-                logger.debug("Failed to parse module")
+            except (SyntaxError, UnicodeDecodeError, OSError) as e:
+                logger.debug("Failed to parse module: %s", e)
                 continue
         return modules
 

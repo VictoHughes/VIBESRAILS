@@ -96,8 +96,8 @@ class PackManager:
 
         try:
             content = self._fetch(url)
-        except Exception:
-            logger.error("Failed to fetch pack from %s", url)
+        except (urllib.error.URLError, OSError) as e:
+            logger.error("Failed to fetch pack from %s: %s", url, e)
             return False
 
         if not self.validate_pack(content):
