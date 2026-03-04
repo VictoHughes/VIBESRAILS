@@ -24,7 +24,8 @@ class PreDeployGuard:
 
     Checks: pytest pass, coverage threshold, blocking TODOs,
     leftover print() calls, .env.example, dependency audit,
-    version consistency, and CHANGELOG.md presence.
+    outdated dependency upgrades, version consistency, and
+    CHANGELOG.md presence.
     """
 
     def __init__(
@@ -57,6 +58,9 @@ class PreDeployGuard:
         )
         issues.extend(
             checks.check_dependency_audit(project_root)
+        )
+        issues.extend(
+            checks.check_upgrades(project_root)
         )
         issues.extend(
             checks.check_version_consistency(project_root)

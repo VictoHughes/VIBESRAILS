@@ -248,3 +248,53 @@ def test_parse_coverage_none(guard):
 
 def test_parse_coverage_edge_100(guard):
     assert guard._parse_coverage("TOTAL   500    0    100%\n") == 100
+
+
+# ── upgrade advisor integration ──────────────────────────
+
+
+@patch("vibesrails.guards_v2.pre_deploy_checks.subprocess.run")
+@patch("vibesrails.advisors.upgrade_advisor.UpgradeAdvisor._fetch_pypi")
+def test_run_all_includes_upgrade_checks(mock_pypi, mock_run, guard, project):
+    """PreDeployGuard.run_all should include UpgradeAdvisor results."""
+    mock_run.return_value = MagicMock(
+        returncode=0, stdout="TOTAL   100    10    90%\n", stderr=""
+    )
+    # Simulate outdated security package
+    mock_pypi.return_value = {
+        "info": {"name": "requests", "version": "2.31.0", "summary": "", "classifiers": []},
+        "releases": {},
+    }
+    (project / "requirements.txt").write_text("requests==2.28.0\n")
+    issues = guard.run_all(project)
+    upgrade_issues = [i for i in issues if i.guard == "UpgradeAdvisor"]
+    assert len(upgrade_issues) >= 1
+    assert any("Upgrade" in i.message for i in upgrade_issues)
+
+
+@patch("vibesrails.guards_v2.pre_deploy_checks.subprocess.run")
+@patch("vibesrails.advisors.upgrade_advisor.UpgradeAdvisor._fetch_pypi")
+def test_run_all_no_upgrade_issues_when_up_to_date(mock_pypi, mock_run, guard, project):
+    """No upgrade issues when all deps are current."""
+    mock_run.return_value = MagicMock(
+        returncode=0, stdout="TOTAL   100    10    90%\n", stderr=""
+    )
+    mock_pypi.return_value = {
+        "info": {"name": "requests", "version": "2.31.0", "summary": "", "classifiers": []},
+        "releases": {},
+    }
+    (project / "requirements.txt").write_text("requests==2.31.0\n")
+    issues = guard.run_all(project)
+    upgrade_issues = [i for i in issues if i.guard == "UpgradeAdvisor"]
+    assert len(upgrade_issues) == 0
+
+
+@patch("vibesrails.guards_v2.pre_deploy_checks.subprocess.run")
+def test_run_all_no_crash_without_deps(mock_run, guard, project):
+    """PreDeployGuard.run_all should not crash when no dep files exist."""
+    mock_run.return_value = MagicMock(
+        returncode=0, stdout="TOTAL   100    10    90%\n", stderr=""
+    )
+    issues = guard.run_all(project)
+    upgrade_issues = [i for i in issues if i.guard == "UpgradeAdvisor"]
+    assert len(upgrade_issues) == 0

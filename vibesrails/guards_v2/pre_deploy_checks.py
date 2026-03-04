@@ -137,6 +137,18 @@ def check_dependency_audit(
         return []
 
 
+def check_upgrades(
+    project_root: Path,
+) -> list[V2GuardIssue]:
+    """Delegate upgrade checks to UpgradeAdvisor."""
+    try:
+        from ..advisors.upgrade_advisor import UpgradeAdvisor
+        return UpgradeAdvisor().scan(project_root)
+    except Exception as e:
+        logger.debug("check_upgrades failed: %s", e)
+        return []
+
+
 def check_version_consistency(
     project_root: Path,
 ) -> list[V2GuardIssue]:
