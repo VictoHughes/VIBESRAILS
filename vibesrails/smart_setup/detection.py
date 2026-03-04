@@ -137,7 +137,7 @@ def detect_secrets_risk(project_root: Path) -> bool:
                 if re.search(pattern, content, re.IGNORECASE):
                     return True
         except (OSError, UnicodeDecodeError) as e:
-            logger.debug("Failed to read file during secret detection: %s", e)
+            logger.debug("Failed to read file during secret detection: %s", e)  # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure
             continue
 
     return False

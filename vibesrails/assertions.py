@@ -88,8 +88,21 @@ def check_values(root: Path, values: dict) -> list[AssertionResult]:
 # ── Rules ───────────────────────────────────────────────────────
 
 
-def _check_rule_fail_closed(root: Path) -> AssertionResult:
+def _is_allowed(violation: str, allowlist: list[str]) -> bool:
+    """Check if violation matches an allowlist entry (exact, file, dir/, or basename)."""
+    for entry in allowlist:
+        if entry == violation or violation.endswith("/" + entry):
+            return True
+        if entry.endswith("/") and violation.startswith(entry):
+            return True
+        if ":" not in entry and (violation.startswith(entry + ":") or ("/" + entry + ":") in violation):
+            return True
+    return False
+
+
+def _check_rule_fail_closed(root: Path, allow: list[str] | None = None) -> AssertionResult:
     """Check that except blocks don't silently pass (fail-closed pattern)."""
+    allow = allow or []
     violations = []
     for py_file in _collect_python_files(root):
         try:
@@ -105,8 +118,10 @@ def _check_rule_fail_closed(root: Path) -> AssertionResult:
                     if not next_stripped:
                         continue
                     if next_stripped == "pass":
-                        rel = py_file.relative_to(root)
-                        violations.append(f"{rel}:{i}")
+                        rel = str(py_file.relative_to(root))
+                        loc = f"{rel}:{i}"
+                        if not _is_allowed(loc, allow):
+                            violations.append(loc)
                     break
 
     if violations:
@@ -168,12 +183,18 @@ def check_rules(root: Path, rules: dict) -> list[AssertionResult]:
     if not rules:
         return results
 
-    for rule_name, enabled in rules.items():
-        if not enabled:
+    for rule_name, value in rules.items():
+        if rule_name.endswith("_allow"):
+            continue  # Skip allowlist keys
+        if not value:
             continue
         checker = _RULE_CHECKERS.get(rule_name)
         if checker:
-            results.append(checker(root))
+            allow = rules.get(f"{rule_name}_allow", [])
+            if allow:
+                results.append(checker(root, allow=allow))
+            else:
+                results.append(checker(root))
         else:
             results.append(AssertionResult(
                 category="rules",

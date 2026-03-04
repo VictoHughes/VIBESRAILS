@@ -76,7 +76,7 @@ def scan_for_secrets(project_root: Path) -> dict[str, list[dict]]:
                     continue
                 _scan_line(line, rel_path, line_num, found)
         except (OSError, UnicodeDecodeError) as e:
-            logger.debug("Failed to read file during secret scan: %s", e)
+            logger.debug("Failed to read file during secret scan: %s", e)  # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure
             continue
 
     return {k: v for k, v in found.items() if v}

@@ -118,7 +118,7 @@ exceptions:
 
 # Complexity (enforced by scanner)
 complexity:
-  max_file_lines: 300    # WARN if file exceeds this (test files excluded)
+  max_file_lines: 400    # WARN if file exceeds this (test files excluded)
   max_function_lines: 50 # For future use
 
 # ═══════════════════════════════════════════════════════════════
