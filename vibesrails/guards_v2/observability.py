@@ -17,7 +17,7 @@ _SKIP_PATTERNS = [
     "**/cli.py",
     "**/cli_*.py",
     "**/__main__.py",
-    "**/test_*",
+    "**/test_*.py",
     "**/conftest.py",
 ]
 
