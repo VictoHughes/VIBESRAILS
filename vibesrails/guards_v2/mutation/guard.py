@@ -6,8 +6,8 @@ Uses mutation testing to verify tests actually check logic.
 import logging
 from pathlib import Path
 
-from .dependency_audit import V2GuardIssue
-from .mutation_engine import (  # noqa: F401
+from ..dependency_audit import V2GuardIssue
+from .engine import (  # noqa: F401
     MAX_MUTATIONS_PER_FILE,
     MUTATION_TEST_TIMEOUT,
     MUTATION_TYPES,
@@ -29,8 +29,8 @@ from .mutation_engine import (  # noqa: F401
     run_tests_on_mutant,
     scan_file,
 )
-from .mutation_mutmut import _parse_mutmut_results
-from .mutation_mutmut import scan_with_mutmut as _scan_with_mutmut
+from .mutmut import _parse_mutmut_results
+from .mutmut import scan_with_mutmut as _scan_with_mutmut
 
 logger = logging.getLogger(__name__)
 

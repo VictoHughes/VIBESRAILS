@@ -1,7 +1,7 @@
 """Built-in AST-based mutation engine for MutationGuard.
 
 Contains mutation application, test execution, file scanning,
-and helper functions. AST visitors live in mutation_visitors.
+and helper functions. AST visitors live in visitors module.
 """
 
 import ast
@@ -14,7 +14,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from .mutation_visitors import (
+from .visitors import (
     MUTATION_TYPES,
     ArithmeticSwapper,
     BooleanSwapper,

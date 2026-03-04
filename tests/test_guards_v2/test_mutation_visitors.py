@@ -2,7 +2,7 @@
 
 import ast
 
-from vibesrails.guards_v2.mutation_visitors import (
+from vibesrails.guards_v2.mutation import (
     ArithmeticSwapper,
     BooleanSwapper,
     ComparisonSwapper,

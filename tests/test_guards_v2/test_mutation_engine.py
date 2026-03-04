@@ -2,7 +2,7 @@
 
 import ast
 
-from vibesrails.guards_v2.mutation_engine import (
+from vibesrails.guards_v2.mutation import (
     _collect_mutations,
     _parse_diff_line,
     _should_skip_mutation,
