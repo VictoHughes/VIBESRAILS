@@ -110,6 +110,8 @@ def _parse_args():
                            help="Show write throttle counter")
     g_session.add_argument("--throttle-reset", action="store_true",
                            help="Reset write throttle counter")
+    g_session.add_argument("--sync-claude", action="store_true",
+                           help="Auto-generate factual CLAUDE.md sections from code")
 
     # --- Guardian ---
     g_guardian = parser.add_argument_group("Guardian (AI mode)")
@@ -162,6 +164,13 @@ def _handle_info_commands(args) -> None:
         from .watch import run_watch_mode
         config_path = Path(args.config) if args.config else find_config()
         sys.exit(0 if run_watch_mode(config_path) else 1)
+
+    if args.sync_claude:
+        from .sync_claude import sync_claude
+        result = sync_claude(Path.cwd(), dry_run=args.dry_run)
+        if args.dry_run and result:
+            print(result)
+        sys.exit(0 if result else 1)
 
 
 def _handle_setup_commands(args) -> None:

@@ -1,4 +1,4 @@
-.PHONY: install install-dev test lint format clean mcp audit preflight help
+.PHONY: install install-dev test lint format clean mcp audit preflight sync-claude help
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -31,3 +31,6 @@ audit: ## Run full vibesrails security scan
 
 preflight: ## Run pre-session preflight check
 	vibesrails --preflight
+
+sync-claude: ## Auto-generate CLAUDE.md factual sections
+	vibesrails --sync-claude

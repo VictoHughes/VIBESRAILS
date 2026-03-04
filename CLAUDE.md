@@ -1,12 +1,14 @@
 # VibesRails - Development Guidelines
 
+<!-- AUTO:overview -->
 > VibesRails 2.1.5 — by SM
 
 ## Project Overview
 
-VibesRails is a security guardrails platform for AI-assisted Python development. It combines a YAML-driven CLI scanner (17 patterns, 16 AST guards, 8 senior guards), an MCP server (12 tools with pedagogy and learning engine), and a 4-layer hook system that protects Claude Code sessions in real-time.
+VibesRails is a security guardrails platform for AI-assisted Python development. It combines a YAML-driven CLI scanner, an MCP server, and a hook system that protects Claude Code sessions in real-time.
 
-**Key numbers:** 1875 tests | 12 MCP tools | 16 V2 guards | 7 AI agents detected | 4-layer hooks
+**Key numbers:** 2118 tests | 12 MCP tools | 16 V2 guards | 7 hook modules
+<!-- /AUTO:overview -->
 
 ## Setup
 
@@ -61,12 +63,14 @@ mcp_tools.py                 # 6 tools (scan_code, scan_senior, scan_semgrep, et
 mcp_tools_ext.py             # 6 tools (enforce_brief, shield_prompt, etc.)
 ```
 
+<!-- AUTO:entry_points -->
 ### Entry Points
 
 | Command | Module | Purpose |
 |---------|--------|---------|
 | `vibesrails` | `vibesrails.cli:main` | CLI scanner |
 | `vibesrails-mcp` | `mcp_server:main` | MCP server (stdio) |
+<!-- /AUTO:entry_points -->
 
 ### Module Dependencies (enforced by import-linter)
 
@@ -103,77 +107,97 @@ you READ and REPORT. You do NOT write, edit, or commit.
 Never disable, remove, skip, or work around vibesrails hooks, pre-commit hooks, or security checks. If vibesrails blocks your code, fix the code — do not bypass the guard. Never use --no-verify, never delete hook files, never modify .claude/hooks.json or vibesrails.yaml to weaken protections.
 </anti_bypass>
 
+<!-- AUTO:cli_commands -->
 ## CLI Commands
 
-### Core Scanning
+### Setup & Config
 ```bash
-vibesrails --all              # Scan all Python files
-vibesrails --file <path>      # Scan specific file
-vibesrails --senior           # Senior Mode (archi + guards + review)
-vibesrails --senior-v2        # All 16 V2 guards (comprehensive)
-vibesrails --show             # Show active patterns
-vibesrails --stats            # Scan statistics
-vibesrails --fixable          # Show auto-fixable patterns
+vibesrails --init                # Initialize vibesrails.yaml
+vibesrails --setup               # Smart auto-setup (analyzes project)
+vibesrails --hook                # Install git pre-commit hook
+vibesrails --uninstall           # Remove vibesrails from project
+vibesrails --force               # Force overwrite existing config
+vibesrails --config              # Path to vibesrails.yaml
+vibesrails --validate            # Validate YAML config
+```
+
+### Scanning
+```bash
+vibesrails --all                 # Scan all Python files
+vibesrails --file                # Scan specific file
+vibesrails --senior              # Run Senior Mode (architecture + guards + review)
+vibesrails --senior-v2           # Run ALL v2 guards (comprehensive scan)
+vibesrails --show                # Show all active patterns
+vibesrails --stats               # Show scan statistics and metrics
+vibesrails --fixable             # Show auto-fixable patterns
 ```
 
 ### Auto-fix
 ```bash
-vibesrails --fix              # Auto-fix simple patterns
-vibesrails --fix --dry-run    # Preview corrections
+vibesrails --fix                 # Auto-fix simple patterns
+vibesrails --dry-run             # Show what --fix would change
+vibesrails --no-backup           # Don't create .bak files with --fix
 ```
 
-### Specialized Guards (V2)
+### Specialized Guards
 ```bash
-vibesrails --audit-deps       # CVE audit on dependencies
-vibesrails --complexity       # Cyclomatic complexity analysis
-vibesrails --dead-code        # Unused code detection
-vibesrails --env-check        # Environment variable safety
-vibesrails --test-integrity   # Detect fake/lazy tests
-vibesrails --mutation         # Mutation testing (full)
-vibesrails --mutation-quick   # Mutation testing (changed functions only)
-vibesrails --pr-check         # PR review checklist
-vibesrails --pre-deploy       # Pre-deployment verification
+vibesrails --audit-deps          # Audit dependencies for CVEs and risks
+vibesrails --complexity          # Analyze code complexity
+vibesrails --dead-code           # Detect unused code
+vibesrails --env-check           # Check environment safety
+vibesrails --test-integrity      # Detect fake/lazy tests (over-mocking, no assertions)
+vibesrails --mutation            # Mutation testing -- verify tests catch real bugs
+vibesrails --mutation-quick      # Mutation testing on changed functions only
+vibesrails --pr-check            # Generate PR review checklist
+vibesrails --pre-deploy          # Pre-deployment verification
+vibesrails --preflight           # Pre-session preflight check (git, tests, config)
+vibesrails --check-assertions    # Validate project assertions (values, rules, baselines)
 ```
 
-### Setup & Config
+### Community & Extensions
 ```bash
-vibesrails --setup            # Smart auto-setup (analyzes project)
-vibesrails --init             # Initialize vibesrails.yaml
-vibesrails --hook             # Install git pre-commit hook
-vibesrails --validate         # Validate YAML config
-vibesrails --uninstall        # Remove from project
+vibesrails --install-pack        # Install community pack (@user/repo)
+vibesrails --remove-pack         # Remove installed pack
+vibesrails --list-packs          # List installed and available packs
+vibesrails --upgrade             # Check for dependency upgrades
+vibesrails --learn               # [EXPERIMENTAL] Pattern discovery
 ```
 
-### Session & Community
+### Session Management
 ```bash
-vibesrails --watch            # Live scanning on file save
-vibesrails --queue <msg>      # Send task to other Claude sessions
-vibesrails --inbox <msg>      # Add instruction to mobile inbox
-vibesrails --guardian-stats   # AI coding block statistics
-vibesrails --install-pack @u/r # Install community pack
-vibesrails --upgrade          # Check dependency upgrades
-vibesrails --learn            # Claude-powered pattern discovery
-vibesrails --version          # Show version
+vibesrails --watch               # Live scanning on file save
+vibesrails --queue               # Send a task to other Claude Code sessions
+vibesrails --inbox               # Add instruction to mobile inbox
+vibesrails --throttle-status     # Show write throttle counter
+vibesrails --throttle-reset      # Reset write throttle counter
+vibesrails --sync-claude         # Auto-generate factual CLAUDE.md sections from code
 ```
 
+### Guardian (AI mode)
+```bash
+vibesrails --guardian-stats      # Show AI coding block statistics
+```
+
+<!-- /AUTO:cli_commands -->
+
+<!-- AUTO:mcp_tools -->
 ## MCP Server (12 Tools)
 
-| Tool | Description | Learning |
-|------|-------------|----------|
-| `ping` | Health check | — |
-| `scan_code` | AST scan (16 V2 guards) | Wired |
-| `scan_senior` | AI-specific guards (hallucination, bypass, lazy code) | Wired |
-| `scan_semgrep` | Semgrep static analysis (security, secrets) | Wired |
-| `deep_hallucination` | Import verification (4 levels + slopsquatting) | Wired |
-| `monitor_entropy` | Session health scoring (0.0-1.0) | — |
-| `check_drift` | Architecture drift velocity | Wired |
-| `enforce_brief` | Pre-generation brief validation | Wired |
-| `shield_prompt` | Prompt injection detection (5 categories) | Wired |
-| `check_config` | AI config file scanning (.cursorrules, CLAUDE.md) | Wired |
-| `check_session` | AI session detection (7 agents) | — |
-| `get_learning` | Cross-session profiling & insights | Manual |
-
-All tools include pedagogy (why, how_to_fix, prevention). 8/12 auto-feed the learning engine.
+| Tool | Description |
+|------|-------------|
+| `scan_code` | Run AST security guards on code |
+| `scan_senior` | Run Senior Mode guards on code |
+| `scan_semgrep` | Run Semgrep vulnerability scan on a file |
+| `monitor_entropy` | Monitor AI coding session entropy --- tracks session health over time |
+| `deep_hallucination` | Multi-level verification of AI-generated imports (hallucination detection) |
+| `check_drift` | Measure architectural drift velocity between coding sessions |
+| `ping` | Health check --- returns server status and version |
+| `check_session` | Detect if current session is AI-assisted and report guardian status |
+| `enforce_brief` | Validate a pre-generation brief before AI code generation |
+| `shield_prompt` | Scan for prompt injection in text, code files, or MCP tool inputs |
+| `check_config` | Scan AI config files for malicious content (Rules File Backdoor defense) |
+| `get_learning` | Cross-session developer profiling --- tracks patterns across sessions |
+<!-- /AUTO:mcp_tools -->
 
 ## Security Hooks (4-layer protection)
 
