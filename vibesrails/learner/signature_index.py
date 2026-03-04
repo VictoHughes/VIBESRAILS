@@ -50,6 +50,7 @@ class SignatureIndexer:
 
         signatures = []
         relative_path = str(file_path.relative_to(self.project_root))
+        parent_map = self._build_parent_map(tree)
 
         for node in ast.walk(tree):
             if isinstance(node, ast.FunctionDef):
@@ -59,8 +60,9 @@ class SignatureIndexer:
                 if node.returns:
                     return_type = ast.unparse(node.returns)
 
-                # Determine if method (inside class)
-                parent_class = self._find_parent_class(tree, node)
+                # Determine if method (inside class) via O(1) lookup
+                parent = parent_map.get(id(node))
+                parent_class = parent.name if isinstance(parent, ast.ClassDef) else None
                 sig_type = "method" if parent_class else "function"
 
                 signatures.append(Signature(
@@ -84,31 +86,38 @@ class SignatureIndexer:
 
         return signatures
 
-    def _find_parent_class(self, tree: ast.AST, func_node: ast.FunctionDef) -> str | None:
-        """Find parent class of a function node."""
+    @staticmethod
+    def _build_parent_map(tree: ast.AST) -> dict[int, ast.AST]:
+        """Build child-id → parent map for O(1) parent lookup."""
+        parent_map: dict[int, ast.AST] = {}
         for node in ast.walk(tree):
-            if isinstance(node, ast.ClassDef):
-                if func_node in ast.walk(node):
-                    return node.name
-        return None
+            for child in ast.iter_child_nodes(node):
+                parent_map[id(child)] = node
+        return parent_map
 
-    def find_similar(self, query: str, index: list[Signature]) -> list[Signature]:
-        """Find signatures with similar names."""
+    def find_similar(
+        self, query: str, index: list[Signature], *, include_exact: bool = False,
+    ) -> list[Signature]:
+        """Find signatures with similar names.
+
+        Args:
+            include_exact: If True, include exact name matches in results.
+                Default False to exclude self-matches.
+        """
         query_lower = query.lower()
         similar = []
+        query_words = set(query_lower.replace("_", " ").split())
 
         for sig in index:
             sig_lower = sig.name.lower()
 
-            # Exact match
             if sig_lower == query_lower:
-                continue  # Skip exact matches
-
-            # Contains similar words
-            query_words = set(query_lower.replace("_", " ").split())
-            sig_words = set(sig_lower.replace("_", " ").split())
+                if include_exact:
+                    similar.append(sig)
+                continue
 
             # If they share words, it's similar
+            sig_words = set(sig_lower.replace("_", " ").split())
             if query_words & sig_words:
                 similar.append(sig)
 
