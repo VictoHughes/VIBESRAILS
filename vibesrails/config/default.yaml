@@ -132,3 +132,20 @@ guardian:
                            # auto = run when AI session detected
                            # always = run on every scan
   # stricter_patterns: []  # Additional patterns for AI mode
+
+# ═══════════════════════════════════════════════════════════════
+# 📋 ASSERTIONS - Project truth validation
+# ═══════════════════════════════════════════════════════════════
+# Uncomment and customize to enforce project decisions.
+# Run: vibesrails --check-assertions
+#
+# assertions:
+#   values:                    # Grep code for expected values
+#     llm_model: "gpt-4o"
+#     max_retries: 3
+#   rules:                     # Structural checks
+#     fail_closed: true        # No silent except/pass
+#     single_entry_point: true # At most 1 if __name__ == '__main__'
+#   baselines:                 # Metrics thresholds
+#     test_count: 100          # Minimum test count
+#     zero_regressions: true   # All tests must pass

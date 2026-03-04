@@ -179,3 +179,15 @@ guardian:
   warnings_as_blocking: false
   senior_mode: "auto"  # Run Senior Mode when AI session detected
   max_file_lines: 300  # PreToolUse BLOCKS writes exceeding this (split into modules)
+
+# ═══════════════════════════════════════════════════════════════
+# 📋 ASSERTIONS - Project truth validation
+# ═══════════════════════════════════════════════════════════════
+assertions:
+  values:
+    version: "2.1.5"           # Current version string in code
+    mcp_sdk: "FastMCP"         # MCP SDK pattern used
+  rules:
+    fail_closed: true          # No silent except/pass
+  baselines:
+    test_count: 2044           # Minimum test count

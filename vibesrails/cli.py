@@ -90,6 +90,8 @@ def _parse_args():
     g_guards.add_argument("--pre-deploy", action="store_true", help="Pre-deployment verification")
     g_guards.add_argument("--preflight", action="store_true",
                           help="Pre-session preflight check (git, tests, config)")
+    g_guards.add_argument("--check-assertions", action="store_true",
+                          help="Validate project assertions (values, rules, baselines)")
 
     # --- Community & Extensions ---
     g_community = parser.add_argument_group("Community & Extensions")

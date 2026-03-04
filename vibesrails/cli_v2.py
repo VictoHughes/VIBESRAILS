@@ -193,6 +193,28 @@ def _dispatch_single_guard(args) -> None:
         logger.info(format_report(results))
         sys.exit(exit_code(results))
 
+    if args.check_assertions:
+        from .assertions import (
+            assertions_exit_code,
+            format_assertions_report,
+            run_assertions,
+        )
+        from .cli_setup import find_config
+        from .scanner import load_config
+
+        config_path = find_config()
+        if not config_path or not config_path.exists():
+            logger.error("No vibesrails.yaml found — run: vibesrails --init")
+            sys.exit(1)
+        config = load_config(config_path)
+        assertions_config = config.get("assertions", {})
+        if not assertions_config:
+            logger.info("No assertions section in vibesrails.yaml — nothing to check")
+            sys.exit(0)
+        results = run_assertions(Path.cwd(), assertions_config)
+        logger.info(format_assertions_report(results))
+        sys.exit(assertions_exit_code(results))
+
     if args.upgrade:
         from .advisors.upgrade_advisor import UpgradeAdvisor
         logger.info(UpgradeAdvisor().generate_report(Path.cwd()))
