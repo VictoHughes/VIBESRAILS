@@ -1,4 +1,7 @@
-"""Detects patterns in project structure."""
+"""[EXPERIMENTAL] Detects patterns in project structure.
+
+Only 2 of 6 declared categories are implemented (test, service).
+"""
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -9,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class DetectedPattern:
-    """A detected pattern in the project structure."""
+    """[EXPERIMENTAL] A detected pattern in the project structure."""
     category: Literal["test", "service", "model", "controller", "util", "config"]
     location: str  # Relative path pattern
     confidence: float  # 0.0 to 1.0
@@ -17,7 +20,7 @@ class DetectedPattern:
 
 
 class PatternDetector:
-    """Detects structural patterns in a project."""
+    """[EXPERIMENTAL] Detects structural patterns in a project."""
 
     def __init__(self, project_root: Path):
         self.project_root = project_root

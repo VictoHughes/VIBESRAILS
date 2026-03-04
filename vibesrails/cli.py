@@ -95,7 +95,7 @@ def _parse_args():
     g_community.add_argument("--remove-pack", metavar="PACK", help="Remove installed pack")
     g_community.add_argument("--list-packs", action="store_true", help="List installed and available packs")
     g_community.add_argument("--upgrade", action="store_true", help="Check for dependency upgrades")
-    g_community.add_argument("--learn", action="store_true", help="Claude-powered pattern discovery")
+    g_community.add_argument("--learn", action="store_true", help="[EXPERIMENTAL] Pattern discovery")
 
     # --- Session Management ---
     g_session = parser.add_argument_group("Session Management")

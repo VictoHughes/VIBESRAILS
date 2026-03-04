@@ -1,4 +1,4 @@
-"""Generate structure validation rules from detected patterns."""
+"""[EXPERIMENTAL] Generate structure validation rules from detected patterns."""
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class StructureRulesGenerator:
-    """Generates YAML rules from detected patterns."""
+    """[EXPERIMENTAL] Generates YAML rules from detected patterns."""
 
     # Confidence thresholds
     ENFORCEMENT_THRESHOLD = 0.9  # Ready to enforce

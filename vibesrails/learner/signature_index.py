@@ -1,4 +1,4 @@
-"""Function and class signature indexing."""
+"""[EXPERIMENTAL] Function and class signature indexing."""
 import ast
 import logging
 from dataclasses import dataclass
@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Signature:
-    """A function or class signature."""
+    """[EXPERIMENTAL] A function or class signature."""
     name: str
     signature_type: Literal["function", "method", "class"]
     file_path: str  # Relative to project root
@@ -21,7 +21,7 @@ class Signature:
 
 
 class SignatureIndexer:
-    """Builds index of all function/class signatures in project."""
+    """[EXPERIMENTAL] Builds index of all function/class signatures in project."""
 
     def __init__(self, project_root: Path):
         self.project_root = project_root
