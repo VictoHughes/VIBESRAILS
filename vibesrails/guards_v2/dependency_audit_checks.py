@@ -131,7 +131,7 @@ def check_abandoned(
                 message=f"Possibly abandoned: {pkg} — last release {years} years ago ({info.get('version', '?')}).",
                 file=filepath, line=lineno,
             )
-    except Exception:
+    except (KeyError, ValueError, TypeError):
         pass  # PyPI date parsing failed, skip abandoned check
     return None
 
@@ -152,7 +152,7 @@ def fetch_pypi(
             data = json.loads(resp.read())
             cache[normalized_name] = data
             return data
-    except Exception:
+    except (urllib.error.URLError, json.JSONDecodeError, OSError):
         cache[normalized_name] = None
         return None
 

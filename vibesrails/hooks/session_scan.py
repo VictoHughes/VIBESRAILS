@@ -5,8 +5,11 @@ No Semgrep, no mutation testing — only AST-based analysis.
 Run as: python3 -m vibesrails.hooks.session_scan
 """
 
+import logging
 import sys
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 _SKIP_DIRS = frozenset({
     "__pycache__", ".venv", "venv", "node_modules", ".git",
@@ -61,7 +64,8 @@ def _scan_file_v2(guard, filepath: Path, content: str) -> list:
     """Run a single V2 guard on a file, return issues."""
     try:
         return list(guard.scan_file(filepath, content))
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        logger.debug("V2 guard %s failed on %s: %s", guard.__class__.__name__, filepath, e)
         return []
 
 
@@ -69,7 +73,8 @@ def _scan_file_senior(guard, content: str, fpath: str) -> list:
     """Run a single Senior guard on a file, return issues."""
     try:
         return list(guard.check(content, fpath))
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        logger.debug("Senior guard failed on %s: %s", fpath, e)
         return []
 
 

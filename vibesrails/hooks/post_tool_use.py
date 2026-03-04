@@ -8,11 +8,14 @@ Run as: python3 -m vibesrails.hooks.post_tool_use
 """
 
 import json
+import logging
 import os
 import signal
 import subprocess
 import sys
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 SCAN_TIMEOUT = 5  # seconds — auto-scan must complete within this
 
@@ -54,7 +57,8 @@ def _run_v2_guards(filepath: Path, content: str) -> list[str]:
         guard = guard_cls()
         try:
             issues = guard.scan_file(filepath, content)
-        except Exception:  # noqa: BLE001
+        except Exception as e:  # noqa: BLE001
+            logger.debug("V2 guard %s failed: %s", guard.__class__.__name__, e)
             continue
         for issue in issues:
             sev = issue.severity.upper()
@@ -79,8 +83,8 @@ def _run_senior_guards(filepath: str, content: str) -> list[str]:
         for issue in issues:
             sev = issue.severity.upper()
             lines.append(f"  - L{issue.line} [{sev}] [{issue.guard}] {issue.message}")
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001
+        logger.debug("Senior guards failed: %s", e)
     return lines
 
 
@@ -109,8 +113,8 @@ def _run_post_commit_guards() -> list[str]:
             ).stdout
             for issue in sg.test_guard.check(diff, test_diff):
                 lines.append(f"  - [{issue.severity.upper()}] [{issue.guard}] {issue.message}")
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001
+        logger.debug("Post-commit senior guards failed: %s", e)
 
     # ArchitectureDriftGuard — check layer violations on changed files
     try:
@@ -129,10 +133,10 @@ def _run_post_commit_guards() -> list[str]:
                     for issue in guard.scan_file(p, content):
                         sev = issue.severity.upper()
                         lines.append(f"  - {fpath}:L{issue.line} [{sev}] [{issue.guard}] {issue.message}")
-                except Exception:  # noqa: BLE001
+                except (OSError, UnicodeDecodeError, SyntaxError):
                     continue
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001
+        logger.debug("Architecture drift guard failed: %s", e)
 
     return lines
 
@@ -168,16 +172,16 @@ def _handle_write_edit(tool_input: dict) -> None:
         config = load_config()
         for r in scan_file(file_path, config):
             all_issues.append(f"  - L{r.line} [{r.level}] {r.message}")
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001
+        logger.debug("V1 scanner failed: %s", e)
 
     # V2 guards (AST-based)
     try:
         content = Path(file_path).read_text(encoding="utf-8")
         all_issues.extend(_run_v2_guards(Path(file_path), content))
         all_issues.extend(_run_senior_guards(file_path, content))
-    except Exception:  # noqa: BLE001
-        pass
+    except (OSError, UnicodeDecodeError) as e:
+        logger.debug("Failed to read %s: %s", file_path, e)
 
     # Cancel scan timeout
     try:

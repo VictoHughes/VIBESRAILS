@@ -6,9 +6,12 @@ Run as: python3 -m vibesrails.hooks.pre_tool_use
 """
 
 import json
+import logging
 import re
 import sys
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # Throttle state directory
 VIBESRAILS_DIR = Path.cwd() / ".vibesrails"
@@ -131,7 +134,8 @@ def _load_max_file_lines() -> int:
             return DEFAULT_MAX_FILE_LINES
         value = guardian.get("max_file_lines", DEFAULT_MAX_FILE_LINES)
         return int(value) if isinstance(value, (int, float, str)) else DEFAULT_MAX_FILE_LINES
-    except Exception:
+    except Exception as e:  # noqa: BLE001
+        logger.debug("Config load failed, using default: %s", e)
         return DEFAULT_MAX_FILE_LINES
 
 

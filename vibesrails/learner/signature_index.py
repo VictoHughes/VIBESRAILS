@@ -33,8 +33,8 @@ class SignatureIndexer:
         for py_file in self.project_root.rglob("*.py"):
             try:
                 signatures.extend(self._extract_signatures(py_file))
-            except Exception:
-                logger.debug("Skipping file with syntax errors")
+            except (OSError, UnicodeDecodeError, SyntaxError):
+                logger.debug("Skipping file with parse/read errors: %s", py_file)
                 continue
 
         return signatures
@@ -44,8 +44,8 @@ class SignatureIndexer:
         try:
             content = file_path.read_text()
             tree = ast.parse(content)
-        except Exception:
-            logger.debug("Failed to parse file for signatures")
+        except (OSError, UnicodeDecodeError, SyntaxError):
+            logger.debug("Failed to parse %s for signatures", file_path)
             return []
 
         signatures = []

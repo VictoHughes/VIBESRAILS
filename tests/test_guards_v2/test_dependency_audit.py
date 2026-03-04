@@ -1,6 +1,7 @@
 """Tests for DependencyAuditGuard — real files, real parsing, only mock network."""
 
 import json
+import urllib.error
 from unittest.mock import patch
 
 import pytest
@@ -208,7 +209,7 @@ def test_recent_package_not_abandoned(mock_pypi, guard, tmp_path):
 # ── PyPI unreachable (mock network failure) ──────────────────────
 
 
-@patch("urllib.request.urlopen", side_effect=Exception("network error"))
+@patch("urllib.request.urlopen", side_effect=urllib.error.URLError("network error"))
 def test_pypi_unreachable_no_crash(mock_urlopen, tmp_path):
     guard = DependencyAuditGuard()
     req = tmp_path / "requirements.txt"
