@@ -6,9 +6,10 @@ Merges and deduplicates results from both scanners, providing a unified view
 with source attribution and statistics.
 """
 
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
 
 from .scanner import ScanResult
 from .semgrep_adapter import SemgrepResult
@@ -53,9 +54,9 @@ class ResultMerger:
 
     def merge(
         self,
-        semgrep_results: List[SemgrepResult],
-        vibesrails_results: List[ScanResult],
-    ) -> Tuple[List[UnifiedResult], Dict[str, int]]:
+        semgrep_results: list[SemgrepResult],
+        vibesrails_results: list[ScanResult],
+    ) -> tuple[list[UnifiedResult], dict[str, int]]:
         """Merge results from both scanners with deduplication."""
         unified = []
         seen: set[tuple] = set()
@@ -139,7 +140,7 @@ class ResultMerger:
 
         return "security"  # Default to security
 
-    def group_by_category(self, results: List[UnifiedResult]) -> Dict[str, List[UnifiedResult]]:
+    def group_by_category(self, results: list[UnifiedResult]) -> dict[str, list[UnifiedResult]]:
         """
         Group results by category for organized display.
 
@@ -157,10 +158,10 @@ class ResultMerger:
 
         return groups
 
-    def get_blocking_count(self, results: List[UnifiedResult]) -> int:
+    def get_blocking_count(self, results: list[UnifiedResult]) -> int:
         """Count blocking issues."""
         return sum(1 for r in results if r.level == "BLOCK")
 
-    def get_warning_count(self, results: List[UnifiedResult]) -> int:
+    def get_warning_count(self, results: list[UnifiedResult]) -> int:
         """Count warning issues."""
         return sum(1 for r in results if r.level == "WARN")

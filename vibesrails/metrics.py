@@ -6,12 +6,13 @@ Tracks usage, performance, and effectiveness metrics locally.
 No telemetry - all data stays on user's machine.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +82,7 @@ class MetricsCollector:
         with open(self.metrics_file, "a") as f:
             f.write(json.dumps(asdict(metrics)) + "\n")
 
-    def get_all_scans(self) -> List[ScanMetrics]:
+    def get_all_scans(self) -> list[ScanMetrics]:
         """Load all recorded scans."""
         if not self._ensure_initialized() or self.metrics_file is None:
             return []
@@ -97,7 +98,7 @@ class MetricsCollector:
                     scans.append(ScanMetrics(**data))
         return scans
 
-    def get_stats(self) -> Dict:
+    def get_stats(self) -> dict:
         """Get aggregate statistics."""
         scans = self.get_all_scans()
 
