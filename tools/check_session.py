@@ -15,6 +15,7 @@ from core.guardian import (
     get_guardian_stats,
     is_ai_session,
 )
+from core.learning_bridge import record_safe
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,7 @@ def check_session() -> dict:
     pedagogy_key = "ai_detected" if ai_session else "no_ai_detected"
     pedagogy = SESSION_PEDAGOGY[pedagogy_key]
 
-    return {
+    result = {
         "is_ai_session": ai_session,
         "agent_name": agent_name,
         "env_markers_checked": AI_ENV_MARKERS,
@@ -79,3 +80,8 @@ def check_session() -> dict:
             "recommendation": pedagogy["recommendation"],
         },
     }
+    record_safe(None, "session_check", {
+        "is_ai_session": ai_session,
+        "agent_name": agent_name,
+    })
+    return result

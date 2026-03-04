@@ -15,6 +15,7 @@ from core.input_validator import (
     validate_list,
     validate_string,
 )
+from core.learning_bridge import record_safe
 from core.path_validator import PathValidationError, validate_path
 from core.session_tracker import SessionTracker, classify_entropy
 
@@ -184,7 +185,7 @@ def _handle_update(
     session = tracker.get_session(session_id)
     level = classify_entropy(entropy)
 
-    return {
+    result = {
         "status": "ok",
         "session_id": session_id,
         "entropy_score": round(entropy, 4),
@@ -197,6 +198,12 @@ def _handle_update(
             session["violations_count"] if session else 0,
         ),
     }
+    record_safe(session_id, "entropy", {
+        "entropy_score": result["entropy_score"],
+        "entropy_level": level,
+        "session_duration_minutes": result["session_duration_minutes"],
+    })
+    return result
 
 
 def _handle_status(tracker: SessionTracker, session_id: str | None) -> dict:
@@ -215,7 +222,7 @@ def _handle_status(tracker: SessionTracker, session_id: str | None) -> dict:
 
     level = classify_entropy(entropy)
 
-    return {
+    result = {
         "status": "ok",
         "session_id": session_id,
         "entropy_score": round(entropy, 4),
@@ -231,6 +238,12 @@ def _handle_status(tracker: SessionTracker, session_id: str | None) -> dict:
             session["violations_count"],
         ),
     }
+    record_safe(session_id, "entropy", {
+        "entropy_score": result["entropy_score"],
+        "entropy_level": level,
+        "session_duration_minutes": result["session_duration_minutes"],
+    })
+    return result
 
 
 def _handle_end(tracker: SessionTracker, session_id: str | None) -> dict:
@@ -246,7 +259,7 @@ def _handle_end(tracker: SessionTracker, session_id: str | None) -> dict:
     level = summary["entropy_level"]
     entropy = summary["final_entropy"]
 
-    return {
+    result = {
         "status": "ok",
         "session_id": session_id,
         "entropy_score": entropy,
@@ -260,6 +273,12 @@ def _handle_end(tracker: SessionTracker, session_id: str | None) -> dict:
             summary["violations_count"],
         ),
     }
+    record_safe(session_id, "entropy", {
+        "entropy_score": entropy,
+        "entropy_level": level,
+        "session_duration_minutes": summary["duration_minutes"],
+    })
+    return result
 
 
 def _error_result(message: str) -> dict:
