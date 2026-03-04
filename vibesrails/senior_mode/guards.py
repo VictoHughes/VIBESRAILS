@@ -112,10 +112,15 @@ class DependencyGuard:
         return deps
 
 
+DEFAULT_MIN_TEST_RATIO = 0.3
+MIN_CODE_LINES_NO_TESTS = 20
+MIN_CODE_LINES_RATIO_CHECK = 50
+
+
 class TestCoverageGuard:
     """Warns when code is added without corresponding tests."""
 
-    def __init__(self, min_ratio: float = 0.3):
+    def __init__(self, min_ratio: float = DEFAULT_MIN_TEST_RATIO):
         self.min_ratio = min_ratio
 
     def check(self, code_diff: str, test_diff: str) -> list[GuardIssue]:
@@ -123,14 +128,14 @@ class TestCoverageGuard:
         code_added = len([line for line in code_diff.splitlines() if line.startswith("+") and not line.startswith("+++")])
         test_added = len([line for line in test_diff.splitlines() if line.startswith("+") and not line.startswith("+++")])
 
-        if code_added > 20 and test_added == 0:
+        if code_added > MIN_CODE_LINES_NO_TESTS and test_added == 0:
             return [GuardIssue(
                 guard="TestCoverageGuard",
                 severity="warn",
                 message=f"{code_added} lines of code added with no tests. "
                         "AI generates code, YOU should test it."
             )]
-        elif code_added > 50 and test_added < code_added * self.min_ratio:
+        elif code_added > MIN_CODE_LINES_RATIO_CHECK and test_added < code_added * self.min_ratio:
             ratio = test_added / code_added if code_added > 0 else 0
             return [GuardIssue(
                 guard="TestCoverageGuard",

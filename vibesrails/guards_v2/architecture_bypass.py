@@ -10,6 +10,8 @@ logger = logging.getLogger(__name__)
 
 GUARD = "ArchitectureDriftGuard"
 
+REEXPORT_RATIO = 0.8
+
 
 def _all_layer_dirs() -> set[str]:
     """All directory names that map to a layer."""
@@ -36,7 +38,7 @@ def _check_reexport_file(tree: ast.Module) -> tuple[bool, int, int]:
         s for s in stmts
         if not (isinstance(s, ast.Expr) and isinstance(s.value, ast.Constant))
     ])
-    is_reexport = total >= 2 and imports > 0 and (imports / total) >= 0.8 and _has_all_assignment(stmts)
+    is_reexport = total >= 2 and imports > 0 and (imports / total) >= REEXPORT_RATIO and _has_all_assignment(stmts)
     return is_reexport, imports, total
 
 

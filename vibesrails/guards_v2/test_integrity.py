@@ -11,6 +11,11 @@ logger = logging.getLogger(__name__)
 
 GUARD_NAME = "test-integrity"
 
+MOCK_RATIO_BLOCK = 0.8
+MOCK_RATIO_WARN = 0.6
+ALL_MOCKING_THRESHOLD = 0.5
+INTEGRATION_TEST_THRESHOLD = 0.2
+
 
 class TestIntegrityGuard:
     """Detects tests that cheat by over-mocking."""
@@ -32,7 +37,7 @@ class TestIntegrityGuard:
         mock_count, total = det.count_mocks(tree)
         if total > 0:
             ratio = mock_count / total
-            if ratio > 0.8:
+            if ratio > MOCK_RATIO_BLOCK:
                 issues.append(V2GuardIssue(
                     guard=GUARD_NAME,
                     severity="block",
@@ -42,7 +47,7 @@ class TestIntegrityGuard:
                     ),
                     file=fname,
                 ))
-            elif ratio > 0.6:
+            elif ratio > MOCK_RATIO_WARN:
                 issues.append(V2GuardIssue(
                     guard=GUARD_NAME,
                     severity="warn",
@@ -87,9 +92,9 @@ class TestIntegrityGuard:
             if total > 0:
                 mock_ratios.append(mc / total)
 
-        if mock_ratios and all(r > 0.5 for r in mock_ratios):
+        if mock_ratios and all(r > ALL_MOCKING_THRESHOLD for r in mock_ratios):
             has_integration = any(
-                r < 0.2 for r in mock_ratios
+                r < INTEGRATION_TEST_THRESHOLD for r in mock_ratios
             )
             if not has_integration:
                 issues.append(V2GuardIssue(
