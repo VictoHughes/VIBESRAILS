@@ -6,13 +6,14 @@ Provides a clean interface to Semgrep CLI with robust error handling.
 Supports auto-install, preset configurations, and graceful degradation.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
-from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ class SemgrepResult:
     rule_id: str
     message: str
     severity: str  # ERROR | WARNING | INFO
-    code_snippet: Optional[str] = None
+    code_snippet: str | None = None
 
 
 class SemgrepAdapter:
@@ -93,7 +94,7 @@ class SemgrepAdapter:
             logger.warning("Failed to install Semgrep, continuing with VibesRails only")
             return False
 
-    def _build_command(self, files: List[str]) -> List[str]:
+    def _build_command(self, files: list[str]) -> list[str]:
         """Build the Semgrep command line."""
         cmd = ["semgrep", "--config", self._get_config_flag(), "--json", "--quiet", "--no-git-ignore"]
         for rule in self.additional_rules:
@@ -103,7 +104,7 @@ class SemgrepAdapter:
         cmd.extend(files)
         return cmd
 
-    def scan(self, files: List[str]) -> List[SemgrepResult]:
+    def scan(self, files: list[str]) -> list[SemgrepResult]:
         """Scan files with Semgrep. Returns empty list if unavailable."""
         if not self.enabled or not self.is_installed() or not files:
             return []
@@ -134,7 +135,7 @@ class SemgrepAdapter:
         }
         return presets.get(self.preset, "auto")
 
-    def _parse_results(self, json_output: str) -> List[SemgrepResult]:
+    def _parse_results(self, json_output: str) -> list[SemgrepResult]:
         """
         Parse Semgrep JSON output into normalized results.
 
@@ -169,7 +170,7 @@ class SemgrepAdapter:
             # Fail gracefully on parse errors
             return []
 
-    def get_version(self) -> Optional[str]:
+    def get_version(self) -> str | None:
         """
         Get installed Semgrep version.
 
