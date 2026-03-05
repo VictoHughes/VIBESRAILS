@@ -1,6 +1,39 @@
 # Changelog
 
-All notable changes to the VibesRails MCP Server will be documented in this file.
+All notable changes to VibesRails will be documented in this file.
+
+## [2.2.0] - 2026-03-04
+
+### Added
+- `vibesrails --preflight` — pre-session checklist (branch, uncommitted files, test baseline, assertions)
+- `vibesrails --check-assertions` — validate project truths from vibesrails.yaml assertions section
+- `vibesrails --sync-claude` — auto-generate CLAUDE.md sections from code introspection
+- decisions.md template generated via `--init` and `--setup`
+- fail_closed_allow mechanism in assertions (allowlist for intentional graceful degradation)
+- Session mode detection groundwork (Guardian signals: branch, entropy, drift)
+
+### Fixed
+- Consolidated duplicated semgrep adapter (single source of truth)
+- Modernized typing imports (Python 3.12+ native types)
+- Tightened exception handlers in hooks (specific catches + logging)
+- Dynamic tools_count in MCP server (no more hardcoded value)
+- ObservabilityGuard skip pattern (files only, not directories)
+- SignatureIndexer O(1) parent lookup + configurable exact match
+- Extracted 8 magic thresholds into named constants
+- Reduced audit noise (semgrep FP exclusion, file_too_long threshold 400)
+
+### Changed
+- CLAUDE.md rewritten (55/100 → 94/100)
+- Learner module marked as experimental (FutureWarning)
+- Mutation files consolidated into mutation/ package
+- Giant test files split into focused modules
+- Upgrade advisor wired into CLI and PreDeployGuard
+- Pack manager secured (SHA256 checksums, conflict detection, lockfile)
+- monitor_entropy and check_session wired to learning engine
+
+### Metrics
+- Tests: 1875 → 2118 (+243)
+- Audit findings: 15 gaps → 0
 
 ## [0.1.0] - 2026-02-08
 

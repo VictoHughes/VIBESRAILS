@@ -6,7 +6,7 @@ Most security tools scan your code after it's written.
 VibesRails intercepts before execution — secrets are blocked
 before they touch your files.
 
-![Tests](https://img.shields.io/badge/tests-1822_passing-green)
+![Tests](https://img.shields.io/badge/tests-2118_passing-green)
 ![Python](https://img.shields.io/badge/python-3.10+-blue)
 ![License](https://img.shields.io/badge/license-Apache_2.0-orange)
 
@@ -44,15 +44,6 @@ before the file is written.
 
 ## Install
 
-> **Note:** PyPI publication pending. For now, install from source:
-> ```bash
-> git clone https://github.com/VictoHughes/VIBESRAILS.git
-> cd VIBESRAILS
-> pip install -e ".[mcp]"
-> ```
-
-### Quick install (after PyPI publish)
-
 ```bash
 # pipx (isolated CLI — recommended)
 pipx install vibesrails
@@ -78,7 +69,7 @@ pip install vibesrails[mcp]
 git clone https://github.com/VictoHughes/VIBESRAILS.git
 cd VIBESRAILS
 make install-dev   # installs dev + MCP dependencies
-make test          # 1822 tests
+make test          # 2118 tests
 ```
 
 ## Configure (Claude Code)
@@ -151,16 +142,26 @@ actionable insights, SQLite persistence across sessions.
 | Setup & Config | `--init`, `--setup`, `--hook`, `--validate` | 7 |
 | Scanning | `--all`, `--file`, `--senior`, `--senior-v2` | 7 |
 | Auto-fix | `--fix`, `--dry-run`, `--no-backup` | 3 |
-| Specialized Guards | `--audit-deps`, `--complexity`, `--mutation` | 9 |
+| Specialized Guards | `--audit-deps`, `--complexity`, `--mutation`, `--preflight` | 13 |
+| Workflow | `--check-assertions`, `--sync-claude`, `--preflight` | 3 |
 | Community | `--install-pack`, `--learn`, `--upgrade` | 5 |
 | Session Management | `--watch`, `--queue`, `--inbox` | 5 |
 | Guardian | `--guardian-stats` | 1 |
 
 Run `vibesrails --help` for full details.
 
+## Workflow Tools (v2.2.0)
+
+| Tool | What it does |
+|------|-------------|
+| `--preflight` | Pre-session checklist: branch, uncommitted files, test baseline, config, hooks |
+| `--check-assertions` | Validate project truths (version, test count, fail_closed rules) |
+| `--sync-claude` | Auto-generate CLAUDE.md sections from code introspection |
+| `--init` / `--setup` | Now generates `decisions.md` template for architecture decision records |
+
 ## Security
 
-1822 tests including 111 security tests. Path traversal protection,
+2118 tests including 111 security tests. Path traversal protection,
 SQL injection prevention, ReDoS verification, filesystem sandbox,
 rate limiting, structured logging with data redaction.
 

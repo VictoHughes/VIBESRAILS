@@ -4,8 +4,8 @@
 │   └── semgrep_adapter.py
 ├── core
 │   ├── __init__.py
-│   ├── brief_enforcer_patterns.py
 │   ├── brief_enforcer.py
+│   ├── brief_enforcer_patterns.py
 │   ├── config_shield.py
 │   ├── drift_metrics.py
 │   ├── drift_tracker.py
@@ -18,12 +18,13 @@
 │   ├── learning_profile.py
 │   ├── logger.py
 │   ├── path_validator.py
-│   ├── prompt_shield_patterns.py
 │   ├── prompt_shield.py
+│   ├── prompt_shield_patterns.py
 │   ├── rate_limiter.py
 │   ├── secret_patterns.py
 │   └── session_tracker.py
 ├── docs
+│   ├── plans
 │   ├── METRICS.md
 │   ├── PROJECT_TREE.md
 │   ├── RATE_LIMITING.md
@@ -56,19 +57,24 @@
 │   ├── test_guards_v2
 │   │   ├── __init__.py
 │   │   ├── test_api_design.py
+│   │   ├── test_architecture_bypass.py
 │   │   ├── test_architecture_drift.py
 │   │   ├── test_complexity.py
 │   │   ├── test_database_safety.py
 │   │   ├── test_dead_code.py
 │   │   ├── test_dependency_audit.py
+│   │   ├── test_dependency_audit_checks.py
 │   │   ├── test_docstring.py
 │   │   ├── test_env_safety.py
 │   │   ├── test_git_workflow.py
 │   │   ├── test_mutation.py
+│   │   ├── test_mutation_engine.py
+│   │   ├── test_mutation_visitors.py
 │   │   ├── test_observability.py
 │   │   ├── test_performance.py
 │   │   ├── test_pr_checklist.py
 │   │   ├── test_pre_deploy.py
+│   │   ├── test_pre_deploy_checks.py
 │   │   ├── test_test_integrity.py
 │   │   └── test_type_safety.py
 │   ├── test_hooks
@@ -93,14 +99,14 @@
 │   │   ├── test_path_traversal.py
 │   │   ├── test_redos.py
 │   │   ├── test_resource_exhaustion.py
-│   │   ├── test_sql_injection_deep.py
 │   │   ├── test_sql_injection.py
+│   │   ├── test_sql_injection_deep.py
 │   │   └── test_sqlite_wal.py
 │   ├── test_storage
 │   │   ├── __init__.py
+│   │   ├── test_migrations.py
 │   │   ├── test_migrations_v2.py
-│   │   ├── test_migrations_v3.py
-│   │   └── test_migrations.py
+│   │   └── test_migrations_v3.py
 │   ├── test_tools
 │   │   ├── __init__.py
 │   │   ├── test_check_config.py
@@ -116,43 +122,55 @@
 │   │   └── test_shield_prompt.py
 │   ├── __init__.py
 │   ├── conftest.py
+│   ├── test_assertions.py
 │   ├── test_autofix.py
-│   ├── test_cli.py
+│   ├── test_cli_lifecycle.py
+│   ├── test_cli_setup.py
 │   ├── test_config.py
+│   ├── test_decisions_template.py
 │   ├── test_dialogue.py
 │   ├── test_duplication_guard.py
 │   ├── test_e2e_semgrep.py
 │   ├── test_guardian.py
 │   ├── test_integration_learning.py
-│   ├── test_learn_command.py
 │   ├── test_learn.py
+│   ├── test_learn_command.py
 │   ├── test_mcp_server.py
 │   ├── test_pattern_detector.py
+│   ├── test_pentest_fixes.py
+│   ├── test_pentest_red_fixes.py
 │   ├── test_placement_guard.py
+│   ├── test_preflight.py
 │   ├── test_rate_limiting.py
-│   ├── test_scanner.py
+│   ├── test_scanner_core.py
+│   ├── test_scanner_integration.py
+│   ├── test_scanner_utils.py
 │   ├── test_semgrep_integration.py
 │   ├── test_senior_mode.py
 │   ├── test_session_lock.py
 │   ├── test_signature_index.py
-│   ├── test_smart_setup.py
+│   ├── test_smart_setup_config.py
+│   ├── test_smart_setup_detection.py
+│   ├── test_smart_setup_edge.py
+│   ├── test_smart_setup_integration.py
 │   ├── test_structure_rules.py
+│   ├── test_sync_claude.py
+│   ├── test_throttle.py
 │   ├── test_throttle_cli.py
 │   ├── test_throttle_integration.py
-│   ├── test_throttle.py
 │   └── test_watch.py
 ├── tools
 │   ├── __init__.py
 │   ├── check_config.py
 │   ├── check_drift.py
 │   ├── check_session.py
-│   ├── deep_hallucination_pedagogy.py
 │   ├── deep_hallucination.py
+│   ├── deep_hallucination_pedagogy.py
 │   ├── enforce_brief.py
 │   ├── get_learning.py
 │   ├── monitor_entropy.py
-│   ├── scan_code_pedagogy.py
 │   ├── scan_code.py
+│   ├── scan_code_pedagogy.py
 │   ├── scan_semgrep.py
 │   ├── scan_senior.py
 │   └── shield_prompt.py
@@ -172,6 +190,7 @@
 │   │   ├── __init__.py
 │   │   └── pack_manager.py
 │   ├── config
+│   │   ├── decisions.md.template
 │   │   └── default.yaml
 │   ├── guardian
 │   │   ├── __init__.py
@@ -180,6 +199,12 @@
 │   │   ├── placement_guard.py
 │   │   └── types.py
 │   ├── guards_v2
+│   │   ├── mutation
+│   │   │   ├── __init__.py
+│   │   │   ├── engine.py
+│   │   │   ├── guard.py
+│   │   │   ├── mutmut.py
+│   │   │   └── visitors.py
 │   │   ├── __init__.py
 │   │   ├── _arch_layers.py
 │   │   ├── _env_patterns.py
@@ -191,22 +216,18 @@
 │   │   ├── complexity.py
 │   │   ├── database_safety.py
 │   │   ├── dead_code.py
-│   │   ├── dependency_audit_checks.py
 │   │   ├── dependency_audit.py
+│   │   ├── dependency_audit_checks.py
 │   │   ├── docstring.py
 │   │   ├── env_safety.py
 │   │   ├── git_workflow.py
-│   │   ├── mutation_engine.py
-│   │   ├── mutation_mutmut.py
-│   │   ├── mutation_visitors.py
-│   │   ├── mutation.py
 │   │   ├── observability.py
 │   │   ├── performance.py
 │   │   ├── pr_checklist.py
-│   │   ├── pre_deploy_checks.py
 │   │   ├── pre_deploy.py
-│   │   ├── test_integrity_detectors.py
+│   │   ├── pre_deploy_checks.py
 │   │   ├── test_integrity.py
+│   │   ├── test_integrity_detectors.py
 │   │   └── type_safety.py
 │   ├── hooks
 │   │   ├── __init__.py
@@ -231,8 +252,8 @@
 │   │   ├── __init__.py
 │   │   ├── architecture_mapper.py
 │   │   ├── claude_reviewer.py
-│   │   ├── guards_analysis.py
 │   │   ├── guards.py
+│   │   ├── guards_analysis.py
 │   │   └── report.py
 │   ├── smart_setup
 │   │   ├── __init__.py
@@ -248,39 +269,44 @@
 │   ├── __init__.py
 │   ├── __main__.py
 │   ├── ai_guardian.py
+│   ├── assertions.py
 │   ├── autofix.py
+│   ├── cli.py
 │   ├── cli_setup.py
 │   ├── cli_v2.py
-│   ├── cli.py
 │   ├── config.py
 │   ├── e2e_semgrep.py
 │   ├── integration_learning.py
+│   ├── learn.py
 │   ├── learn_command.py
 │   ├── learn_runner.py
-│   ├── learn.py
 │   ├── metrics.py
+│   ├── preflight.py
 │   ├── rate_limiting.py
 │   ├── result_merger.py
 │   ├── scan_runner.py
+│   ├── scanner.py
 │   ├── scanner_cli.py
 │   ├── scanner_git.py
 │   ├── scanner_types.py
 │   ├── scanner_utils.py
-│   ├── scanner.py
 │   ├── semgrep_adapter.py
 │   ├── semgrep_integration.py
-│   └── watch.py
+│   ├── sync_claude.py
+│   ├── watch.py
+│   └── yaml_safety.py
+├── ARCHITECTURE.md
 ├── CHANGELOG.md
-├── claude code.command
 ├── CLAUDE.md
 ├── LICENSE
 ├── Makefile
-├── mcp_server.py
-├── mcp_tools_ext.py
-├── mcp_tools.py
-├── pyproject.toml
 ├── README.md
 ├── SECURITY.md
+├── claude code.command
+├── mcp_server.py
+├── mcp_tools.py
+├── mcp_tools_ext.py
+├── pyproject.toml
 └── vibesrails.yaml
 
-29 directories, 255 files
+31 directories, 279 files
