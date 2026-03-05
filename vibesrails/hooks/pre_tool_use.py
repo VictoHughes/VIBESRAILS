@@ -252,6 +252,16 @@ def main() -> None:
     if content:
         line_count = len(content.splitlines())
         max_lines = _load_max_file_lines()
+        # Adapt to session mode (R&D gets more headroom)
+        try:
+            from vibesrails.context import ContextAdapter, get_current_mode
+            mode, _ = get_current_mode()
+            profile = ContextAdapter().get_profile(mode)
+            ftl = profile.get("file_too_long", {})
+            if "threshold" in ftl:
+                max_lines = ftl["threshold"]
+        except Exception:  # noqa: BLE001
+            pass  # Graceful degradation — use default
         if line_count > max_lines:
             sys.stdout.write(
                 f"BLOCKED \u2014 File exceeds {max_lines} lines "

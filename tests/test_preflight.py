@@ -282,14 +282,15 @@ def test_check_decisions_missing(tmp_path):
 # ============================================
 
 
-def test_run_preflight_returns_thirteen_results(tmp_path):
-    """Orchestrator returns exactly 13 results (8 core + 4 doc freshness + 1 session mode)."""
+def test_run_preflight_returns_at_least_thirteen_results(tmp_path):
+    """Orchestrator returns >= 13 results (12 core + session mode list)."""
     with mock.patch("vibesrails.preflight.run_git", return_value=(True, "main")):
         with mock.patch("vibesrails.preflight.subprocess.run", return_value=mock.Mock(returncode=0)):
             with mock.patch("vibesrails.preflight.find_config", return_value=None):
                 with mock.patch("vibesrails.context.detector.run_git", return_value=(True, "main")):
                     results = run_preflight(tmp_path)
-    assert len(results) == 13
+    # 12 core checks + at least 1 session mode (MIXED adds no threshold lines)
+    assert len(results) >= 13
     assert all(isinstance(r, CheckResult) for r in results)
 
 
@@ -536,17 +537,37 @@ def test_check_session_mode_detected(tmp_path):
             (False, ""),         # diff
             (True, ""),          # log
         ]
-        result = check_session_mode(tmp_path)
-    assert result.status == "info"
-    assert "Session mode" in result.name
+        results = check_session_mode(tmp_path)
+    assert isinstance(results, list)
+    assert results[0].status == "info"
+    assert "Session mode" in results[0].name
 
 
 def test_check_session_mode_forced(tmp_path):
-    """Forced mode shows override."""
+    """Forced mode shows override + threshold adjustments."""
     mode_dir = tmp_path / ".vibesrails"
     mode_dir.mkdir()
     (mode_dir / ".session_mode").write_text("bugfix\n")
-    result = check_session_mode(tmp_path)
-    assert result.status == "info"
-    assert "BUGFIX" in result.message
-    assert "forced" in result.message
+    results = check_session_mode(tmp_path)
+    assert isinstance(results, list)
+    assert results[0].status == "info"
+    assert "BUGFIX" in results[0].message
+    assert "forced" in results[0].message
+    # BUGFIX is not MIXED, so threshold adjustments should follow
+    assert len(results) > 1
+    assert any("Threshold" in r.name for r in results[1:])
+
+
+def test_check_session_mode_mixed_no_thresholds(tmp_path):
+    """MIXED mode shows no threshold adjustments."""
+    with mock.patch("vibesrails.context.detector.run_git") as mock_git:
+        mock_git.side_effect = [
+            (True, "main"),      # branch → unknown → 0.5
+            (True, ""),          # status (clean)
+            (False, ""),         # diff fails
+            (True, ""),          # log (no recent commits)
+        ]
+        results = check_session_mode(tmp_path)
+    # MIXED mode → only the session mode line, no threshold lines
+    threshold_results = [r for r in results if r.name == "Threshold"]
+    assert len(threshold_results) == 0

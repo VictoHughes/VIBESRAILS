@@ -256,10 +256,11 @@ def scan_file(filepath: str, config: dict) -> list[ScanResult]:
     except (ValueError, TypeError):
         max_file_lines = 0
     if max_file_lines and len(lines) > max_file_lines and not is_test_file(filepath):
+        severity = complexity.get("file_too_long_severity", "WARN")
         results.append(ScanResult(
             file=filepath, line=len(lines), pattern_id="file_too_long",
             message=f"File has {len(lines)} lines (max: {max_file_lines}). Consider splitting into smaller modules.",
-            level="WARN",
+            level=severity,
         ))
 
     # Get exceptions for this file

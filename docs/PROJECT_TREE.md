@@ -1,4 +1,4 @@
-.
+/Users/stan/Dev/vibesrails
 ├── adapters
 │   ├── __init__.py
 │   └── semgrep_adapter.py
@@ -43,6 +43,7 @@
 │   │   └── test_pack_manager.py
 │   ├── test_context
 │   │   ├── __init__.py
+│   │   ├── test_adapter.py
 │   │   ├── test_detector.py
 │   │   ├── test_mode.py
 │   │   └── test_scorer.py
@@ -199,6 +200,7 @@
 │   │   └── default.yaml
 │   ├── context
 │   │   ├── __init__.py
+│   │   ├── adapter.py
 │   │   ├── detector.py
 │   │   ├── mode.py
 │   │   └── scorer.py
@@ -319,4 +321,4 @@
 ├── pyproject.toml
 └── vibesrails.yaml
 
-33 directories, 287 files
+33 directories, 289 files

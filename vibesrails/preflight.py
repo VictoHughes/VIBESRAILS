@@ -280,41 +280,53 @@ def check_changelog_current(root: Path) -> CheckResult:
     )
 
 
-def check_session_mode(root: Path) -> CheckResult:
-    """Detect session mode (R&D vs Bugfix) from context signals."""
-    from .context import ContextDetector, ContextScorer, SessionMode
+def check_session_mode(root: Path) -> list[CheckResult]:
+    """Detect session mode and show threshold adjustments."""
+    from .context import ContextAdapter, ContextDetector, ContextScorer, SessionMode
 
+    results: list[CheckResult] = []
     detector = ContextDetector(root)
 
     # Check for manual override
     forced = detector.read_forced_mode()
     if forced:
-        mode_label = forced.upper()
-        return CheckResult(
-            "Session mode", "info", f"{mode_label} (forced via --mode)"
+        mode = SessionMode(forced)
+        results.append(
+            CheckResult("Session mode", "info", f"{forced.upper()} (forced via --mode)")
+        )
+    else:
+        signals = detector.detect()
+        score = ContextScorer().score(signals)
+        mode = score.mode
+
+        mode_labels = {
+            SessionMode.RND: "R&D",
+            SessionMode.MIXED: "Mixed",
+            SessionMode.BUGFIX: "Bugfix",
+        }
+        label = mode_labels.get(mode, mode.value)
+        conf = "high" if score.confidence >= 0.7 else "medium" if score.confidence >= 0.4 else "low"
+        results.append(
+            CheckResult(
+                "Session mode",
+                "info",
+                f"{label} (score: {score.score:.2f}, confidence: {conf})",
+            )
         )
 
-    signals = detector.detect()
-    result = ContextScorer().score(signals)
+    # Show threshold adjustments for non-MIXED modes
+    if mode != SessionMode.MIXED:
+        adapter = ContextAdapter()
+        adjustments = adapter.format_adjustments(mode)
+        for adj in adjustments:
+            results.append(CheckResult("Threshold", "info", adj))
 
-    mode_labels = {
-        SessionMode.RND: "R&D",
-        SessionMode.MIXED: "Mixed",
-        SessionMode.BUGFIX: "Bugfix",
-    }
-    label = mode_labels.get(result.mode, result.mode.value)
-    conf = "high" if result.confidence >= 0.7 else "medium" if result.confidence >= 0.4 else "low"
-
-    return CheckResult(
-        "Session mode",
-        "info",
-        f"{label} (score: {result.score:.2f}, confidence: {conf})",
-    )
+    return results
 
 
 def run_preflight(root: Path) -> list[CheckResult]:
     """Run all preflight checks and return results."""
-    return [
+    results = [
         check_branch(root),
         check_uncommitted(root),
         check_ahead_behind(root),
@@ -328,9 +340,10 @@ def run_preflight(root: Path) -> list[CheckResult]:
         check_test_count_freshness(root),
         check_claude_md_freshness(root),
         check_changelog_current(root),
-        # Session context
-        check_session_mode(root),
     ]
+    # Session context (returns list — may include threshold adjustments)
+    results.extend(check_session_mode(root))
+    return results
 
 
 _STATUS_ICONS = {

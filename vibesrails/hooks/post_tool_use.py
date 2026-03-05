@@ -170,6 +170,14 @@ def _handle_write_edit(tool_input: dict) -> None:
     try:
         from vibesrails.scanner import load_config, scan_file
         config = load_config()
+        # Adapt thresholds to session mode
+        try:
+            from vibesrails.context import ContextAdapter, get_current_mode
+            mode, _ = get_current_mode()
+            adapter = ContextAdapter(config.get("session_profiles"))
+            config = adapter.adapt_config(mode, config)
+        except Exception:  # noqa: BLE001
+            pass  # Graceful degradation — use original config
         for r in scan_file(file_path, config):
             all_issues.append(f"  - L{r.line} [{r.level}] {r.message}")
     except Exception as e:  # noqa: BLE001
