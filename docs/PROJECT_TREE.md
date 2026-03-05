@@ -41,6 +41,11 @@
 │   ├── test_community
 │   │   ├── __init__.py
 │   │   └── test_pack_manager.py
+│   ├── test_context
+│   │   ├── __init__.py
+│   │   ├── test_detector.py
+│   │   ├── test_mode.py
+│   │   └── test_scorer.py
 │   ├── test_core
 │   │   ├── __init__.py
 │   │   ├── test_brief_enforcer.py
@@ -192,6 +197,11 @@
 │   ├── config
 │   │   ├── decisions.md.template
 │   │   └── default.yaml
+│   ├── context
+│   │   ├── __init__.py
+│   │   ├── detector.py
+│   │   ├── mode.py
+│   │   └── scorer.py
 │   ├── guardian
 │   │   ├── __init__.py
 │   │   ├── dialogue.py
@@ -309,4 +319,4 @@
 ├── pyproject.toml
 └── vibesrails.yaml
 
-31 directories, 279 files
+33 directories, 287 files

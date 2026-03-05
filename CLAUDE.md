@@ -7,7 +7,7 @@
 
 VibesRails is a security guardrails platform for AI-assisted Python development. It combines a YAML-driven CLI scanner, an MCP server, and a hook system that protects Claude Code sessions in real-time.
 
-**Key numbers:** 2133 tests | 12 MCP tools | 16 V2 guards | 7 hook modules
+**Key numbers:** 2178 tests | 12 MCP tools | 16 V2 guards | 7 hook modules
 <!-- /AUTO:overview -->
 
 ## Setup
@@ -171,6 +171,7 @@ vibesrails --inbox               # Add instruction to mobile inbox
 vibesrails --throttle-status     # Show write throttle counter
 vibesrails --throttle-reset      # Reset write throttle counter
 vibesrails --sync-claude         # Auto-generate factual CLAUDE.md sections from code
+vibesrails --mode                # Force session mode (rnd/bugfix/auto)
 ```
 
 ### Guardian (AI mode)

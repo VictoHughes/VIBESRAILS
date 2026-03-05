@@ -280,6 +280,38 @@ def check_changelog_current(root: Path) -> CheckResult:
     )
 
 
+def check_session_mode(root: Path) -> CheckResult:
+    """Detect session mode (R&D vs Bugfix) from context signals."""
+    from .context import ContextDetector, ContextScorer, SessionMode
+
+    detector = ContextDetector(root)
+
+    # Check for manual override
+    forced = detector.read_forced_mode()
+    if forced:
+        mode_label = forced.upper()
+        return CheckResult(
+            "Session mode", "info", f"{mode_label} (forced via --mode)"
+        )
+
+    signals = detector.detect()
+    result = ContextScorer().score(signals)
+
+    mode_labels = {
+        SessionMode.RND: "R&D",
+        SessionMode.MIXED: "Mixed",
+        SessionMode.BUGFIX: "Bugfix",
+    }
+    label = mode_labels.get(result.mode, result.mode.value)
+    conf = "high" if result.confidence >= 0.7 else "medium" if result.confidence >= 0.4 else "low"
+
+    return CheckResult(
+        "Session mode",
+        "info",
+        f"{label} (score: {result.score:.2f}, confidence: {conf})",
+    )
+
+
 def run_preflight(root: Path) -> list[CheckResult]:
     """Run all preflight checks and return results."""
     return [
@@ -296,6 +328,8 @@ def run_preflight(root: Path) -> list[CheckResult]:
         check_test_count_freshness(root),
         check_claude_md_freshness(root),
         check_changelog_current(root),
+        # Session context
+        check_session_mode(root),
     ]
 
 

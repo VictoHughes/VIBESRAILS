@@ -197,4 +197,4 @@ assertions:
       - "vibesrails/hooks/post_tool_use.py:189"
       - "tests/"
   baselines:
-    test_count: 2133           # Minimum test count
+    test_count: 2178           # Minimum test count

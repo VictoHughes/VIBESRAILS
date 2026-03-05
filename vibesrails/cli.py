@@ -112,6 +112,8 @@ def _parse_args():
                            help="Reset write throttle counter")
     g_session.add_argument("--sync-claude", action="store_true",
                            help="Auto-generate factual CLAUDE.md sections from code")
+    g_session.add_argument("--mode", choices=["rnd", "bugfix", "auto"],
+                           help="Force session mode (rnd/bugfix/auto)")
 
     # --- Guardian ---
     g_guardian = parser.add_argument_group("Guardian (AI mode)")
@@ -171,6 +173,15 @@ def _handle_info_commands(args) -> None:
         if args.dry_run and result:
             print(result)
         sys.exit(0 if result else 1)
+
+    if args.mode:
+        from .context.detector import ContextDetector
+        ContextDetector.write_forced_mode(Path.cwd(), args.mode)
+        if args.mode == "auto":
+            logger.info("Session mode: auto-detect (override removed)")
+        else:
+            logger.info("Session mode forced: %s", args.mode.upper())
+        sys.exit(0)
 
 
 def _handle_setup_commands(args) -> None:

@@ -12,6 +12,7 @@ from vibesrails.preflight import (
     check_config_valid,
     check_decisions_md,
     check_hook_installed,
+    check_session_mode,
     check_test_baseline,
     check_test_count_freshness,
     check_uncommitted,
@@ -281,13 +282,14 @@ def test_check_decisions_missing(tmp_path):
 # ============================================
 
 
-def test_run_preflight_returns_twelve_results(tmp_path):
-    """Orchestrator returns exactly 12 results (8 core + 4 doc freshness)."""
+def test_run_preflight_returns_thirteen_results(tmp_path):
+    """Orchestrator returns exactly 13 results (8 core + 4 doc freshness + 1 session mode)."""
     with mock.patch("vibesrails.preflight.run_git", return_value=(True, "main")):
         with mock.patch("vibesrails.preflight.subprocess.run", return_value=mock.Mock(returncode=0)):
             with mock.patch("vibesrails.preflight.find_config", return_value=None):
-                results = run_preflight(tmp_path)
-    assert len(results) == 12
+                with mock.patch("vibesrails.context.detector.run_git", return_value=(True, "main")):
+                    results = run_preflight(tmp_path)
+    assert len(results) == 13
     assert all(isinstance(r, CheckResult) for r in results)
 
 
@@ -518,3 +520,33 @@ def test_check_changelog_current_no_pyproject(tmp_path):
     """No pyproject.toml returns info."""
     result = check_changelog_current(tmp_path)
     assert result.status == "info"
+
+
+# ============================================
+# check_session_mode
+# ============================================
+
+
+def test_check_session_mode_detected(tmp_path):
+    """Session mode shows detected mode as info."""
+    with mock.patch("vibesrails.context.detector.run_git") as mock_git:
+        mock_git.side_effect = [
+            (True, "feat/new"),  # branch
+            (True, ""),          # status
+            (False, ""),         # diff
+            (True, ""),          # log
+        ]
+        result = check_session_mode(tmp_path)
+    assert result.status == "info"
+    assert "Session mode" in result.name
+
+
+def test_check_session_mode_forced(tmp_path):
+    """Forced mode shows override."""
+    mode_dir = tmp_path / ".vibesrails"
+    mode_dir.mkdir()
+    (mode_dir / ".session_mode").write_text("bugfix\n")
+    result = check_session_mode(tmp_path)
+    assert result.status == "info"
+    assert "BUGFIX" in result.message
+    assert "forced" in result.message
