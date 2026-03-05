@@ -185,12 +185,12 @@ guardian:
 # ═══════════════════════════════════════════════════════════════
 assertions:
   values:
-    version: "2.1.5"           # Current version string in code
+    version: "2.2.0"           # Current version string in code
     mcp_sdk: "FastMCP"         # MCP SDK pattern used
   rules:
     fail_closed: true          # No silent except/pass
     fail_closed_allow:         # Intentional graceful degradation
-      - "core/hallucination_registry.py:76"
+      - "core/hallucination_registry.py:78"
       - "core/hallucination_deep.py:70"
       - "vibesrails/assertions.py"
       - "vibesrails/sync_claude.py:184"
