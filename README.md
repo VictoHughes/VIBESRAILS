@@ -6,7 +6,7 @@ Most security tools scan your code after it's written.
 VibesRails intercepts before execution — secrets are blocked
 before they touch your files.
 
-![Tests](https://img.shields.io/badge/tests-2118_passing-green)
+![Tests](https://img.shields.io/badge/tests-2203_passing-green)
 ![Python](https://img.shields.io/badge/python-3.10+-blue)
 ![License](https://img.shields.io/badge/license-Apache_2.0-orange)
 
@@ -69,7 +69,7 @@ pip install vibesrails[mcp]
 git clone https://github.com/VictoHughes/VIBESRAILS.git
 cd VIBESRAILS
 make install-dev   # installs dev + MCP dependencies
-make test          # 2118 tests
+make test          # 2203 tests
 ```
 
 ## Configure (Claude Code)
@@ -145,7 +145,7 @@ actionable insights, SQLite persistence across sessions.
 | Specialized Guards | `--audit-deps`, `--complexity`, `--mutation`, `--preflight` | 13 |
 | Workflow | `--check-assertions`, `--sync-claude`, `--preflight` | 3 |
 | Community | `--install-pack`, `--learn`, `--upgrade` | 5 |
-| Session Management | `--watch`, `--queue`, `--inbox` | 5 |
+| Session Management | `--watch`, `--queue`, `--inbox`, `--mode` | 6 |
 | Guardian | `--guardian-stats` | 1 |
 
 Run `vibesrails --help` for full details.
@@ -154,14 +154,15 @@ Run `vibesrails --help` for full details.
 
 | Tool | What it does |
 |------|-------------|
-| `--preflight` | Pre-session checklist: branch, uncommitted files, test baseline, config, hooks |
+| `--preflight` | Pre-session checklist: branch, tests, config, doc freshness, session mode |
 | `--check-assertions` | Validate project truths (version, test count, fail_closed rules) |
 | `--sync-claude` | Auto-generate CLAUDE.md sections from code introspection |
+| `--mode rnd\|bugfix\|auto` | Force session mode — guards adapt thresholds dynamically |
 | `--init` / `--setup` | Now generates `decisions.md` template for architecture decision records |
 
 ## Security
 
-2118 tests including 111 security tests. Path traversal protection,
+2203 tests including 111 security tests. Path traversal protection,
 SQL injection prevention, ReDoS verification, filesystem sandbox,
 rate limiting, structured logging with data redaction.
 

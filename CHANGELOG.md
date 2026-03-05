@@ -10,7 +10,11 @@ All notable changes to VibesRails will be documented in this file.
 - `vibesrails --sync-claude` — auto-generate CLAUDE.md sections from code introspection
 - decisions.md template generated via `--init` and `--setup`
 - fail_closed_allow mechanism in assertions (allowlist for intentional graceful degradation)
-- Session mode detection groundwork (Guardian signals: branch, entropy, drift)
+- Context detection: automatic R&D/Mixed/Bugfix session mode (`vibesrails/context/`)
+- Context adapter: guards adjust thresholds dynamically per session mode
+- `vibesrails --mode rnd|bugfix|auto` — manual session mode override
+- Doc freshness checks in preflight (version consistency, test count, CLAUDE.md, changelog)
+- `session_profiles` YAML key for custom threshold overrides per mode
 
 ### Fixed
 - Consolidated duplicated semgrep adapter (single source of truth)
@@ -32,7 +36,7 @@ All notable changes to VibesRails will be documented in this file.
 - monitor_entropy and check_session wired to learning engine
 
 ### Metrics
-- Tests: 1875 → 2118 (+243)
+- Tests: 1875 → 2203 (+328)
 - Audit findings: 15 gaps → 0
 
 ## [0.1.0] - 2026-02-08
