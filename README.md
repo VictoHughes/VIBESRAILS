@@ -150,7 +150,7 @@ actionable insights, SQLite persistence across sessions.
 
 Run `vibesrails --help` for full details.
 
-## Workflow Tools (v2.2.0)
+## Workflow Tools (v2.2.1)
 
 | Tool | What it does |
 |------|-------------|
