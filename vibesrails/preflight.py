@@ -1,6 +1,7 @@
 """Preflight check — verify project readiness before starting a coding session."""
 
 import logging
+import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,6 +15,7 @@ from .scanner_types import BLUE, GREEN, NC, RED, YELLOW
 logger = logging.getLogger(__name__)
 
 MAX_AHEAD_COMMITS = 10
+TEST_COUNT_DRIFT_PERCENT = 5
 
 
 @dataclass
@@ -159,6 +161,125 @@ def check_assertions(root: Path) -> CheckResult:
     return CheckResult("Assertions", "ok", f"All {passes} assertion(s) passed")
 
 
+def _read_pyproject_version(root: Path) -> str | None:
+    """Read version from pyproject.toml."""
+    pyproject = root / "pyproject.toml"
+    if not pyproject.exists():
+        return None
+    try:
+        content = pyproject.read_text()
+        match = re.search(r'^version\s*=\s*"([^"]+)"', content, re.MULTILINE)
+        return match.group(1) if match else None
+    except OSError:
+        return None
+
+
+def check_version_consistency(root: Path) -> CheckResult:
+    """Check version string is consistent across key files."""
+    version = _read_pyproject_version(root)
+    if not version:
+        return CheckResult("Version sync", "info", "No pyproject.toml — skipped")
+    stale_files = []
+    for name in ("README.md", "CHANGELOG.md"):
+        path = root / name
+        if not path.exists():
+            continue
+        try:
+            if version not in path.read_text():
+                stale_files.append(name)
+        except OSError:
+            continue
+    if stale_files:
+        return CheckResult(
+            "Version sync",
+            "warn",
+            f"Version {version} missing from: {', '.join(stale_files)}",
+        )
+    return CheckResult("Version sync", "ok", f"Version {version} consistent")
+
+
+def check_test_count_freshness(root: Path) -> CheckResult:
+    """Compare declared test_count with actual pytest collection."""
+    config_path = find_config()
+    if not config_path or not config_path.exists():
+        return CheckResult("Test count", "info", "No config — skipped")
+    try:
+        config = load_config(config_path)
+    except ValueError:
+        return CheckResult("Test count", "info", "Config error — skipped")
+    declared = (config.get("assertions", {}).get("baselines", {}) or {}).get("test_count")
+    if not declared:
+        return CheckResult("Test count", "info", "No test_count baseline — skipped")
+    try:
+        result = subprocess.run(
+            ["python", "-m", "pytest", "--collect-only"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        combined = result.stdout + result.stderr
+        match = re.search(r"(\d+)\s+tests?\s+collected", combined)
+        if not match:
+            return CheckResult("Test count", "info", "Could not parse pytest output")
+        actual = int(match.group(1))
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        return CheckResult("Test count", "info", "Could not collect tests")
+    drift = abs(actual - declared) / max(declared, 1) * 100
+    if drift > TEST_COUNT_DRIFT_PERCENT:
+        return CheckResult(
+            "Test count",
+            "warn",
+            f"Declared {declared}, actual {actual} ({drift:.0f}% drift)"
+            " — update vibesrails.yaml assertions.baselines.test_count",
+        )
+    return CheckResult("Test count", "ok", f"Declared {declared}, actual {actual}")
+
+
+def check_claude_md_freshness(root: Path) -> CheckResult:
+    """Check if CLAUDE.md is in sync with code."""
+    claude_md = root / "CLAUDE.md"
+    if not claude_md.exists():
+        return CheckResult("CLAUDE.md sync", "info", "No CLAUDE.md — skipped")
+    try:
+        from .sync_claude import sync_claude
+
+        existing = claude_md.read_text()
+        regenerated = sync_claude(root, dry_run=True)
+        if not regenerated:
+            return CheckResult("CLAUDE.md sync", "info", "Could not regenerate — skipped")
+        if existing == regenerated:
+            return CheckResult("CLAUDE.md sync", "ok", "CLAUDE.md is up to date")
+        return CheckResult(
+            "CLAUDE.md sync",
+            "warn",
+            "CLAUDE.md is stale — run: vibesrails --sync-claude",
+        )
+    except (ImportError, OSError):
+        return CheckResult("CLAUDE.md sync", "info", "Could not check — skipped")
+
+
+def check_changelog_current(root: Path) -> CheckResult:
+    """Check that CHANGELOG.md has an entry for current version."""
+    version = _read_pyproject_version(root)
+    if not version:
+        return CheckResult("Changelog", "info", "No pyproject.toml — skipped")
+    changelog = root / "CHANGELOG.md"
+    if not changelog.exists():
+        return CheckResult("Changelog", "warn", "No CHANGELOG.md found")
+    try:
+        content = changelog.read_text()
+    except OSError:
+        return CheckResult("Changelog", "info", "Could not read CHANGELOG.md")
+    if f"[{version}]" in content:
+        return CheckResult("Changelog", "ok", f"CHANGELOG.md has [{version}] entry")
+    return CheckResult(
+        "Changelog",
+        "warn",
+        f"CHANGELOG.md missing [{version}] entry",
+    )
+
+
 def run_preflight(root: Path) -> list[CheckResult]:
     """Run all preflight checks and return results."""
     return [
@@ -170,6 +291,11 @@ def run_preflight(root: Path) -> list[CheckResult]:
         check_hook_installed(root),
         check_decisions_md(root),
         check_assertions(root),
+        # Doc freshness checks
+        check_version_consistency(root),
+        check_test_count_freshness(root),
+        check_claude_md_freshness(root),
+        check_changelog_current(root),
     ]
 
 

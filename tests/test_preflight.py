@@ -7,11 +7,15 @@ from vibesrails.preflight import (
     CheckResult,
     check_ahead_behind,
     check_branch,
+    check_changelog_current,
+    check_claude_md_freshness,
     check_config_valid,
     check_decisions_md,
     check_hook_installed,
     check_test_baseline,
+    check_test_count_freshness,
     check_uncommitted,
+    check_version_consistency,
     exit_code,
     format_report,
     run_preflight,
@@ -277,13 +281,13 @@ def test_check_decisions_missing(tmp_path):
 # ============================================
 
 
-def test_run_preflight_returns_eight_results(tmp_path):
-    """Orchestrator returns exactly 8 results (including assertions)."""
+def test_run_preflight_returns_twelve_results(tmp_path):
+    """Orchestrator returns exactly 12 results (8 core + 4 doc freshness)."""
     with mock.patch("vibesrails.preflight.run_git", return_value=(True, "main")):
         with mock.patch("vibesrails.preflight.subprocess.run", return_value=mock.Mock(returncode=0)):
             with mock.patch("vibesrails.preflight.find_config", return_value=None):
                 results = run_preflight(tmp_path)
-    assert len(results) == 8
+    assert len(results) == 12
     assert all(isinstance(r, CheckResult) for r in results)
 
 
@@ -360,3 +364,157 @@ def test_format_report_all_clear():
     results = [CheckResult("Tests", "ok", "passing")]
     report = format_report(results)
     assert "All clear" in report
+
+
+# ============================================
+# check_version_consistency
+# ============================================
+
+
+def test_check_version_consistency_ok(tmp_path):
+    """All files contain the version string."""
+    (tmp_path / "pyproject.toml").write_text('version = "1.2.3"\n')
+    (tmp_path / "README.md").write_text("# App v1.2.3\n")
+    (tmp_path / "CHANGELOG.md").write_text("## [1.2.3]\n")
+    result = check_version_consistency(tmp_path)
+    assert result.status == "ok"
+    assert "1.2.3" in result.message
+
+
+def test_check_version_consistency_stale(tmp_path):
+    """README missing version returns warn."""
+    (tmp_path / "pyproject.toml").write_text('version = "2.2.0"\n')
+    (tmp_path / "README.md").write_text("# App v1.0.0\n")
+    (tmp_path / "CHANGELOG.md").write_text("## [2.2.0]\n")
+    result = check_version_consistency(tmp_path)
+    assert result.status == "warn"
+    assert "README.md" in result.message
+
+
+def test_check_version_consistency_no_pyproject(tmp_path):
+    """No pyproject.toml returns info."""
+    result = check_version_consistency(tmp_path)
+    assert result.status == "info"
+
+
+def test_check_version_consistency_missing_files(tmp_path):
+    """Missing doc files are silently skipped (not stale)."""
+    (tmp_path / "pyproject.toml").write_text('version = "1.0.0"\n')
+    result = check_version_consistency(tmp_path)
+    assert result.status == "ok"
+
+
+# ============================================
+# check_test_count_freshness
+# ============================================
+
+
+def test_check_test_count_freshness_ok(tmp_path):
+    """Actual count matches declared."""
+    config = {"assertions": {"baselines": {"test_count": 100}}}
+    config_path = mock.Mock()
+    config_path.exists.return_value = True
+    mock_result = mock.Mock(stdout="100 tests collected in 1.5s\n", stderr="", returncode=0)
+    with mock.patch("vibesrails.preflight.find_config", return_value=config_path):
+        with mock.patch("vibesrails.preflight.load_config", return_value=config):
+            with mock.patch("vibesrails.preflight.subprocess.run", return_value=mock_result):
+                result = check_test_count_freshness(tmp_path)
+    assert result.status == "ok"
+    assert "100" in result.message
+
+
+def test_check_test_count_freshness_stale(tmp_path):
+    """Large drift returns warn."""
+    config = {"assertions": {"baselines": {"test_count": 100}}}
+    config_path = mock.Mock()
+    config_path.exists.return_value = True
+    mock_result = mock.Mock(stdout="200 tests collected in 2.0s\n", stderr="", returncode=0)
+    with mock.patch("vibesrails.preflight.find_config", return_value=config_path):
+        with mock.patch("vibesrails.preflight.load_config", return_value=config):
+            with mock.patch("vibesrails.preflight.subprocess.run", return_value=mock_result):
+                result = check_test_count_freshness(tmp_path)
+    assert result.status == "warn"
+    assert "drift" in result.message
+
+
+def test_check_test_count_freshness_no_baseline(tmp_path):
+    """No test_count baseline returns info."""
+    config = {"assertions": {"baselines": {}}}
+    with mock.patch("vibesrails.preflight.find_config", return_value=tmp_path / "x.yaml"):
+        with mock.patch("vibesrails.preflight.load_config", return_value=config):
+            result = check_test_count_freshness(tmp_path)
+    assert result.status == "info"
+
+
+def test_check_test_count_freshness_no_config(tmp_path):
+    """No config returns info."""
+    with mock.patch("vibesrails.preflight.find_config", return_value=None):
+        result = check_test_count_freshness(tmp_path)
+    assert result.status == "info"
+
+
+# ============================================
+# check_claude_md_freshness
+# ============================================
+
+
+def test_check_claude_md_freshness_ok(tmp_path):
+    """CLAUDE.md content matches regenerated."""
+    content = "# Dev Guide\nSome content\n"
+    (tmp_path / "CLAUDE.md").write_text(content)
+    with mock.patch("vibesrails.sync_claude.sync_claude", return_value=content):
+        result = check_claude_md_freshness(tmp_path)
+    assert result.status == "ok"
+    assert "up to date" in result.message
+
+
+def test_check_claude_md_freshness_stale(tmp_path):
+    """CLAUDE.md content differs from regenerated."""
+    (tmp_path / "CLAUDE.md").write_text("old content\n")
+    with mock.patch("vibesrails.sync_claude.sync_claude", return_value="new content\n"):
+        result = check_claude_md_freshness(tmp_path)
+    assert result.status == "warn"
+    assert "stale" in result.message
+
+
+def test_check_claude_md_freshness_no_file(tmp_path):
+    """No CLAUDE.md returns info."""
+    result = check_claude_md_freshness(tmp_path)
+    assert result.status == "info"
+
+
+# ============================================
+# check_changelog_current
+# ============================================
+
+
+def test_check_changelog_current_ok(tmp_path):
+    """CHANGELOG has entry for current version."""
+    (tmp_path / "pyproject.toml").write_text('version = "2.2.0"\n')
+    (tmp_path / "CHANGELOG.md").write_text("## [2.2.0] - 2026-03-04\nStuff\n")
+    result = check_changelog_current(tmp_path)
+    assert result.status == "ok"
+    assert "[2.2.0]" in result.message
+
+
+def test_check_changelog_current_missing_entry(tmp_path):
+    """CHANGELOG missing current version entry returns warn."""
+    (tmp_path / "pyproject.toml").write_text('version = "3.0.0"\n')
+    (tmp_path / "CHANGELOG.md").write_text("## [2.2.0] - 2026-03-04\n")
+    result = check_changelog_current(tmp_path)
+    assert result.status == "warn"
+    assert "[3.0.0]" in result.message
+
+
+def test_check_changelog_current_no_changelog(tmp_path):
+    """No CHANGELOG.md returns warn."""
+    (tmp_path / "pyproject.toml").write_text('version = "1.0.0"\n')
+    result = check_changelog_current(tmp_path)
+    assert result.status == "warn"
+    assert "No CHANGELOG.md" in result.message
+
+
+def test_check_changelog_current_no_pyproject(tmp_path):
+    """No pyproject.toml returns info."""
+    result = check_changelog_current(tmp_path)
+    assert result.status == "info"
