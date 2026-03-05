@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from adapters.semgrep_adapter import SemgrepResult  # noqa: E402
+from vibesrails.adapters.semgrep_adapter import SemgrepResult  # noqa: E402
 from tools.scan_semgrep import (  # noqa: E402
     _NOT_INSTALLED_PEDAGOGY,
     _classify_rule,
@@ -151,7 +151,7 @@ class TestScanSemgrepNotInstalled:
 
     def test_returns_error_with_pedagogy(self, tmp_path):
         f = _write_file(tmp_path, CLEAN_CODE)
-        with patch("adapters.semgrep_adapter.shutil.which", return_value=None):
+        with patch("vibesrails.adapters.semgrep_adapter.shutil.which", return_value=None):
             result = scan_semgrep(file_path=str(f))
         assert result["status"] == "error"
         assert "not installed" in result["error"].lower()
@@ -161,7 +161,7 @@ class TestScanSemgrepNotInstalled:
 
     def test_no_crash_on_missing_semgrep(self, tmp_path):
         f = _write_file(tmp_path, VULN_CODE)
-        with patch("adapters.semgrep_adapter.shutil.which", return_value=None):
+        with patch("vibesrails.adapters.semgrep_adapter.shutil.which", return_value=None):
             result = scan_semgrep(file_path=str(f))
         assert result["status"] == "error"
         assert result["findings"] == []

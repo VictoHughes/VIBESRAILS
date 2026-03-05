@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 def _parse_args():
     """Parse command-line arguments and return the parsed args."""
     parser = argparse.ArgumentParser(
-        description="VibesRails 2.2.1 — by SM",
+        description="VibesRails 2.2.2 — by SM",
         epilog="Examples: vibesrails --all | --show | --stats | --learn | --watch",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

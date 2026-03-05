@@ -196,7 +196,7 @@ guardian:
 # ═══════════════════════════════════════════════════════════════
 assertions:
   values:
-    version: "2.2.1"           # Current version string in code
+    version: "2.2.2"           # Current version string in code
     mcp_sdk: "FastMCP"         # MCP SDK pattern used
   rules:
     fail_closed: true          # No silent except/pass

@@ -2,6 +2,12 @@
 
 All notable changes to VibesRails will be documented in this file.
 
+## [2.2.2] - 2026-03-05
+
+### Fixed
+- **Critical**: semgrep adapter import path broken in PyPI package (moved source to `vibesrails/adapters/`)
+- Root `adapters/` re-exports from `vibesrails.adapters` for backward compatibility
+
 ## [2.2.1] - 2026-03-04
 
 ### Fixed

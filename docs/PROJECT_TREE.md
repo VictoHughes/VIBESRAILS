@@ -181,6 +181,9 @@
 │   ├── scan_senior.py
 │   └── shield_prompt.py
 ├── vibesrails
+│   ├── adapters
+│   │   ├── __init__.py
+│   │   └── semgrep_adapter.py
 │   ├── advisors
 │   │   ├── __init__.py
 │   │   └── upgrade_advisor.py
@@ -321,4 +324,4 @@
 ├── pyproject.toml
 └── vibesrails.yaml
 
-33 directories, 289 files
+34 directories, 291 files

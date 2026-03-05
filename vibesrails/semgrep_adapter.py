@@ -1,5 +1,5 @@
-"""Re-export from canonical location: adapters.semgrep_adapter."""
+"""Re-export from canonical location: vibesrails.adapters.semgrep_adapter."""
 
-from adapters.semgrep_adapter import SemgrepAdapter, SemgrepResult
+from vibesrails.adapters.semgrep_adapter import SemgrepAdapter, SemgrepResult
 
 __all__ = ["SemgrepAdapter", "SemgrepResult"]

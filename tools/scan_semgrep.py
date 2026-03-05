@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 
-from adapters.semgrep_adapter import SemgrepAdapter, SemgrepResult
+from vibesrails.adapters.semgrep_adapter import SemgrepAdapter, SemgrepResult
 from core.input_validator import InputValidationError, sanitize_for_output, validate_string
 from core.learning_bridge import record_safe
 from core.path_validator import PathValidationError, validate_path
