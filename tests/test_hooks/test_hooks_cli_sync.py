@@ -147,12 +147,36 @@ class TestTemplateSync:
             f"Template hooks.json missing: {TEMPLATE_HOOKS}"
         )
 
-    def test_template_matches_project(self):
+    def test_template_structure_matches_project(self):
+        """Template and project hooks.json have same structure (hooks, matchers).
+
+        Commands may differ (project uses venv path, template uses python3).
+        """
         if not PROJECT_HOOKS.exists():
             pytest.skip("No .claude/hooks.json in project")
         project = _load_hooks(PROJECT_HOOKS)
         template = _load_hooks(TEMPLATE_HOOKS)
-        assert project == template, (
-            "Template hooks.json and project hooks.json are out of sync. "
-            "Update vibesrails/claude_integration/hooks.json to match .claude/hooks.json"
+
+        # Same event types
+        assert set(project["hooks"].keys()) == set(template["hooks"].keys()), (
+            "Hook event types differ between project and template"
         )
+
+        # Same number of hook groups per event type
+        for event_type in project["hooks"]:
+            p_groups = project["hooks"][event_type]
+            t_groups = template["hooks"][event_type]
+            assert len(p_groups) == len(t_groups), (
+                f"Hook group count differs for {event_type}: "
+                f"project={len(p_groups)}, template={len(t_groups)}"
+            )
+            for i, (pg, tg) in enumerate(zip(p_groups, t_groups, strict=True)):
+                # Same matchers
+                assert pg.get("matcher") == tg.get("matcher"), (
+                    f"{event_type}[{i}] matcher differs"
+                )
+                # Same number of hooks
+                assert len(pg["hooks"]) == len(tg["hooks"]), (
+                    f"{event_type}[{i}] hook count differs: "
+                    f"project={len(pg['hooks'])}, template={len(tg['hooks'])}"
+                )

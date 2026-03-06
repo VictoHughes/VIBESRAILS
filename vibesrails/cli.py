@@ -112,6 +112,8 @@ def _parse_args():
                            help="Reset write throttle counter")
     g_session.add_argument("--sync-claude", action="store_true",
                            help="Auto-generate factual CLAUDE.md sections from code")
+    g_session.add_argument("--sync-memory", action="store_true",
+                           help="Auto-generate PROJECT_MEMORY.md from runtime data")
     g_session.add_argument("--mode", choices=["rnd", "bugfix", "auto"],
                            help="Force session mode (rnd/bugfix/auto)")
 
@@ -170,6 +172,13 @@ def _handle_info_commands(args) -> None:
     if args.sync_claude:
         from .sync_claude import sync_claude
         result = sync_claude(Path.cwd(), dry_run=args.dry_run)
+        if args.dry_run and result:
+            print(result)
+        sys.exit(0 if result else 1)
+
+    if args.sync_memory:
+        from .sync_memory import sync_memory
+        result = sync_memory(Path.cwd(), dry_run=args.dry_run)
         if args.dry_run and result:
             print(result)
         sys.exit(0 if result else 1)
