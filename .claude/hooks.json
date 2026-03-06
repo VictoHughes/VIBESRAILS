@@ -5,11 +5,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -c \"import sys; from pathlib import Path; y=Path('vibesrails.yaml'); h=Path('.claude/hooks.json'); t=Path('vibesrails/hooks/throttle.py') if Path('vibesrails').exists() else None; ok=y.exists(); layers=['PreToolUse','PostToolUse','Pre-commit','ptuh.py']; extras=[]; extras.append('throttle') if t and t.exists() else None; extras.append('session-lock') if Path('vibesrails/hooks/session_lock.py').exists() else None; print(f'VibesRails ACTIVE | {len(layers)}+{len(extras)} protections | yaml:{y.exists()} hooks:{h.exists()}') if ok else None; sys.exit(0 if ok else 1)\" || echo 'vibesrails: Run vibesrails --setup for auto-security setup'"
+            "command": "/Users/stan/Dev/vibesrails/.venv/bin/python3 -c \"import sys; from pathlib import Path; y=Path('vibesrails.yaml'); h=Path('.claude/hooks.json'); t=Path('vibesrails/hooks/throttle.py') if Path('vibesrails').exists() else None; ok=y.exists(); layers=['PreToolUse','PostToolUse','Pre-commit','ptuh.py']; extras=[]; extras.append('throttle') if t and t.exists() else None; extras.append('session-lock') if Path('vibesrails/hooks/session_lock.py').exists() else None; print(f'VibesRails ACTIVE | {len(layers)}+{len(extras)} protections | yaml:{y.exists()} hooks:{h.exists()}') if ok else None; sys.exit(0 if ok else 1)\" || echo 'vibesrails: Run vibesrails --setup for auto-security setup'"
           },
           {
             "type": "command",
-            "command": "python3 -m vibesrails.hooks.session_scan"
+            "command": "/Users/stan/Dev/vibesrails/.venv/bin/python3 -m vibesrails.hooks.session_scan"
           },
           {
             "type": "prompt",
@@ -21,7 +21,7 @@
           },
           {
             "type": "command",
-            "command": "python3 -c \"from pathlib import Path; plans=sorted(Path('docs/plans').glob('*.md'), key=lambda p: p.stat().st_mtime, reverse=True) if Path('docs/plans').exists() else []; p=plans[0] if plans else None; content=p.read_text() if p else ''; has_tasks='### Task' in content if content else False; print(f'PLAN READY: {p.name}') if has_tasks else (print(f'Plan actif: {p.name}') if p else None)\""
+            "command": "/Users/stan/Dev/vibesrails/.venv/bin/python3 -c \"from pathlib import Path; plans=sorted(Path('docs/plans').glob('*.md'), key=lambda p: p.stat().st_mtime, reverse=True) if Path('docs/plans').exists() else []; p=plans[0] if plans else None; content=p.read_text() if p else ''; has_tasks='### Task' in content if content else False; print(f'PLAN READY: {p.name}') if has_tasks else (print(f'Plan actif: {p.name}') if p else None)\""
           },
           {
             "type": "prompt",
@@ -29,7 +29,7 @@
           },
           {
             "type": "command",
-            "command": "python3 -c \"from pathlib import Path; p=Path('.claude/current-task.md'); print(f'Tache en cours: {p.read_text().strip()[:80]}...') if p.exists() and p.read_text().strip() else None\""
+            "command": "/Users/stan/Dev/vibesrails/.venv/bin/python3 -c \"from pathlib import Path; p=Path('.claude/current-task.md'); print(f'Tache en cours: {p.read_text().strip()[:80]}...') if p.exists() and p.read_text().strip() else None\""
           },
           {
             "type": "command",
@@ -37,11 +37,11 @@
           },
           {
             "type": "command",
-            "command": "python3 -c \"from pathlib import Path; d=Path('.vibesrails'); d.mkdir(exist_ok=True); f=d/'session_throttle.json'; f.write_text('{\\\"writes_since_check\\\": 0}'); print('Throttle reset')\""
+            "command": "/Users/stan/Dev/vibesrails/.venv/bin/python3 -c \"from pathlib import Path; d=Path('.vibesrails'); d.mkdir(exist_ok=True); f=d/'session_throttle.json'; f.write_text('{\\\"writes_since_check\\\": 0}'); print('Throttle reset')\""
           },
           {
             "type": "command",
-            "command": "python3 -c \"from vibesrails.hooks.session_lock import acquire_lock, check_other_session; from pathlib import Path; d=Path('.vibesrails'); d.mkdir(exist_ok=True); w=check_other_session(d); print(f'WARNING: {w}') if w else None; acquire_lock(d)\""
+            "command": "/Users/stan/Dev/vibesrails/.venv/bin/python3 -c \"from vibesrails.hooks.session_lock import acquire_lock, check_other_session; from pathlib import Path; d=Path('.vibesrails'); d.mkdir(exist_ok=True); w=check_other_session(d); print(f'WARNING: {w}') if w else None; acquire_lock(d)\""
           },
           {
             "type": "prompt",
@@ -49,15 +49,15 @@
           },
           {
             "type": "command",
-            "command": "python3 -c \"from vibesrails.hooks.queue_processor import format_pending_summary; from pathlib import Path; s=format_pending_summary(Path('.claude/queue.jsonl')); print(s) if s else None\""
+            "command": "/Users/stan/Dev/vibesrails/.venv/bin/python3 -c \"from vibesrails.hooks.queue_processor import format_pending_summary; from pathlib import Path; s=format_pending_summary(Path('.claude/queue.jsonl')); print(s) if s else None\""
           },
           {
             "type": "command",
-            "command": "python3 -c \"from vibesrails.hooks.inbox import check_inbox; from pathlib import Path; c=check_inbox(Path('.claude/inbox.md')); print(f'Inbox instructions:\\n{c}') if c else None\""
+            "command": "/Users/stan/Dev/vibesrails/.venv/bin/python3 -c \"from vibesrails.hooks.inbox import check_inbox; from pathlib import Path; c=check_inbox(Path('.claude/inbox.md')); print(f'Inbox instructions:\\n{c}') if c else None\""
           },
           {
             "type": "prompt",
-            "prompt": "Si le message precedent contient 'Inbox instructions:', traite les instructions puis efface l'inbox avec: python3 -c \"from vibesrails.hooks.inbox import clear_inbox; from pathlib import Path; clear_inbox(Path('.claude/inbox.md'))\""
+            "prompt": "Si le message precedent contient 'Inbox instructions:', traite les instructions puis efface l'inbox avec: /Users/stan/Dev/vibesrails/.venv/bin/python3 -c \"from vibesrails.hooks.inbox import clear_inbox; from pathlib import Path; clear_inbox(Path('.claude/inbox.md'))\""
           }
         ]
       }
@@ -68,7 +68,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -m vibesrails.hooks.pre_tool_use"
+            "command": "/Users/stan/Dev/vibesrails/.venv/bin/python3 -m vibesrails.hooks.pre_tool_use"
           }
         ]
       }
@@ -89,11 +89,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -c \"from pathlib import Path; d=Path('.claude'); d.mkdir(exist_ok=True); f=d/'.write_reminded'; showed=(print('vibesrails: Code will be scanned on commit') or True) if not f.exists() and Path('vibesrails.yaml').exists() else False; f.touch() if showed else None\""
+            "command": "/Users/stan/Dev/vibesrails/.venv/bin/python3 -c \"from pathlib import Path; d=Path('.claude'); d.mkdir(exist_ok=True); f=d/'.write_reminded'; showed=(print('vibesrails: Code will be scanned on commit') or True) if not f.exists() and Path('vibesrails.yaml').exists() else False; f.touch() if showed else None\""
           },
           {
             "type": "command",
-            "command": "python3 -m vibesrails.hooks.post_tool_use"
+            "command": "/Users/stan/Dev/vibesrails/.venv/bin/python3 -m vibesrails.hooks.post_tool_use"
           },
           {
             "type": "prompt",
@@ -106,11 +106,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -c \"from pathlib import Path; import subprocess; d=Path('.claude'); d.mkdir(exist_ok=True); f=d/'.last_commit_hash'; old=f.read_text().strip() if f.exists() else ''; new=subprocess.run(['git','rev-parse','HEAD'],capture_output=True,text=True).stdout.strip() if Path('.git').exists() else ''; changed=old and new and old!=new; f.write_text(new) if new else None; print('Nouveau commit detecte!') if changed else None\""
+            "command": "/Users/stan/Dev/vibesrails/.venv/bin/python3 -c \"from pathlib import Path; import subprocess; d=Path('.claude'); d.mkdir(exist_ok=True); f=d/'.last_commit_hash'; old=f.read_text().strip() if f.exists() else ''; new=subprocess.run(['git','rev-parse','HEAD'],capture_output=True,text=True).stdout.strip() if Path('.git').exists() else ''; changed=old and new and old!=new; f.write_text(new) if new else None; print('Nouveau commit detecte!') if changed else None\""
           },
           {
             "type": "command",
-            "command": "python3 -m vibesrails.hooks.post_tool_use"
+            "command": "/Users/stan/Dev/vibesrails/.venv/bin/python3 -m vibesrails.hooks.post_tool_use"
           },
           {
             "type": "prompt",
@@ -132,7 +132,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -c \"from vibesrails.hooks.session_lock import release_lock; from pathlib import Path; release_lock(Path('.vibesrails'))\""
+            "command": "/Users/stan/Dev/vibesrails/.venv/bin/python3 -c \"from vibesrails.hooks.session_lock import release_lock; from pathlib import Path; release_lock(Path('.vibesrails'))\""
           }
         ]
       }
