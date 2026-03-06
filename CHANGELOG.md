@@ -2,6 +2,18 @@
 
 All notable changes to VibesRails will be documented in this file.
 
+## [2.3.0] - 2026-03-06
+
+### Added
+- `vibesrails --sync-memory` — auto-generate PROJECT_MEMORY.md from runtime data
+- PROJECT_MEMORY.md template with 6 auto-sections (health, drift, quality, flows, baselines, context)
+- sync_memory.py module: AST flow analysis, SQLite DB queries, context detection integration
+
+### Fixed
+- Claude Code hooks: all python3 refs now use venv path (fixes pyenv conflict)
+- subprocess calls use `sys.executable` instead of `"python"` (fixes venv/pyenv mismatch)
+- Hooks template test: structural comparison instead of exact match (tolerates venv paths)
+
 ## [2.2.2] - 2026-03-05
 
 ### Fixed

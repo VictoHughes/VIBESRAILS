@@ -3,6 +3,7 @@
 import logging
 import re
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -77,7 +78,7 @@ def check_test_baseline(root: Path) -> CheckResult:
     """Run pytest to verify tests pass."""
     try:
         result = subprocess.run(
-            ["python", "-m", "pytest", "--timeout=60", "-q"],
+            [sys.executable, "-m", "pytest", "--timeout=60", "-q"],
             cwd=root,
             capture_output=True,
             text=True,
@@ -212,7 +213,7 @@ def check_test_count_freshness(root: Path) -> CheckResult:
         return CheckResult("Test count", "info", "No test_count baseline — skipped")
     try:
         result = subprocess.run(
-            ["python", "-m", "pytest", "--collect-only"],
+            [sys.executable, "-m", "pytest", "--collect-only"],
             cwd=root,
             capture_output=True,
             text=True,

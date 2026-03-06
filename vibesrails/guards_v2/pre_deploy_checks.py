@@ -3,6 +3,7 @@
 import logging
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 from .dependency_audit import V2GuardIssue
@@ -23,7 +24,7 @@ def _run_pytest(project_root: Path) -> subprocess.CompletedProcess | V2GuardIssu
     """Run pytest and return result or a blocking issue on failure."""
     try:
         return subprocess.run(
-            ["python", "-m", "pytest", "tests/",
+            [sys.executable, "-m", "pytest", "tests/",
              f"--cov={guess_package(project_root)}",
              "--cov-report=term", "--timeout=60", "-q"],
             capture_output=True, text=True, timeout=120,

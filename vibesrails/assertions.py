@@ -9,6 +9,7 @@ Checks three categories from vibesrails.yaml `assertions:` section:
 import logging
 import re
 import subprocess
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
@@ -213,7 +214,7 @@ def _get_test_count(root: Path) -> int | None:
     """Run pytest --collect-only to count tests."""
     try:
         result = subprocess.run(
-            ["python", "-m", "pytest", "--collect-only", "--timeout=30"],
+            [sys.executable, "-m", "pytest", "--collect-only", "--timeout=30"],
             cwd=root,
             capture_output=True,
             text=True,
@@ -264,7 +265,7 @@ def check_baselines(root: Path, baselines: dict) -> list[AssertionResult]:
     if baselines.get("zero_regressions"):
         try:
             result = subprocess.run(
-                ["python", "-m", "pytest", "--timeout=60", "-q", "--tb=no"],
+                [sys.executable, "-m", "pytest", "--timeout=60", "-q", "--tb=no"],
                 cwd=root,
                 capture_output=True,
                 text=True,

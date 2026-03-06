@@ -7,6 +7,7 @@ Preserves everything outside these markers (manual sections).
 import logging
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 from . import __version__
@@ -170,7 +171,7 @@ def introspect_test_count(root: Path) -> int | None:
     """Get test count via pytest --collect-only."""
     try:
         result = subprocess.run(
-            ["python", "-m", "pytest", "--collect-only", "--timeout=30"],
+            [sys.executable, "-m", "pytest", "--collect-only", "--timeout=30"],
             cwd=root,
             capture_output=True,
             text=True,

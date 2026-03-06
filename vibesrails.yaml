@@ -204,7 +204,7 @@ assertions:
       - "core/hallucination_registry.py:78"
       - "core/hallucination_deep.py:70"
       - "vibesrails/assertions.py"
-      - "vibesrails/sync_claude.py:184"
+      - "vibesrails/sync_claude.py:185"
       - "vibesrails/hooks/post_tool_use.py"
       - "vibesrails/hooks/pre_tool_use.py"
       - "tests/"
