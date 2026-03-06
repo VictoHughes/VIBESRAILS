@@ -11,9 +11,9 @@ _Need at least 2 snapshots. Run `check_drift` MCP tool._
 <!-- /AUTO:drift -->
 
 <!-- AUTO:quality -->
-- **Top violations:** dead-code (5189), env-safety (873), observability (854), ErrorHandlingGuard (844), LazyCodeGuard (724)
-- **Hallucination rate:** 383.5/session
-- **Common drift areas:** import_count (648), public_api_surface (216)
+- **Top violations:** dead-code (5277), env-safety (889), observability (862), ErrorHandlingGuard (860), LazyCodeGuard (736)
+- **Hallucination rate:** 389.5/session
+- **Common drift areas:** import_count (660), public_api_surface (220)
 - **Profiled over:** 2 sessions
 <!-- /AUTO:quality -->
 
@@ -31,17 +31,17 @@ storage -> (standalone)
 <!-- /AUTO:flows -->
 
 <!-- AUTO:baselines -->
-- **Values:** `version`: 2.2.2, `mcp_sdk`: FastMCP
+- **Values:** `version`: 2.3.0, `mcp_sdk`: FastMCP
 - **Rules:** `fail_closed`: enabled
-- **Baselines:** `test_count`: 2203
+- **Baselines:** `test_count`: 2221
 <!-- /AUTO:baselines -->
 
 <!-- AUTO:context -->
-- **Mode:** mixed (score: 0.46, confidence: 100%)
+- **Mode:** mixed (score: 0.56, confidence: 100%)
 - **Branch:** main (unknown)
-- **Uncommitted files:** 3
+- **Uncommitted files:** 4
 - **Commit frequency:** 1/hour
-- **Diff spread:** 2 directories
+- **Diff spread:** 5 directories
 <!-- /AUTO:context -->
 
 ## Decisions Log
