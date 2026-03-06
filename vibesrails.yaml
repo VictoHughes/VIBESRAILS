@@ -205,8 +205,9 @@ assertions:
       - "core/hallucination_deep.py:70"
       - "vibesrails/assertions.py"
       - "vibesrails/sync_claude.py:185"
+      - "vibesrails/context/phase.py"
       - "vibesrails/hooks/post_tool_use.py"
       - "vibesrails/hooks/pre_tool_use.py"
       - "tests/"
   baselines:
-    test_count: 2221           # Minimum test count
+    test_count: 2242           # Minimum test count

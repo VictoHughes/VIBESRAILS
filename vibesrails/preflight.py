@@ -281,6 +281,47 @@ def check_changelog_current(root: Path) -> CheckResult:
     )
 
 
+def check_project_phase(root: Path) -> list[CheckResult]:
+    """Detect project lifecycle phase and show what's needed for next phase."""
+    from .context.phase import PhaseDetector, ProjectPhase
+
+    results: list[CheckResult] = []
+    try:
+        detector = PhaseDetector(root)
+        result = detector.detect()
+
+        phase_labels = {
+            ProjectPhase.DECIDE: "DECIDE (0/4)",
+            ProjectPhase.SKELETON: "SKELETON (1/4)",
+            ProjectPhase.FLESH_OUT: "FLESH OUT (2/4)",
+            ProjectPhase.STABILIZE: "STABILIZE (3/4)",
+            ProjectPhase.DEPLOY: "DEPLOY (4/4)",
+        }
+        label = phase_labels.get(result.phase, str(result.phase))
+        override_note = " (manual override)" if result.is_override else ""
+        results.append(
+            CheckResult("Project phase", "info", f"{label}{override_note}")
+        )
+
+        if result.missing_for_next:
+            missing_str = ", ".join(result.missing_for_next)
+            next_phase = ProjectPhase(result.phase + 1)
+            next_label = next_phase.name.replace("_", " ")
+            results.append(
+                CheckResult(
+                    "Next phase gate",
+                    "info",
+                    f"To reach {next_label}: {missing_str}",
+                )
+            )
+    except Exception as e:
+        results.append(
+            CheckResult("Project phase", "info", f"Detection failed: {e}")
+        )
+
+    return results
+
+
 def check_session_mode(root: Path) -> list[CheckResult]:
     """Detect session mode and show threshold adjustments."""
     from .context import ContextAdapter, ContextDetector, ContextScorer, SessionMode
@@ -342,6 +383,8 @@ def run_preflight(root: Path) -> list[CheckResult]:
         check_claude_md_freshness(root),
         check_changelog_current(root),
     ]
+    # Project phase detection
+    results.extend(check_project_phase(root))
     # Session context (returns list — may include threshold adjustments)
     results.extend(check_session_mode(root))
     return results

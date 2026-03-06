@@ -7,6 +7,7 @@ from pathlib import Path
 from .adapter import ContextAdapter
 from .detector import ContextDetector
 from .mode import ContextScore, ContextSignals, SessionMode
+from .phase import PhaseDetector, PhaseResult, PhaseSignals, ProjectPhase
 from .scorer import ContextScorer
 
 
@@ -41,4 +42,8 @@ __all__ = [
     "ContextSignals",
     "SessionMode",
     "get_current_mode",
+    "PhaseDetector",
+    "PhaseResult",
+    "PhaseSignals",
+    "ProjectPhase",
 ]

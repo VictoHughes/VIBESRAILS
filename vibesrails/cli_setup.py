@@ -85,6 +85,54 @@ def init_config(target: Path = Path("vibesrails.yaml")) -> bool:
     return True
 
 
+def init_methodology(project_root: Path) -> bool:
+    """Initialize methodology scaffolding (methodology.yaml, ADR/, ROADMAP.md).
+
+    Does NOT overwrite existing files.
+    """
+    config_dir = Path(__file__).parent / "config"
+    created = []
+
+    # .vibesrails/methodology.yaml
+    vr_dir = project_root / ".vibesrails"
+    methodology_target = vr_dir / "methodology.yaml"
+    if not methodology_target.exists():
+        template = config_dir / "methodology.yaml.template"
+        if template.exists():
+            vr_dir.mkdir(exist_ok=True)
+            shutil.copy(template, methodology_target)
+            created.append(str(methodology_target.relative_to(project_root)))
+
+    # ADR/ directory with template
+    adr_dir = project_root / "ADR"
+    if not adr_dir.exists():
+        adr_dir.mkdir()
+        adr_template = config_dir / "adr_template.md"
+        if adr_template.exists():
+            shutil.copy(adr_template, adr_dir / "001-template.md")
+        created.append("ADR/001-template.md")
+
+    # ROADMAP.md
+    roadmap = project_root / "ROADMAP.md"
+    if not roadmap.exists():
+        roadmap_template = config_dir / "roadmap_template.md"
+        if roadmap_template.exists():
+            shutil.copy(roadmap_template, roadmap)
+        created.append("ROADMAP.md")
+
+    if created:
+        for f in created:
+            logger.info(f"{GREEN}Created {f}{NC}")
+        logger.info("Next steps:")
+        logger.info("  1. Edit ADR/001-template.md with your first architecture decision")
+        logger.info("  2. Review ROADMAP.md phases")
+        logger.info("  3. Run: vibesrails --preflight  (see current phase)")
+        return True
+
+    logger.info(f"{YELLOW}Methodology files already exist — nothing to create{NC}")
+    return False
+
+
 def uninstall() -> bool:
     """Uninstall vibesrails from current project."""
     removed = []

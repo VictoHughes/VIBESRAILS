@@ -56,6 +56,8 @@ def _parse_args():
     g_setup.add_argument("--force", action="store_true", help="Force overwrite existing config")
     g_setup.add_argument("--config", "-c", help="Path to vibesrails.yaml")
     g_setup.add_argument("--validate", action="store_true", help="Validate YAML config")
+    g_setup.add_argument("--init-methodology", action="store_true",
+                         help="Initialize methodology scaffolding (ADR, ROADMAP, phases)")
 
     # --- Scanning ---
     g_scan = parser.add_argument_group("Scanning")
@@ -209,6 +211,9 @@ def _handle_setup_commands(args) -> None:
         sys.exit(0 if install_hook() else 1)
     if args.uninstall:
         sys.exit(0 if uninstall() else 1)
+    if args.init_methodology:
+        from .cli_setup import init_methodology
+        sys.exit(0 if init_methodology(Path.cwd()) else 1)
 
 
 def _handle_hook_commands(args) -> None:
