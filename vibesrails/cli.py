@@ -94,6 +94,15 @@ def _parse_args():
                           help="Pre-session preflight check (git, tests, config)")
     g_guards.add_argument("--check-assertions", action="store_true",
                           help="Validate project assertions (values, rules, baselines)")
+    g_guards.add_argument("--check-gates", action="store_true",
+                          help="Show gate status for advancing to the next phase")
+    g_guards.add_argument("--promote", action="store_true",
+                          help="Promote to next phase if all gates are met")
+    g_guards.add_argument("--force-promote", action="store_true",
+                          help="Force promote even if gates are not met")
+    g_guards.add_argument("--set-phase", type=int, choices=range(-1, 5),
+                          metavar="{-1..4}",
+                          help="Set phase override (-1=auto, 0-4=phase)")
 
     # --- Community & Extensions ---
     g_community = parser.add_argument_group("Community & Extensions")
@@ -214,6 +223,39 @@ def _handle_setup_commands(args) -> None:
     if args.init_methodology:
         from .cli_setup import init_methodology
         sys.exit(0 if init_methodology(Path.cwd()) else 1)
+
+    if args.check_gates:
+        from .gates import check_gates, format_gate_report
+        report = check_gates(Path.cwd())
+        logger.info(format_gate_report(report))
+        sys.exit(0 if report.all_met or report.target_phase is None else 1)
+
+    if args.promote or args.force_promote:
+        from .gates import check_gates, format_gate_report, promote_phase
+        root = Path.cwd()
+        report = check_gates(root)
+        logger.info(format_gate_report(report))
+        if report.target_phase is None:
+            logger.info("Already at DEPLOY — nothing to promote.")
+            sys.exit(0)
+        force = bool(args.force_promote)
+        if promote_phase(root, force=force):
+            target = report.target_phase.name.replace("_", " ")
+            logger.info(f"\n✅ Promoted to {target} ({report.target_phase.value}/4)")
+            sys.exit(0)
+        else:
+            logger.info("\n❌ Cannot promote — unmet gates above.")
+            sys.exit(1)
+
+    if args.set_phase is not None:
+        from .context.phase import ProjectPhase
+        from .gates import set_phase
+        phase_num = args.set_phase
+        if set_phase(Path.cwd(), phase_num):
+            label = "auto" if phase_num == -1 else ProjectPhase(phase_num).name
+            logger.info(f"Phase set to: {label}")
+            sys.exit(0)
+        sys.exit(1)
 
 
 def _handle_hook_commands(args) -> None:
