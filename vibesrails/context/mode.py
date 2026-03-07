@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Any
 
 # Score boundaries
 BUGFIX_THRESHOLD = 0.3
@@ -48,3 +49,27 @@ class ContextScore:
     mode: SessionMode
     confidence: float  # 0.0–1.0, proportion of available signals
     signal_scores: dict[str, float] = field(default_factory=dict)
+
+
+@dataclass
+class SessionContext:
+    """Unified context: mode (R&D/Bugfix) + phase (DECIDE→DEPLOY) + adapted config.
+
+    This is the single entry point for all context-aware decisions.
+    The phase field stores the ProjectPhase IntEnum value (0-4).
+    """
+
+    # Mode dimension (R&D vs Bugfix)
+    mode: SessionMode
+    mode_score: float  # 0.0–1.0 weighted score
+    mode_confidence: float  # 0.0–1.0 signal confidence
+    mode_forced: bool = False
+
+    # Phase dimension (DECIDE→DEPLOY)
+    phase: int = 0  # ProjectPhase IntEnum value (0-4)
+    phase_name: str = "DECIDE"
+    phase_is_override: bool = False
+    phase_missing: list[str] = field(default_factory=list)
+
+    # Adapted config (mode + phase merged)
+    adapted_config: dict[str, Any] = field(default_factory=dict)

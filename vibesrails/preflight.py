@@ -366,6 +366,89 @@ def check_session_mode(root: Path) -> list[CheckResult]:
     return results
 
 
+def check_session_context(root: Path) -> list[CheckResult]:
+    """Unified session context: mode + phase + adapted thresholds."""
+    from .context import SessionMode, get_session_context
+    from .context.phase import ProjectPhase
+
+    results: list[CheckResult] = []
+    try:
+        ctx = get_session_context(root)
+
+        # Mode line
+        mode_labels = {
+            SessionMode.RND: "R&D",
+            SessionMode.MIXED: "Mixed",
+            SessionMode.BUGFIX: "Bugfix",
+        }
+        mode_label = mode_labels.get(ctx.mode, ctx.mode.value)
+        if ctx.mode_forced:
+            mode_info = f"{mode_label} (forced)"
+        else:
+            conf = (
+                "high" if ctx.mode_confidence >= 0.7
+                else "medium" if ctx.mode_confidence >= 0.4
+                else "low"
+            )
+            mode_info = f"{mode_label} ({ctx.mode_score:.2f}, {conf})"
+
+        # Phase line
+        phase_num = ctx.phase
+        override_note = " [override]" if ctx.phase_is_override else ""
+        phase_info = f"{ctx.phase_name} ({phase_num}/4){override_note}"
+
+        # Combined summary
+        results.append(
+            CheckResult(
+                "Session",
+                "info",
+                f"{mode_info} | Phase {phase_info}",
+            )
+        )
+
+        # Phase gate info
+        if ctx.phase_missing:
+            missing_str = ", ".join(ctx.phase_missing)
+            next_phase = ProjectPhase(phase_num + 1)
+            next_label = next_phase.name.replace("_", " ")
+            results.append(
+                CheckResult(
+                    "Next phase gate",
+                    "info",
+                    f"To reach {next_label}: {missing_str}",
+                )
+            )
+
+        # Adapted thresholds (only show non-trivial)
+        cfg = ctx.adapted_config
+        threshold_parts: list[str] = []
+        ftl = cfg.get("complexity", {}).get("max_file_lines")
+        if ftl:
+            sev = cfg.get("complexity", {}).get("file_too_long_severity", "WARN")
+            threshold_parts.append(f"file_too_long={ftl} ({sev})")
+        ds_warn = cfg.get("guardian", {}).get("diff_size_warn")
+        if ds_warn:
+            ds_block = cfg.get("guardian", {}).get("diff_size_block", "?")
+            threshold_parts.append(f"diff_size={ds_warn}/{ds_block}")
+        bf = cfg.get("brief_enforcer", {}).get("min_score")
+        if bf:
+            threshold_parts.append(f"brief_min={bf}")
+        if threshold_parts:
+            results.append(
+                CheckResult(
+                    "Adapted thresholds",
+                    "info",
+                    ", ".join(threshold_parts),
+                )
+            )
+    except Exception as e:
+        results.append(
+            CheckResult("Session", "info", f"Context detection failed: {e}")
+        )
+
+    return results
+
+
 def run_preflight(root: Path) -> list[CheckResult]:
     """Run all preflight checks and return results."""
     results = [
@@ -383,10 +466,8 @@ def run_preflight(root: Path) -> list[CheckResult]:
         check_claude_md_freshness(root),
         check_changelog_current(root),
     ]
-    # Project phase detection
-    results.extend(check_project_phase(root))
-    # Session context (returns list — may include threshold adjustments)
-    results.extend(check_session_mode(root))
+    # Unified session context (mode + phase + adapted thresholds)
+    results.extend(check_session_context(root))
     return results
 
 

@@ -167,15 +167,15 @@ def _handle_write_edit(tool_input: dict) -> None:
     all_issues: list[str] = []
 
     # V1 scanner (regex patterns from vibesrails.yaml)
+    session_ctx = None
     try:
         from vibesrails.scanner import load_config, scan_file
         config = load_config()
-        # Adapt thresholds to session mode
+        # Adapt thresholds via unified session context (mode + phase)
         try:
-            from vibesrails.context import ContextAdapter, get_current_mode
-            mode, _ = get_current_mode()
-            adapter = ContextAdapter(config.get("session_profiles"))
-            config = adapter.adapt_config(mode, config)
+            from vibesrails.context import get_session_context
+            session_ctx = get_session_context(Path.cwd(), config)
+            config = session_ctx.adapted_config
         except Exception:  # noqa: BLE001
             pass  # Graceful degradation — use original config
         for r in scan_file(file_path, config):
@@ -199,11 +199,10 @@ def _handle_write_edit(tool_input: dict) -> None:
 
     # Phase-aware warnings (non-blocking, only when methodology is configured)
     try:
-        from vibesrails.context.phase import PhaseDetector, ProjectPhase
+        from vibesrails.context.phase import ProjectPhase
 
-        phase_result = PhaseDetector(Path.cwd()).detect()
-        if phase_result.is_override:
-            phase = phase_result.phase
+        if session_ctx and session_ctx.phase_is_override:
+            phase = ProjectPhase(session_ctx.phase)
 
             if phase in (ProjectPhase.SKELETON, ProjectPhase.FLESH_OUT):
                 throttle_dir = Path.cwd() / ".vibesrails"

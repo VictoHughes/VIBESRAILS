@@ -248,20 +248,24 @@ def main() -> None:
         sys.stdout.write("BLOCKED \u2014 Content exceeds 1MB. Split into smaller files.\n")
         sys.exit(1)
 
-    # --- Line count check (all file types) ---
+    # --- Line count + phase checks via unified session context ---
+    session_ctx = None
+    try:
+        from vibesrails.context import get_session_context
+        session_ctx = get_session_context(Path.cwd())
+    except Exception:  # noqa: BLE001
+        pass  # Graceful degradation
+
     if content:
         line_count = len(content.splitlines())
         max_lines = _load_max_file_lines()
-        # Adapt to session mode (R&D gets more headroom)
-        try:
-            from vibesrails.context import ContextAdapter, get_current_mode
-            mode, _ = get_current_mode()
-            profile = ContextAdapter().get_profile(mode)
-            ftl = profile.get("file_too_long", {})
-            if "threshold" in ftl:
-                max_lines = ftl["threshold"]
-        except Exception:  # noqa: BLE001
-            pass  # Graceful degradation — use default
+        # Adapt max_lines from session context (mode + phase)
+        if session_ctx:
+            ctx_max = session_ctx.adapted_config.get(
+                "complexity", {}
+            ).get("max_file_lines")
+            if ctx_max:
+                max_lines = ctx_max
         if line_count > max_lines:
             sys.stdout.write(
                 f"BLOCKED \u2014 File exceeds {max_lines} lines "
@@ -269,22 +273,15 @@ def main() -> None:
             )
             sys.exit(1)
 
-    # --- Phase-aware blocking checks ---
-    # Only enforce when methodology.yaml explicitly sets current_phase (opt-in).
-    # Auto-detected phase is advisory-only (reported in preflight/post_tool_use).
-    try:
-        from vibesrails.context.phase import PhaseDetector, ProjectPhase
+    # Phase-aware blocking (opt-in via methodology.yaml override only)
+    if session_ctx and session_ctx.phase_is_override:
+        try:
+            from vibesrails.context.phase import PhaseDetector, ProjectPhase
 
-        cwd = Path.cwd()
-        detector = PhaseDetector(cwd)
-        phase_result = detector.detect()
-
-        # Only block when the user has explicitly opted in via methodology.yaml
-        if phase_result.is_override:
-            phase = phase_result.phase
+            phase = ProjectPhase(session_ctx.phase)
 
             if phase == ProjectPhase.DECIDE:
-                signals = detector.collect_signals()
+                signals = PhaseDetector(Path.cwd()).collect_signals()
                 if not signals.has_adr:
                     sys.stdout.write(
                         "BLOCKED \u2014 Phase DECIDE requires ADR documentation.\n"
@@ -296,7 +293,8 @@ def main() -> None:
                     sys.stdout.write(
                         "BLOCKED \u2014 Phase DECIDE requires contracts "
                         "(typed functions in 3+ files).\n"
-                        "Define type annotations on public API before implementation.\n"
+                        "Define type annotations on public API "
+                        "before implementation.\n"
                     )
                     sys.exit(1)
 
@@ -310,8 +308,8 @@ def main() -> None:
                             "Only bug fixes and edits to existing files.\n"
                         )
                         sys.exit(1)
-    except Exception:  # noqa: BLE001
-        pass  # Graceful degradation — phase detection failure never blocks
+        except Exception:  # noqa: BLE001
+            pass  # Graceful degradation
 
     basename = file_path.rsplit("/", 1)[-1] if "/" in file_path else file_path
 
