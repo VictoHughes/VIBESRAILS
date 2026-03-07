@@ -210,4 +210,4 @@ assertions:
       - "vibesrails/hooks/pre_tool_use.py"
       - "tests/"
   baselines:
-    test_count: 2242           # Minimum test count
+    test_count: 2259           # Minimum test count

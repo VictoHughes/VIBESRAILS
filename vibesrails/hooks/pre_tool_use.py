@@ -269,6 +269,50 @@ def main() -> None:
             )
             sys.exit(1)
 
+    # --- Phase-aware blocking checks ---
+    # Only enforce when methodology.yaml explicitly sets current_phase (opt-in).
+    # Auto-detected phase is advisory-only (reported in preflight/post_tool_use).
+    try:
+        from vibesrails.context.phase import PhaseDetector, ProjectPhase
+
+        cwd = Path.cwd()
+        detector = PhaseDetector(cwd)
+        phase_result = detector.detect()
+
+        # Only block when the user has explicitly opted in via methodology.yaml
+        if phase_result.is_override:
+            phase = phase_result.phase
+
+            if phase == ProjectPhase.DECIDE:
+                signals = detector.collect_signals()
+                if not signals.has_adr:
+                    sys.stdout.write(
+                        "BLOCKED \u2014 Phase DECIDE requires ADR documentation.\n"
+                        "Create ADR/ with architecture decisions before writing code.\n"
+                        "Run: vibesrails --init-methodology\n"
+                    )
+                    sys.exit(1)
+                if not signals.has_contracts:
+                    sys.stdout.write(
+                        "BLOCKED \u2014 Phase DECIDE requires contracts "
+                        "(typed functions in 3+ files).\n"
+                        "Define type annotations on public API before implementation.\n"
+                    )
+                    sys.exit(1)
+
+            if phase in (ProjectPhase.STABILIZE, ProjectPhase.DEPLOY):
+                if tool_name == "Write" and file_path:
+                    target = Path(file_path)
+                    if target.suffix == ".py" and not target.exists():
+                        sys.stdout.write(
+                            f"BLOCKED \u2014 Phase {phase.name}: "
+                            "no new Python files allowed.\n"
+                            "Only bug fixes and edits to existing files.\n"
+                        )
+                        sys.exit(1)
+    except Exception:  # noqa: BLE001
+        pass  # Graceful degradation — phase detection failure never blocks
+
     basename = file_path.rsplit("/", 1)[-1] if "/" in file_path else file_path
 
     # Determine file extension and scannability

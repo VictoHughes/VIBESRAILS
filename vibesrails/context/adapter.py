@@ -1,4 +1,4 @@
-"""Context adapter — adjusts guard thresholds based on session mode."""
+"""Context adapter — adjusts guard thresholds based on session mode + project phase."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import logging
 from typing import Any
 
 from .mode import SessionMode
+from .phase import ProjectPhase
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,37 @@ PROFILES: dict[SessionMode, dict[str, Any]] = {
         "brief_enforcer": {"min_score": 70},
     },
     SessionMode.FORCED: {},  # FORCED uses same as the underlying mode
+}
+
+# ── Phase profiles ──────────────────────────────────────────────
+# Phase-specific overrides layered ON TOP of mode profiles.
+# Phase wins on conflict (more specific than session mood).
+PHASE_PROFILES: dict[ProjectPhase, dict[str, Any]] = {
+    ProjectPhase.DECIDE: {
+        "brief_enforcer": {"min_score": 80},
+        "block_without_adr": True,
+        "block_without_contracts": True,
+    },
+    ProjectPhase.SKELETON: {
+        "brief_enforcer": {"min_score": 60},
+        "warn_test_first": True,
+    },
+    ProjectPhase.FLESH_OUT: {
+        "warn_test_first": True,
+    },
+    ProjectPhase.STABILIZE: {
+        "file_too_long": {"threshold": 300, "severity": "BLOCK"},
+        "complexity": {
+            "cyclomatic_warn": 8,
+            "cyclomatic_block": 15,
+        },
+        "block_new_features": True,
+    },
+    ProjectPhase.DEPLOY: {
+        "file_too_long": {"threshold": 300, "severity": "BLOCK"},
+        "diff_size": {"warn": 50, "block": 100},
+        "block_new_features": True,
+    },
 }
 
 
@@ -117,6 +149,74 @@ class ContextAdapter:
             if "guardian" not in adapted:
                 adapted["guardian"] = {}
             adapted["guardian"]["max_file_lines"] = ftl.get("threshold", 300)
+
+        return adapted
+
+    def get_phase_profile(self, phase: ProjectPhase) -> dict[str, Any]:
+        """Get the effective profile for a phase. Returns a fresh copy."""
+        return copy.deepcopy(PHASE_PROFILES.get(phase, {}))
+
+    def adapt_full_config(
+        self,
+        mode: SessionMode,
+        phase: ProjectPhase,
+        config: dict,
+    ) -> dict:
+        """Apply MODE profile then PHASE profile (phase wins on conflict).
+
+        This is the recommended entry point for combining both dimensions.
+        """
+        # Step 1: apply mode
+        adapted = self.adapt_config(mode, config)
+        # Step 2: overlay phase
+        phase_profile = self.get_phase_profile(phase)
+        if not phase_profile:
+            return adapted
+
+        # Apply phase-specific threshold overrides
+        ftl = phase_profile.get("file_too_long")
+        if ftl:
+            if "complexity" not in adapted:
+                adapted["complexity"] = {}
+            adapted["complexity"]["max_file_lines"] = ftl.get(
+                "threshold",
+                adapted.get("complexity", {}).get("max_file_lines", 400),
+            )
+            adapted["complexity"]["file_too_long_severity"] = ftl.get(
+                "severity", "WARN"
+            )
+            if "guardian" not in adapted:
+                adapted["guardian"] = {}
+            adapted["guardian"]["max_file_lines"] = ftl.get("threshold", 300)
+
+        ds = phase_profile.get("diff_size")
+        if ds:
+            if "guardian" not in adapted:
+                adapted["guardian"] = {}
+            adapted["guardian"]["diff_size_warn"] = ds.get("warn", 200)
+            adapted["guardian"]["diff_size_block"] = ds.get("block", 400)
+
+        cx = phase_profile.get("complexity")
+        if cx:
+            if "complexity" not in adapted:
+                adapted["complexity"] = {}
+            adapted["complexity"] = _deep_merge(adapted["complexity"], cx)
+
+        bf = phase_profile.get("brief_enforcer")
+        if bf:
+            if "brief_enforcer" not in adapted:
+                adapted["brief_enforcer"] = {}
+            adapted["brief_enforcer"] = _deep_merge(
+                adapted["brief_enforcer"], bf
+            )
+
+        # Store phase flags for hooks to read
+        adapted["_phase"] = phase.value
+        adapted["_phase_flags"] = {
+            k: v
+            for k, v in phase_profile.items()
+            if k.startswith("block_") or k.startswith("warn_")
+        }
 
         return adapted
 

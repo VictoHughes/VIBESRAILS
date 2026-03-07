@@ -197,6 +197,39 @@ def _handle_write_edit(tool_input: dict) -> None:
     except (AttributeError, OSError):
         pass
 
+    # Phase-aware warnings (non-blocking, only when methodology is configured)
+    try:
+        from vibesrails.context.phase import PhaseDetector, ProjectPhase
+
+        phase_result = PhaseDetector(Path.cwd()).detect()
+        if phase_result.is_override:
+            phase = phase_result.phase
+
+            if phase in (ProjectPhase.SKELETON, ProjectPhase.FLESH_OUT):
+                throttle_dir = Path.cwd() / ".vibesrails"
+                last_check = throttle_dir / "last_check.txt"
+                last_write = throttle_dir / "write_count.txt"
+                writes_since_check = 0
+                if last_write.exists() and last_check.exists():
+                    try:
+                        writes_since_check = int(last_write.read_text().strip())
+                    except (ValueError, OSError):
+                        pass
+                if writes_since_check >= 3:
+                    all_issues.append(
+                        f"  - [WARN] [phase] Phase {phase.name}: "
+                        "consider running tests \u2014 test-first is recommended"
+                    )
+
+            if phase in (ProjectPhase.STABILIZE, ProjectPhase.DEPLOY):
+                if not basename.startswith("test_"):
+                    all_issues.append(
+                        f"  - [INFO] [phase] Phase {phase.name}: "
+                        "only bug fixes allowed \u2014 no new features"
+                    )
+    except Exception:  # noqa: BLE001
+        pass  # Graceful degradation
+
     if all_issues:
         sys.stdout.write(
             f"\U0001f7e1 VibesRails: {len(all_issues)} issue(s) in {basename}:\n"

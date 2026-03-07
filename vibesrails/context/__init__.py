@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .adapter import ContextAdapter
+from .adapter import PHASE_PROFILES, ContextAdapter
 from .detector import ContextDetector
 from .mode import ContextScore, ContextSignals, SessionMode
 from .phase import PhaseDetector, PhaseResult, PhaseSignals, ProjectPhase
@@ -36,6 +36,7 @@ def get_current_mode(root: Path | None = None) -> tuple[SessionMode, ContextScor
 
 __all__ = [
     "ContextAdapter",
+    "PHASE_PROFILES",
     "ContextDetector",
     "ContextScore",
     "ContextScorer",
