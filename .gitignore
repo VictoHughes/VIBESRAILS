@@ -30,6 +30,9 @@ vibesrails.yaml
 htmlcov/
 .pytest_cache/
 
+# Serena (local LSP config)
+.serena/
+
 # Linting
 .ruff_cache/
 .import_linter_cache/

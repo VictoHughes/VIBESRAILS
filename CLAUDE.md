@@ -7,7 +7,7 @@
 
 VibesRails is a security guardrails platform for AI-assisted Python development. It combines a YAML-driven CLI scanner, an MCP server, and a hook system that protects Claude Code sessions in real-time.
 
-**Key numbers:** 2242 tests | 12 MCP tools | 16 V2 guards | 7 hook modules
+**Key numbers:** 2283 tests | 12 MCP tools | 16 V2 guards | 7 hook modules
 <!-- /AUTO:overview -->
 
 ## Setup
@@ -153,6 +153,10 @@ vibesrails --pr-check            # Generate PR review checklist
 vibesrails --pre-deploy          # Pre-deployment verification
 vibesrails --preflight           # Pre-session preflight check (git, tests, config)
 vibesrails --check-assertions    # Validate project assertions (values, rules, baselines)
+vibesrails --check-gates         # Show gate status for advancing to the next phase
+vibesrails --promote             # Promote to next phase if all gates are met
+vibesrails --force-promote       # Force promote even if gates are not met
+vibesrails --set-phase           # Set phase override (-1=auto, 0-4=phase)
 ```
 
 ### Community & Extensions

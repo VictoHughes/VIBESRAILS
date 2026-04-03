@@ -71,8 +71,8 @@ def test_shield_prompt_error_generic():
 def test_code_snippet_truncated():
     """scan_semgrep truncates code_snippet to 200 chars."""
 
-    from vibesrails.adapters.semgrep_adapter import SemgrepResult
     from tools.scan_semgrep import _result_to_finding
+    from vibesrails.adapters.semgrep_adapter import SemgrepResult
 
     result = SemgrepResult(
         rule_id="test.rule",

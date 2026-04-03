@@ -8,7 +8,6 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from vibesrails.adapters.semgrep_adapter import SemgrepResult  # noqa: E402
 from tools.scan_semgrep import (  # noqa: E402
     _NOT_INSTALLED_PEDAGOGY,
     _classify_rule,
@@ -17,6 +16,7 @@ from tools.scan_semgrep import (  # noqa: E402
     _result_to_finding,
     scan_semgrep,
 )
+from vibesrails.adapters.semgrep_adapter import SemgrepResult  # noqa: E402
 
 # ── Fixtures ───────────────────────────────────────────────────────────
 
