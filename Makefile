@@ -1,3 +1,7 @@
+VENV     := .venv/bin
+PYTHON   := $(VENV)/python
+PIP      := $(PYTHON) -m pip
+
 .PHONY: install install-dev test lint format clean mcp audit preflight sync-claude help
 
 help: ## Show this help
@@ -5,32 +9,32 @@ help: ## Show this help
 		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
 install: ## Install vibesrails (user mode)
-	pip install -e .
+	$(PIP) install -e .
 
 install-dev: ## Install with all dev + MCP dependencies
-	pip install -e ".[dev,mcp,all]"
+	$(PIP) install -e ".[dev,mcp,all]"
 
 test: ## Run test suite with timeout
-	python -m pytest tests/ --timeout=60
+	$(PYTHON) -m pytest tests/ --timeout=60
 
 lint: ## Run ruff linter (auto-fix)
-	ruff check . --fix
+	$(VENV)/ruff check . --fix
 
 format: ## Format code with ruff
-	ruff format .
+	$(VENV)/ruff format .
 
 clean: ## Remove build artifacts and caches
 	rm -rf build/ dist/ *.egg-info/ .pytest_cache/ .ruff_cache/ .mypy_cache/ .coverage htmlcov/
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
 mcp: ## Start MCP server (stdio)
-	python -m mcp_server
+	$(PYTHON) -m mcp_server
 
 audit: ## Run full vibesrails security scan
-	vibesrails --all
+	$(VENV)/vibesrails --all
 
 preflight: ## Run pre-session preflight check
-	vibesrails --preflight
+	$(VENV)/vibesrails --preflight
 
 sync-claude: ## Auto-generate CLAUDE.md factual sections
-	vibesrails --sync-claude
+	$(VENV)/vibesrails --sync-claude
