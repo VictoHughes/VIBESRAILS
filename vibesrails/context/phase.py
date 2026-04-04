@@ -51,6 +51,11 @@ class PhaseSignals:
     release_tag_count: int = 0
     has_changelog: bool = False
     has_vibesrails_yaml: bool = False
+    # OpenSpec interop signals
+    has_openspec: bool = False
+    openspec_has_project: bool = False
+    openspec_spec_count: int = 0
+    openspec_pending_count: int = 0
 
 
 @dataclass
@@ -87,6 +92,31 @@ _GATES: dict[str, list[tuple[str, callable]]] = {
         ("release_tags >= 1", lambda s: s.release_tag_count >= 1),
     ],
 }
+
+# OpenSpec-aware gate conditions — only active when has_openspec is True.
+# Added dynamically to existing gates by get_effective_gates().
+_OPENSPEC_GATES: dict[str, list[tuple[str, callable]]] = {
+    "decide_to_skeleton": [
+        ("openspec: project.md", lambda s: s.openspec_has_project),
+    ],
+    "skeleton_to_flesh": [
+        ("openspec: >= 1 spec", lambda s: s.openspec_spec_count >= 1),
+    ],
+    "flesh_to_stabilize": [
+        ("openspec: no pending changes", lambda s: s.openspec_pending_count == 0),
+    ],
+}
+
+
+def get_effective_gates(signals: PhaseSignals) -> dict[str, list[tuple[str, callable]]]:
+    """Return gates with OpenSpec conditions merged in (if OpenSpec detected)."""
+    import copy
+    gates = copy.deepcopy(_GATES)
+    if signals.has_openspec:
+        for gate_name, conditions in _OPENSPEC_GATES.items():
+            if gate_name in gates:
+                gates[gate_name].extend(conditions)
+    return gates
 
 _GATE_ORDER = [
     ("decide_to_skeleton", ProjectPhase.SKELETON),
@@ -164,6 +194,17 @@ class PhaseDetector:
         # Release tags
         signals.release_tag_count = self._count_release_tags()
 
+        # OpenSpec interop
+        try:
+            from vibesrails.openspec_interop import detect as detect_openspec
+            osinfo = detect_openspec(r)
+            signals.has_openspec = osinfo.detected
+            signals.openspec_has_project = osinfo.has_project_md
+            signals.openspec_spec_count = osinfo.spec_count
+            signals.openspec_pending_count = osinfo.pending_count
+        except Exception:
+            pass  # graceful degradation
+
         return signals
 
     def detect(self) -> PhaseResult:
@@ -182,10 +223,11 @@ class PhaseDetector:
             )
 
         signals = self.collect_signals()
+        effective_gates = get_effective_gates(signals)
         phase = ProjectPhase.DECIDE  # Start at lowest
 
         for gate_name, target_phase in _GATE_ORDER:
-            conditions = _GATES[gate_name]
+            conditions = effective_gates.get(gate_name, _GATES[gate_name])
             if all(check(signals) for _, check in conditions):
                 phase = target_phase
             else:
@@ -342,7 +384,8 @@ class PhaseDetector:
             return []
 
         gate_name, _ = _GATE_ORDER[gate_index]
-        conditions = _GATES[gate_name]
+        effective_gates = get_effective_gates(signals)
+        conditions = effective_gates.get(gate_name, _GATES[gate_name])
 
         missing = []
         for label, check in conditions:

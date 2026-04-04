@@ -13,6 +13,7 @@ from .context.phase import (
     _GATES,
     PhaseDetector,
     ProjectPhase,
+    get_effective_gates,
 )
 from .scanner_types import BLUE, GREEN, NC, RED, YELLOW
 
@@ -77,7 +78,8 @@ def check_gates(root: Path) -> GateReport:
         )
 
     gate_name, target_phase = _GATE_ORDER[gate_index]
-    raw_conditions = _GATES[gate_name]
+    effective = get_effective_gates(signals)
+    raw_conditions = effective.get(gate_name, _GATES[gate_name])
 
     conditions = [
         GateCondition(label=label, met=bool(check(signals)))

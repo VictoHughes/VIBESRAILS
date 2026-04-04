@@ -163,6 +163,26 @@ def _test_baseline_info(root: Path) -> dict:
 # ── Report collection ──────────────────────────────────────────
 
 
+def _openspec_info(root: Path) -> dict:
+    """Detect OpenSpec project. Fast — filesystem only."""
+    info: dict = {
+        "detected": False, "spec_count": 0,
+        "pending_count": 0, "pending_names": [],
+        "archived_count": 0,
+    }
+    try:
+        from .openspec_interop import detect
+        osinfo = detect(root)
+        info["detected"] = osinfo.detected
+        info["spec_count"] = osinfo.spec_count
+        info["pending_count"] = osinfo.pending_count
+        info["pending_names"] = osinfo.pending_names
+        info["archived_count"] = osinfo.archived_count
+    except Exception:
+        pass
+    return info
+
+
 def collect_status(root: Path) -> dict:
     """Collect all status data. Fast (no pytest, no subprocess for tests)."""
     return {
@@ -173,6 +193,7 @@ def collect_status(root: Path) -> dict:
         "assertions": _assertions_info(root),
         "docs": _docs_info(root),
         "tests": _test_baseline_info(root),
+        "openspec": _openspec_info(root),
     }
 
 
@@ -197,6 +218,13 @@ def format_quiet(data: dict) -> str:
         if missing:
             gate_str += f" need: {', '.join(missing[:3])}"
 
+    os = data.get("openspec", {})
+    openspec_str = ""
+    if os.get("detected"):
+        openspec_str = f"OpenSpec: {os['spec_count']} specs"
+        if os.get("pending_count"):
+            openspec_str += f", {os['pending_count']} pending"
+
     parts = [
         f"VR {data['version']}",
         f"{g['branch']}{dirty}{unpushed}",
@@ -204,6 +232,7 @@ def format_quiet(data: dict) -> str:
         gate_str,
         f"{a['passed']}/{a['total']} assertions" if a["total"] else "",
         f"tests baseline: {t['declared']}" if t["declared"] else "",
+        openspec_str,
     ]
     return " | ".join(p for p in parts if p)
 
@@ -272,6 +301,25 @@ def format_full(data: dict) -> str:
     ])
     lines.append("")
 
+    # SPECS (OpenSpec interop — only shown if detected)
+    os_data = data.get("openspec", {})
+    if os_data.get("detected"):
+        os_icon = f"{GREEN}detected{NC}"
+        os_summary = f"{os_data['spec_count']} specs"
+        if os_data.get("pending_count"):
+            os_summary += f", {YELLOW}{os_data['pending_count']} pending{NC}"
+        if os_data.get("archived_count"):
+            os_summary += f", {os_data['archived_count']} archived"
+        lines.extend([
+            f"{BLUE}SPECS{NC}",
+            f"  OpenSpec  : {os_icon} ({os_summary})",
+        ])
+        if os_data.get("pending_names"):
+            lines.append(
+                f"  Pending   : {', '.join(os_data['pending_names'][:5])}"
+            )
+        lines.append("")
+
     # ASSERTIONS
     if a["total"]:
         a_color = GREEN if a["passed"] == a["total"] else YELLOW
@@ -291,6 +339,8 @@ def format_full(data: dict) -> str:
         actions.append(f"{YELLOW}  CLAUDE.md stale — run: vibesrails --sync-claude{NC}")
     if gt["total"] and not gt["all_met"]:
         actions.append(f"{YELLOW}  Gate blocked — run: vibesrails --check-gates{NC}")
+    if os_data.get("pending_count"):
+        actions.append(f"{YELLOW}  OpenSpec: {os_data['pending_count']} pending changes — archive before promoting{NC}")
 
     if actions:
         lines.append(f"{BLUE}ACTIONS REQUIRED{NC}")

@@ -27,6 +27,8 @@ def _mock_status():
         "assertions": {"passed": 4, "total": 4},
         "docs": {"claude_md": "synced", "decisions": True},
         "tests": {"declared": 2320},
+        "openspec": {"detected": False, "spec_count": 0, "pending_count": 0,
+                     "pending_names": [], "archived_count": 0},
     }
 
 
@@ -44,6 +46,8 @@ def _clean_status():
         "assertions": {"passed": 4, "total": 4},
         "docs": {"claude_md": "synced", "decisions": True},
         "tests": {"declared": 2320},
+        "openspec": {"detected": False, "spec_count": 0, "pending_count": 0,
+                     "pending_names": [], "archived_count": 0},
     }
 
 
@@ -141,7 +145,7 @@ def test_json_has_all_keys():
     data = _mock_status()
     output = format_json(data)
     parsed = json.loads(output)
-    assert set(parsed.keys()) == {"version", "git", "context", "gates", "assertions", "docs", "tests"}
+    assert set(parsed.keys()) == {"version", "git", "context", "gates", "assertions", "docs", "tests", "openspec"}
 
 
 # ── exit_code tests ───────────────────────────────────────────

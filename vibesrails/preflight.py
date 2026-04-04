@@ -449,6 +449,30 @@ def check_session_context(root: Path) -> list[CheckResult]:
     return results
 
 
+def check_openspec(root: Path) -> CheckResult | None:
+    """Detect OpenSpec and report status. Returns None if not detected."""
+    try:
+        from .openspec_interop import detect
+        info = detect(root)
+        if not info.detected:
+            return None
+        parts = [f"{info.spec_count} specs"]
+        if info.pending_count:
+            parts.append(f"{info.pending_count} pending")
+        if info.archived_count:
+            parts.append(f"{info.archived_count} archived")
+        summary = ", ".join(parts)
+        if info.pending_count > 0:
+            return CheckResult(
+                "OpenSpec",
+                "warn",
+                f"Detected ({summary}) — archive pending changes before promoting",
+            )
+        return CheckResult("OpenSpec", "ok", f"Detected ({summary})")
+    except Exception:
+        return None
+
+
 def run_preflight(root: Path) -> list[CheckResult]:
     """Run all preflight checks and return results."""
     results = [
@@ -466,6 +490,10 @@ def run_preflight(root: Path) -> list[CheckResult]:
         check_claude_md_freshness(root),
         check_changelog_current(root),
     ]
+    # OpenSpec interop (only shown if detected)
+    openspec_result = check_openspec(root)
+    if openspec_result:
+        results.append(openspec_result)
     # Unified session context (mode + phase + adapted thresholds)
     results.extend(check_session_context(root))
     return results
