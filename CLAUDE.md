@@ -1,7 +1,7 @@
 # VibesRails - Development Guidelines
 
 <!-- AUTO:overview -->
-> VibesRails 2.3.0 — by SM
+> VibesRails 2.4.0 — by SM
 
 ## Project Overview
 

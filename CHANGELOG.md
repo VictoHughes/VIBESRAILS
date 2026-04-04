@@ -2,6 +2,26 @@
 
 All notable changes to VibesRails will be documented in this file.
 
+## [2.4.0] - 2026-04-04
+
+### Added
+- `vibesrails --status [--quiet|--json]` — unified project status report
+- `vibesrails --init-hooks [minimal|standard|full]` — tiered Claude Code hook generator
+- `vibesrails --check-contracts` — public signature tracking between phases
+- OpenSpec interop — detect `openspec/` directory, hard gates, preflight/status integration
+- PEV enforcement — Plan→Execute→Verify loop tracking in hooks
+- Auto-status injection on SessionStart via generated hooks
+- Contract snapshots saved automatically on `--promote`
+- Status trigger: periodic status report after 5 commits, 1h, or branch change
+
+### Changed
+- Repositioned: "engineering methodology enforcer" not "security scanner"
+- README.md rewritten with phase flow diagram and comparison table
+- Makefile: force venv Python in all targets (fixes pyenv conflicts)
+- `--setup` now delegates to `--init-hooks --standard`
+- All hook commands use `sys.executable` (no hardcoded python3)
+- Tests: 2283 → 2418 (+135)
+
 ## [2.3.0] - 2026-03-06
 
 ### Added

@@ -171,7 +171,15 @@ def _standard() -> dict[str, list]:
     )
 
     # SessionStart
+    _INIT_DETECT = (
+        'if [ -z "$VR_SKIP_INIT" ] && [ ! -d ".vibesrails" ]; then '
+        'echo "VibesRails detected but project not initialized."; '
+        'echo "  Run: vibesrails --init-methodology && vibesrails --init-hooks standard"; '
+        'echo "  Skip: export VR_SKIP_INIT=1"; '
+        "fi"
+    )
     hooks["SessionStart"] = [_group([
+        _cmd(_INIT_DETECT),
         _cmd(_py("vibesrails") + " --status --quiet"),
         _cmd(_py("vibesrails.hooks.session_scan")),
         _prompt(

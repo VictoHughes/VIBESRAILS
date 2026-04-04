@@ -343,6 +343,14 @@ def test_standard_session_start_has_scan():
     assert any("session_scan" in c for c in commands)
 
 
+def test_standard_session_start_has_init_detection():
+    """SessionStart includes VR_SKIP_INIT / .vibesrails check."""
+    hooks = build_hooks("standard")
+    start_hooks = hooks["hooks"]["SessionStart"][0]["hooks"]
+    commands = [h.get("command", "") for h in start_hooks]
+    assert any("VR_SKIP_INIT" in c and ".vibesrails" in c for c in commands)
+
+
 def test_standard_has_status_trigger():
     hooks = build_hooks("standard")
     bash_groups = [g for g in hooks["hooks"]["PostToolUse"] if g.get("matcher") == "Bash"]

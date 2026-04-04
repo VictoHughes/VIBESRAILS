@@ -138,19 +138,23 @@
 │   ├── test_cli_lifecycle.py
 │   ├── test_cli_setup.py
 │   ├── test_config.py
+│   ├── test_contract_tracker.py
 │   ├── test_decisions_template.py
 │   ├── test_dialogue.py
 │   ├── test_duplication_guard.py
 │   ├── test_e2e_semgrep.py
 │   ├── test_gates.py
 │   ├── test_guardian.py
+│   ├── test_hook_generator.py
 │   ├── test_integration_learning.py
 │   ├── test_learn.py
 │   ├── test_learn_command.py
 │   ├── test_mcp_server.py
+│   ├── test_openspec_interop.py
 │   ├── test_pattern_detector.py
 │   ├── test_pentest_fixes.py
 │   ├── test_pentest_red_fixes.py
+│   ├── test_pev_tracker.py
 │   ├── test_placement_guard.py
 │   ├── test_preflight.py
 │   ├── test_rate_limiting.py
@@ -165,6 +169,7 @@
 │   ├── test_smart_setup_detection.py
 │   ├── test_smart_setup_edge.py
 │   ├── test_smart_setup_integration.py
+│   ├── test_status.py
 │   ├── test_structure_rules.py
 │   ├── test_sync_claude.py
 │   ├── test_sync_memory.py
@@ -263,6 +268,7 @@
 │   │   ├── queue_processor.py
 │   │   ├── session_lock.py
 │   │   ├── session_scan.py
+│   │   ├── status_trigger.py
 │   │   └── throttle.py
 │   ├── learner
 │   │   ├── __init__.py
@@ -301,13 +307,17 @@
 │   ├── cli_setup.py
 │   ├── cli_v2.py
 │   ├── config.py
+│   ├── contract_tracker.py
 │   ├── e2e_semgrep.py
 │   ├── gates.py
+│   ├── hook_generator.py
 │   ├── integration_learning.py
 │   ├── learn.py
 │   ├── learn_command.py
 │   ├── learn_runner.py
 │   ├── metrics.py
+│   ├── openspec_interop.py
+│   ├── pev_tracker.py
 │   ├── preflight.py
 │   ├── rate_limiting.py
 │   ├── result_merger.py
@@ -319,6 +329,7 @@
 │   ├── scanner_utils.py
 │   ├── semgrep_adapter.py
 │   ├── semgrep_integration.py
+│   ├── status.py
 │   ├── sync_claude.py
 │   ├── sync_memory.py
 │   ├── watch.py
@@ -338,4 +349,4 @@
 ├── pyproject.toml
 └── vibesrails.yaml
 
-34 directories, 305 files
+34 directories, 316 files
