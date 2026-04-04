@@ -107,6 +107,8 @@ def _parse_args():
     g_guards.add_argument("--set-phase", type=int, choices=range(-1, 5),
                           metavar="{-1..4}",
                           help="Set phase override (-1=auto, 0-4=phase)")
+    g_guards.add_argument("--check-contracts", action="store_true",
+                          help="Compare current public signatures against last snapshot")
 
     # --- Community & Extensions ---
     g_community = parser.add_argument_group("Community & Extensions")
@@ -241,6 +243,25 @@ def _handle_setup_commands(args) -> None:
         logger.info(f"{GREEN}Installed {tier} hooks → {hooks_path}{NC}")
         sys.exit(0)
 
+    if getattr(args, "check_contracts", False):
+        from .contract_tracker import (
+            compare,
+            format_diff,
+            latest_snapshot,
+            snapshot,
+        )
+        root = Path.cwd()
+        current = snapshot(root)
+        prev = latest_snapshot(root)
+        if prev is None:
+            logger.info(f"No previous snapshot. Current: {len(current)} public signatures.")
+            logger.info("Run --promote to save a snapshot.")
+            sys.exit(0)
+        phase_num, old_data = prev
+        diff = compare(old_data, current)
+        logger.info(format_diff(diff, phase_num))
+        sys.exit(1 if diff.has_breaking else 0)
+
     if args.check_gates:
         from .gates import check_gates, format_gate_report
         report = check_gates(Path.cwd())
@@ -248,6 +269,7 @@ def _handle_setup_commands(args) -> None:
         sys.exit(0 if report.all_met or report.target_phase is None else 1)
 
     if args.promote or args.force_promote:
+        from .contract_tracker import save_snapshot, snapshot
         from .gates import check_gates, format_gate_report, promote_phase
         root = Path.cwd()
         report = check_gates(root)
@@ -256,9 +278,15 @@ def _handle_setup_commands(args) -> None:
             logger.info("Already at DEPLOY — nothing to promote.")
             sys.exit(0)
         force = bool(args.force_promote)
+        # Snapshot BEFORE promoting
+        current_snap = snapshot(root)
         if promote_phase(root, force=force):
-            target = report.target_phase.name.replace("_", " ")
-            logger.info(f"\n✅ Promoted to {target} ({report.target_phase.value}/4)")
+            # Save snapshot at the NEW phase
+            target = report.target_phase
+            snap_path = save_snapshot(root, target.value, current_snap)
+            target_label = target.name.replace("_", " ")
+            logger.info(f"\n✅ Promoted to {target_label} ({target.value}/4)")
+            logger.info(f"📸 Snapshot saved: {len(current_snap)} signatures → {snap_path}")
             sys.exit(0)
         else:
             logger.info("\n❌ Cannot promote — unmet gates above.")

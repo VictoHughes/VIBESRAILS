@@ -198,6 +198,35 @@ def _pev_info() -> dict:
     return info
 
 
+def _contracts_info(root: Path) -> dict:
+    """Check contract snapshot status. Fast — reads snapshot files + current AST."""
+    info: dict = {
+        "has_snapshot": False, "snapshot_phase": None,
+        "snapshot_count": 0, "current_count": 0,
+        "added": 0, "removed": 0, "modified": 0,
+    }
+    try:
+        from .contract_tracker import compare, latest_snapshot, snapshot
+
+        prev = latest_snapshot(root)
+        if prev is None:
+            return info
+        phase_num, old_data = prev
+        info["has_snapshot"] = True
+        info["snapshot_phase"] = phase_num
+        info["snapshot_count"] = len(old_data)
+
+        current = snapshot(root)
+        info["current_count"] = len(current)
+        diff = compare(old_data, current)
+        info["added"] = len(diff.added)
+        info["removed"] = len(diff.removed)
+        info["modified"] = len(diff.modified)
+    except Exception:
+        pass
+    return info
+
+
 def collect_status(root: Path) -> dict:
     """Collect all status data. Fast (no pytest, no subprocess for tests)."""
     return {
@@ -210,6 +239,7 @@ def collect_status(root: Path) -> dict:
         "tests": _test_baseline_info(root),
         "openspec": _openspec_info(root),
         "pev": _pev_info(),
+        "contracts": _contracts_info(root),
     }
 
 
@@ -248,6 +278,15 @@ def format_quiet(data: dict) -> str:
         tw = pev.get("test_writes", 0)
         pev_str = f"PEV: R{pev.get('reads', 0)}/W{sw}+{tw}t"
 
+    ct = data.get("contracts", {})
+    contracts_str = ""
+    if ct.get("has_snapshot"):
+        breaking = ct.get("removed", 0) + ct.get("modified", 0)
+        if breaking:
+            contracts_str = f"contracts: {breaking} breaking"
+        elif ct.get("added", 0):
+            contracts_str = f"contracts: +{ct['added']} new"
+
     parts = [
         f"VR {data['version']}",
         f"{g['branch']}{dirty}{unpushed}",
@@ -257,6 +296,7 @@ def format_quiet(data: dict) -> str:
         f"tests baseline: {t['declared']}" if t["declared"] else "",
         openspec_str,
         pev_str,
+        contracts_str,
     ]
     return " | ".join(p for p in parts if p)
 
@@ -365,6 +405,24 @@ def format_full(data: dict) -> str:
             f"  Reads     : {rd}",
             f"  Writes    : {pev['writes']} ({sw} source, {tw} test)",
             f"  Ratio     : {ratio_icon}",
+            "",
+        ])
+
+    # CONTRACTS (only shown if snapshot exists)
+    ct = data.get("contracts", {})
+    if ct.get("has_snapshot"):
+        ct_changes = ct["added"] + ct["removed"] + ct["modified"]
+        if ct_changes:
+            breaking = ct["removed"] + ct["modified"]
+            ct_icon = f"{YELLOW}{ct_changes} changes" if breaking else f"{GREEN}{ct_changes} changes"
+            ct_detail = f"+{ct['added']} added, ~{ct['modified']} modified, -{ct['removed']} removed"
+        else:
+            ct_icon = f"{GREEN}no changes"
+            ct_detail = "signatures match snapshot"
+        lines.extend([
+            f"{BLUE}CONTRACTS{NC}",
+            f"  Snapshot  : Phase {ct['snapshot_phase']} ({ct['snapshot_count']} signatures)",
+            f"  Changes   : {ct_icon}{NC} ({ct_detail})",
             "",
         ])
 
