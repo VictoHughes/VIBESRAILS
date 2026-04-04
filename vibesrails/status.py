@@ -183,6 +183,21 @@ def _openspec_info(root: Path) -> dict:
     return info
 
 
+def _pev_info() -> dict:
+    """Read PEV session state. Fast — file read only."""
+    info: dict = {"reads": 0, "writes": 0, "source_writes": 0, "test_writes": 0}
+    try:
+        from .pev_tracker import load_state
+        state = load_state()
+        info["reads"] = state.get("reads", 0)
+        info["writes"] = state.get("writes", 0)
+        info["source_writes"] = state.get("source_writes", 0)
+        info["test_writes"] = state.get("test_writes", 0)
+    except Exception:
+        pass
+    return info
+
+
 def collect_status(root: Path) -> dict:
     """Collect all status data. Fast (no pytest, no subprocess for tests)."""
     return {
@@ -194,6 +209,7 @@ def collect_status(root: Path) -> dict:
         "docs": _docs_info(root),
         "tests": _test_baseline_info(root),
         "openspec": _openspec_info(root),
+        "pev": _pev_info(),
     }
 
 
@@ -225,6 +241,13 @@ def format_quiet(data: dict) -> str:
         if os.get("pending_count"):
             openspec_str += f", {os['pending_count']} pending"
 
+    pev = data.get("pev", {})
+    pev_str = ""
+    if pev.get("writes", 0) > 0:
+        sw = pev.get("source_writes", 0)
+        tw = pev.get("test_writes", 0)
+        pev_str = f"PEV: R{pev.get('reads', 0)}/W{sw}+{tw}t"
+
     parts = [
         f"VR {data['version']}",
         f"{g['branch']}{dirty}{unpushed}",
@@ -233,6 +256,7 @@ def format_quiet(data: dict) -> str:
         f"{a['passed']}/{a['total']} assertions" if a["total"] else "",
         f"tests baseline: {t['declared']}" if t["declared"] else "",
         openspec_str,
+        pev_str,
     ]
     return " | ".join(p for p in parts if p)
 
@@ -326,6 +350,21 @@ def format_full(data: dict) -> str:
         lines.extend([
             f"{BLUE}ASSERTIONS{NC}",
             f"  Result    : {a_color}{a['passed']}/{a['total']} passed{NC}",
+            "",
+        ])
+
+    # PEV LOOP (only shown if session has writes)
+    pev = data.get("pev", {})
+    if pev.get("writes", 0) > 0:
+        sw = pev.get("source_writes", 0)
+        tw = pev.get("test_writes", 0)
+        rd = pev.get("reads", 0)
+        ratio_icon = f"{GREEN}test coverage active{NC}" if tw > 0 else f"{YELLOW}no tests written{NC}"
+        lines.extend([
+            f"{BLUE}PEV LOOP{NC}",
+            f"  Reads     : {rd}",
+            f"  Writes    : {pev['writes']} ({sw} source, {tw} test)",
+            f"  Ratio     : {ratio_icon}",
             "",
         ])
 

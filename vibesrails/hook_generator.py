@@ -156,9 +156,19 @@ def _minimal() -> dict[str, list]:
     }
 
 
+_PEV_RECORD_READ = (
+    "from vibesrails.pev_tracker import record_read; record_read()"
+)
+
+
 def _standard() -> dict[str, list]:
     """Tier 2: Security + session management + status trigger."""
     hooks = _minimal()
+
+    # PEV: track Read operations (lightweight — just increments counter)
+    hooks["PreToolUse"].append(
+        _group([_cmd(_pyc(_PEV_RECORD_READ))], "Read"),
+    )
 
     # SessionStart
     hooks["SessionStart"] = [_group([
@@ -170,6 +180,7 @@ def _standard() -> dict[str, list]:
             "Report the session scan results and any required actions to the user."
         ),
         _cmd(_pyc(_THROTTLE_RESET)),
+        _cmd(_pyc("from vibesrails.pev_tracker import reset_state; reset_state()")),
         _cmd(_pyc(_SESSION_LOCK_ACQUIRE)),
         _cmd(
             "rm -f .claude/.write_reminded 2>/dev/null; "

@@ -227,6 +227,15 @@ def main() -> None:
             sys.exit(1)
         sys.exit(0)
 
+    # --- PEV: track Read operations ---
+    if tool_name == "Read":
+        try:
+            from vibesrails.pev_tracker import record_read
+            record_read()
+        except Exception:
+            pass
+        sys.exit(0)
+
     if tool_name not in ("Write", "Edit"):
         sys.exit(0)
 
@@ -253,6 +262,26 @@ def main() -> None:
     try:
         from vibesrails.context import get_session_context
         session_ctx = get_session_context(Path.cwd())
+    except Exception:  # noqa: BLE001
+        pass  # Graceful degradation
+
+    # --- PEV: Plan enforcement (read-before-write) ---
+    try:
+        from vibesrails.pev_tracker import check_plan, load_state, record_write
+
+        pev_state = load_state()
+        mode_str = None
+        if session_ctx:
+            mode_str = session_ctx.mode.value if hasattr(session_ctx.mode, "value") else str(session_ctx.mode)
+        plan_msg = check_plan(mode_str, pev_state.get("reads", 0))
+        if plan_msg:
+            if plan_msg.startswith("BLOCKED"):
+                sys.stdout.write(f"\u26d4 VibesRails PEV: {plan_msg}\n")
+                sys.exit(1)
+            else:
+                sys.stderr.write(f"\u26a0\ufe0f VibesRails PEV: {plan_msg}\n")
+        # Track write operation
+        record_write(file_path, pev_state)
     except Exception:  # noqa: BLE001
         pass  # Graceful degradation
 

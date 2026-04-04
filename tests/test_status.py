@@ -29,6 +29,7 @@ def _mock_status():
         "tests": {"declared": 2320},
         "openspec": {"detected": False, "spec_count": 0, "pending_count": 0,
                      "pending_names": [], "archived_count": 0},
+        "pev": {"reads": 0, "writes": 0, "source_writes": 0, "test_writes": 0},
     }
 
 
@@ -48,6 +49,7 @@ def _clean_status():
         "tests": {"declared": 2320},
         "openspec": {"detected": False, "spec_count": 0, "pending_count": 0,
                      "pending_names": [], "archived_count": 0},
+        "pev": {"reads": 0, "writes": 0, "source_writes": 0, "test_writes": 0},
     }
 
 
@@ -145,7 +147,7 @@ def test_json_has_all_keys():
     data = _mock_status()
     output = format_json(data)
     parsed = json.loads(output)
-    assert set(parsed.keys()) == {"version", "git", "context", "gates", "assertions", "docs", "tests", "openspec"}
+    assert set(parsed.keys()) == {"version", "git", "context", "gates", "assertions", "docs", "tests", "openspec", "pev"}
 
 
 # ── exit_code tests ───────────────────────────────────────────

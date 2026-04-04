@@ -264,6 +264,28 @@ def main() -> None:
 
     if tool_name in ("Write", "Edit"):
         _handle_write_edit(tool_input)
+        # PEV: Verify enforcement (warn if no tests written)
+        try:
+            from vibesrails.pev_tracker import check_verify, load_state
+            pev_state = load_state()
+            mode_str = None
+            phase_str = None
+            try:
+                from vibesrails.context import get_session_context
+                ctx = get_session_context(Path.cwd())
+                mode_str = ctx.mode.value if hasattr(ctx.mode, "value") else None
+                phase_str = ctx.phase_name.replace(" ", "_").upper() if ctx.phase_name else None
+            except Exception:
+                pass
+            verify_msg = check_verify(
+                mode_str, phase_str,
+                pev_state.get("source_writes", 0),
+                pev_state.get("test_writes", 0),
+            )
+            if verify_msg:
+                sys.stderr.write(f"\u26a0\ufe0f VibesRails PEV: {verify_msg}\n")
+        except Exception:
+            pass
     elif tool_name == "Bash":
         _handle_bash(tool_input)
 
