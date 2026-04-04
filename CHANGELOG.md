@@ -2,6 +2,12 @@
 
 All notable changes to VibesRails will be documented in this file.
 
+## [2.4.1] - 2026-04-04
+
+### Added
+- Auto-detection of uninitialized projects in SessionStart hook
+  (prompts `vibesrails --init-methodology`, skippable via `VR_SKIP_INIT=1`)
+
 ## [2.4.0] - 2026-04-04
 
 ### Added

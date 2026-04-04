@@ -1,13 +1,13 @@
 # VibesRails - Development Guidelines
 
 <!-- AUTO:overview -->
-> VibesRails 2.4.0 — by SM
+> VibesRails 2.4.1 — by SM
 
 ## Project Overview
 
 VibesRails is an engineering methodology enforcer for AI-assisted Python development. It combines phase detection, context adaptation, gate-based progression, a YAML-driven CLI scanner, an MCP server, and a hook system that enforces engineering discipline in real-time.
 
-**Key numbers:** 2418 tests | 12 MCP tools | 16 V2 guards | 8 hook modules
+**Key numbers:** 2419 tests | 12 MCP tools | 16 V2 guards | 8 hook modules
 <!-- /AUTO:overview -->
 
 ## Setup
