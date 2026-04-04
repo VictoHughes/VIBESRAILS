@@ -1,78 +1,61 @@
 # VibesRails
 
-**The open-source runtime guard for AI coding agents.**
+**Engineering methodology enforcer for AI-assisted development.**
 
-Most security tools scan your code after it's written.
-VibesRails intercepts before execution — secrets are blocked
-before they touch your files.
+Your AI agent writes 200 files per hour. VibesRails makes sure it follows your specs, respects your architecture, and doesn't skip the steps that matter.
 
-![Tests](https://img.shields.io/badge/tests-2203_passing-green)
+![Version](https://img.shields.io/badge/version-2.3.0-blue)
+![Tests](https://img.shields.io/badge/tests-2283_passing-green)
 ![Python](https://img.shields.io/badge/python-3.10+-blue)
 ![License](https://img.shields.io/badge/license-Apache_2.0-orange)
+![PyPI](https://img.shields.io/pypi/v/vibesrails)
 
-## What makes it different
+## The Problem
 
-| Approach | When it acts | Examples |
-|----------|-------------|----------|
-| Static scanning | After code exists | Semgrep, Snyk, linters |
-| Pre-install scanning | Before adding plugins | mcp-scan, Cisco Skill Scanner |
-| **Runtime interception** | **Before each write/edit/command** | **VibesRails** |
+AI coding agents (Claude Code, Cursor, Copilot) generate code fast. But nobody enforces **how** they work:
 
-VibesRails doesn't wait for you to commit bad code. It blocks it
-before the file is written.
+- No specs before implementation? The agent codes anyway.
+- Architecture not decided? The agent creates 12 files.
+- Stabilization phase? The agent adds a new feature.
 
-## 4-layer runtime protection
+Fast without structure = technical debt at scale.
 
-| Layer | Event | What it does |
-|-------|-------|-------------|
-| **PreToolUse** | Write/Edit/Bash | Blocks secrets, SQL injection, eval/exec BEFORE your AI writes them |
-| **File Size Guard** | Write/Edit | Blocks files exceeding 300 lines (configurable via `guardian.max_file_lines`) |
-| **PostToolUse** | Write/Edit | Auto-scans every .py file AFTER write (16 AST guards + 7 senior guards, 5s timeout) |
-| **Throttle** | Write/Edit | Forces verification every 5 writes, prevents runaway agents |
-| **Scope Guard** | Post-commit | Reminds rules after every commit, prevents scope creep |
+## What VibesRails Does
 
-## Works with
+VibesRails detects where you are in your project, adapts its strictness, and enforces engineering discipline automatically.
 
-| Agent | Integration | Level |
-|-------|------------|-------|
-| Claude Code | Full hooks + MCP | Runtime guard |
-| Cursor | MCP server | 12 security tools |
-| GitHub Copilot | MCP server | 12 security tools |
-| Windsurf | MCP server | 12 security tools |
-| Continue.dev | MCP server | 12 security tools |
-| Any MCP client | MCP server | 12 security tools |
+```
+DECIDE  →  SKELETON  →  FLESH OUT  →  STABILIZE  →  DEPLOY
+  ↓           ↓            ↓             ↓            ↓
+Require     Require     Warn if no     Block new     Limit diff
+ADR docs    contracts   test-first     features      size
+```
 
-## Install
+| Capability | How it works |
+|------------|-------------|
+| **Phase detection** | Reads your project signals (ADRs, tests, CI, tags) to know if you're in R&D or shipping |
+| **Context adaptation** | R&D mode = relaxed thresholds; Bugfix mode = surgical precision; 7 signals scored |
+| **Gate enforcement** | `--check-gates` shows what's missing; `--promote` advances only when conditions are met |
+| **Runtime interception** | Hooks block bad code **before** the file is written — not after commit like linters |
+| **Doc sync** | `--sync-claude` auto-generates CLAUDE.md from code; `--preflight` checks doc freshness |
+| **Assertions** | Define project truths (version, test count, rules) — VR validates them every session |
+
+## Quick Start
 
 ```bash
-# pipx (isolated CLI — recommended)
-pipx install vibesrails
-
-# uv (fast, modern)
-uv tool install vibesrails
-
-# pip (classic)
 pip install vibesrails
+vibesrails --init-methodology    # Create phase scaffolding (ADR/, methodology.yaml)
+vibesrails --preflight           # Check project health before coding
 ```
 
-### MCP server (requires mcp extra)
+That's it. VibesRails now adapts to your project phase and enforces methodology through hooks.
+
+### Claude Code (full integration)
 
 ```bash
-pipx install vibesrails[mcp]
-# or
-pip install vibesrails[mcp]
+pip install vibesrails[mcp]      # Also installs MCP server
+vibesrails --setup               # Auto-configure hooks + MCP
 ```
-
-### Developer setup (from source)
-
-```bash
-git clone https://github.com/VictoHughes/VIBESRAILS.git
-cd VIBESRAILS
-make install-dev   # installs dev + MCP dependencies
-make test          # 2203 tests
-```
-
-## Configure (Claude Code)
 
 Add to `.mcp.json`:
 
@@ -87,82 +70,137 @@ Add to `.mcp.json`:
 }
 ```
 
-## 12 Security Tools
+### Other agents (Cursor, Copilot, Windsurf, Continue.dev)
+
+```bash
+pip install vibesrails[mcp]
+vibesrails-mcp                   # Starts MCP server (stdio)
+```
+
+12 tools available over MCP. See [MCP Tools](#mcp-tools) below.
+
+## Features
+
+### Methodology Enforcement
+
+| Command | What it does |
+|---------|-------------|
+| `--init-methodology` | Create ADR/, methodology.yaml, phase scaffolding |
+| `--check-gates` | Show what's blocking next phase advancement |
+| `--promote` | Advance to next phase (only if gates pass) |
+| `--force-promote` | Force advance (override gates) |
+| `--set-phase N` | Manual phase override (-1=auto, 0-4=specific phase) |
+| `--check-assertions` | Validate project truths (version, test count, rules) |
+| `--preflight` | Pre-session checklist: branch, tests, config, docs, mode |
+
+### Context Detection
+
+| Feature | Description |
+|---------|-------------|
+| Session modes | Auto-detect R&D / Mixed / Bugfix from 7 signals |
+| `--mode rnd\|bugfix\|auto` | Force session mode |
+| Phase detection | DECIDE → SKELETON → FLESH OUT → STABILIZE → DEPLOY |
+| Threshold adaptation | Thresholds tighten or relax based on mode + phase |
+
+### Security (Runtime)
+
+| Layer | When | What |
+|-------|------|------|
+| **PreToolUse** | Before Write/Edit/Bash | Blocks secrets, SQL injection, eval/exec |
+| **PostToolUse** | After Write/Edit | Auto-scans with 16 AST guards + 7 senior guards |
+| **Throttle** | Every 5 writes | Forces verification, prevents runaway agents |
+| **Scope Guard** | After commit | Reminds rules, prevents scope creep |
+
+17 regex patterns, 16 AST guards, 7 senior guards, 22 secret patterns, Semgrep integration.
+
+### AI-Aware
+
+| Tool | What it detects |
+|------|----------------|
+| Guardian Mode | 7 AI agent signatures (Claude, Cursor, Copilot, Windsurf...) |
+| `deep_hallucination` | Fake imports, slopsquatting, non-existent packages |
+| `shield_prompt` | 5-category prompt injection detection |
+| `check_config` | Rules File Backdoor attacks in .cursorrules, CLAUDE.md |
+
+### Developer Experience
 
 | Tool | What it does |
 |------|-------------|
-| `ping` | Health check |
-| `scan_code` | 16 AST guards (eval, hardcoded secrets, binding...) |
-| `scan_senior` | 7 senior guards (error handling, hallucination, lazy code...) |
-| `scan_semgrep` | Semgrep integration with CWE classification |
-| `check_session` | AI session detection (Cursor, Copilot, Claude) |
-| `monitor_entropy` | Session entropy tracking with risk levels |
-| `check_config` | AI config file attack detection (.cursorrules, CLAUDE.md) |
-| `deep_hallucination` | 4-level import verification + slopsquatting detection |
-| `check_drift` | Architecture drift velocity monitoring |
-| `enforce_brief` | Pre-generation brief quality scoring |
-| `shield_prompt` | 5-category prompt injection detection |
-| `get_learning` | Cross-session developer profiling + insights |
+| `--sync-claude` | Auto-generate factual CLAUDE.md sections from code |
+| `--sync-memory` | Auto-generate PROJECT_MEMORY.md from runtime data |
+| `--watch` | Live scanning on file save |
+| `--fix` / `--dry-run` | Auto-fix simple patterns |
+| `--learn` | Pattern discovery (experimental) |
+| Learning Engine | Cross-session profiling, improvement metrics, SQLite persistence |
 
-## What's Inside
+## How It Compares
 
-**16 V2 Guards** --
-dependency_audit, performance, complexity, env_safety, git_workflow,
-dead_code, observability, type_safety, docstring, pr_checklist,
-database_safety, api_design, pre_deploy, test_integrity, mutation,
-architecture_drift.
+| Feature | VibesRails | Semgrep | Snyk | ESLint/Ruff |
+|---------|-----------|---------|------|-------------|
+| Phase-aware methodology | **Yes** | No | No | No |
+| Context adaptation (R&D/Bugfix) | **Yes** | No | No | No |
+| Gate-based progression | **Yes** | No | No | No |
+| Runtime interception (pre-write) | **Yes** | No | No | No |
+| Auto-doc generation | **Yes** | No | No | No |
+| Static analysis | Yes | **Yes (deep)** | **Yes** | **Yes** |
+| CVE database | Yes (via Semgrep) | **Yes (native)** | **Yes (native)** | No |
+| Language coverage | Python | **40+ languages** | **40+ languages** | JS/TS / Python |
+| IDE integration | MCP (any agent) | IDE plugins | IDE plugins | IDE plugins |
 
-**7 Senior Guards** --
-diff_size, error_handling, hallucination, dependency, test_coverage,
-lazy_code, bypass, resilience.
+VibesRails is not a replacement for Semgrep or Snyk. It fills a different gap: **enforcing engineering process**, not just finding bugs.
 
-**22 Secret Patterns** --
-AWS, OpenAI/Anthropic, Google, GitHub, GitLab, Stripe, SendGrid,
-Slack, Telegram, Discord, Twilio, npm, PyPI, Supabase,
-Bearer tokens, PEM keys, database URLs, hardcoded passwords.
+## MCP Tools
 
-**8 Hooks Pipeline** --
-Pre-tool secrets scan, post-tool guard scan, write throttle, scope guard,
-session lock, session scan, queue processor, mobile inbox.
+12 tools available over MCP protocol:
 
-**4 Built-in Config Packs** --
-`@vibesrails/security-pack` (OWASP Top 10),
-`@vibesrails/web-pack` (Flask/Django),
-`@vibesrails/fastapi-pack`,
-`@vibesrails/django-pack`.
-
-**Learning Engine** --
-Automatic developer profiling, session tracking, improvement metrics,
-actionable insights, SQLite persistence across sessions.
+| Tool | Category | Description |
+|------|----------|-------------|
+| `ping` | Health | Server status and version |
+| `scan_code` | Security | 16 AST guards on code |
+| `scan_senior` | Security | 7 senior guards on code |
+| `scan_semgrep` | Security | Semgrep vulnerability scan |
+| `check_session` | AI-Aware | Detect AI-assisted session |
+| `monitor_entropy` | AI-Aware | Session health tracking |
+| `deep_hallucination` | AI-Aware | Multi-level import verification |
+| `check_config` | AI-Aware | Config file attack detection |
+| `check_drift` | Methodology | Architecture drift velocity |
+| `enforce_brief` | Methodology | Pre-generation brief validation |
+| `shield_prompt` | Security | Prompt injection detection |
+| `get_learning` | DX | Cross-session developer profiling |
 
 ## CLI Reference
 
-| Category | Key Commands | Count |
-|----------|-------------|-------|
-| Setup & Config | `--init`, `--setup`, `--hook`, `--validate` | 7 |
+| Category | Commands | Count |
+|----------|---------|-------|
+| Methodology | `--init-methodology`, `--check-gates`, `--promote`, `--check-assertions`, `--preflight` | 7 |
 | Scanning | `--all`, `--file`, `--senior`, `--senior-v2` | 7 |
+| Context | `--mode`, `--sync-claude`, `--sync-memory` | 3 |
+| Specialized | `--audit-deps`, `--complexity`, `--mutation`, `--dead-code`, `--test-integrity` | 13 |
 | Auto-fix | `--fix`, `--dry-run`, `--no-backup` | 3 |
-| Specialized Guards | `--audit-deps`, `--complexity`, `--mutation`, `--preflight` | 13 |
-| Workflow | `--check-assertions`, `--sync-claude`, `--preflight` | 3 |
-| Community | `--install-pack`, `--learn`, `--upgrade` | 5 |
-| Session Management | `--watch`, `--queue`, `--inbox`, `--mode` | 6 |
-| Guardian | `--guardian-stats` | 1 |
+| Session | `--watch`, `--queue`, `--inbox`, `--throttle-status` | 6 |
+| Setup | `--init`, `--setup`, `--hook`, `--validate` | 7 |
 
 Run `vibesrails --help` for full details.
 
-## Workflow Tools (v2.3.0)
+## Install
 
-| Tool | What it does |
-|------|-------------|
-| `--preflight` | Pre-session checklist: branch, tests, config, doc freshness, session mode |
-| `--check-assertions` | Validate project truths (version, test count, fail_closed rules) |
-| `--sync-claude` | Auto-generate CLAUDE.md sections from code introspection |
-| `--mode rnd\|bugfix\|auto` | Force session mode — guards adapt thresholds dynamically |
-| `--init` / `--setup` | Now generates `decisions.md` template for architecture decision records |
+```bash
+# Recommended
+pipx install vibesrails
+
+# With MCP server
+pipx install vibesrails[mcp]
+
+# From source (developer)
+git clone https://github.com/VictoHughes/VIBESRAILS.git
+cd VIBESRAILS
+make install-dev
+make test   # 2283 tests
+```
 
 ## Security
 
-2203 tests including 111 security tests. Path traversal protection,
+2283 tests including 111 security-specific tests. Path traversal protection,
 SQL injection prevention, ReDoS verification, filesystem sandbox,
 rate limiting, structured logging with data redaction.
 

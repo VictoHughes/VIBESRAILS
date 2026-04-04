@@ -25,12 +25,14 @@
 │   └── session_tracker.py
 ├── docs
 │   ├── plans
+│   │   └── 2026-03-06-project-memory-design.md
 │   ├── METRICS.md
 │   ├── PROJECT_TREE.md
 │   ├── RATE_LIMITING.md
 │   ├── SEMGREP_INTEGRATION.md
 │   ├── SENIOR_MODE.md
-│   └── VIBESRAILS_GUIDE.md
+│   ├── VIBESRAILS_GUIDE.md
+│   └── decisions.md
 ├── storage
 │   ├── __init__.py
 │   └── migrations.py
@@ -46,7 +48,10 @@
 │   │   ├── test_adapter.py
 │   │   ├── test_detector.py
 │   │   ├── test_mode.py
-│   │   └── test_scorer.py
+│   │   ├── test_phase.py
+│   │   ├── test_phase_adapter.py
+│   │   ├── test_scorer.py
+│   │   └── test_session_context.py
 │   ├── test_core
 │   │   ├── __init__.py
 │   │   ├── test_brief_enforcer.py
@@ -137,6 +142,7 @@
 │   ├── test_dialogue.py
 │   ├── test_duplication_guard.py
 │   ├── test_e2e_semgrep.py
+│   ├── test_gates.py
 │   ├── test_guardian.py
 │   ├── test_integration_learning.py
 │   ├── test_learn.py
@@ -161,6 +167,7 @@
 │   ├── test_smart_setup_integration.py
 │   ├── test_structure_rules.py
 │   ├── test_sync_claude.py
+│   ├── test_sync_memory.py
 │   ├── test_throttle.py
 │   ├── test_throttle_cli.py
 │   ├── test_throttle_integration.py
@@ -199,13 +206,17 @@
 │   │   ├── __init__.py
 │   │   └── pack_manager.py
 │   ├── config
+│   │   ├── adr_template.md
 │   │   ├── decisions.md.template
-│   │   └── default.yaml
+│   │   ├── default.yaml
+│   │   ├── methodology.yaml.template
+│   │   └── roadmap_template.md
 │   ├── context
 │   │   ├── __init__.py
 │   │   ├── adapter.py
 │   │   ├── detector.py
 │   │   ├── mode.py
+│   │   ├── phase.py
 │   │   └── scorer.py
 │   ├── guardian
 │   │   ├── __init__.py
@@ -291,6 +302,7 @@
 │   ├── cli_v2.py
 │   ├── config.py
 │   ├── e2e_semgrep.py
+│   ├── gates.py
 │   ├── integration_learning.py
 │   ├── learn.py
 │   ├── learn_command.py
@@ -308,6 +320,7 @@
 │   ├── semgrep_adapter.py
 │   ├── semgrep_integration.py
 │   ├── sync_claude.py
+│   ├── sync_memory.py
 │   ├── watch.py
 │   └── yaml_safety.py
 ├── ARCHITECTURE.md
@@ -315,6 +328,7 @@
 ├── CLAUDE.md
 ├── LICENSE
 ├── Makefile
+├── PROJECT_MEMORY.md
 ├── README.md
 ├── SECURITY.md
 ├── claude code.command
@@ -324,4 +338,4 @@
 ├── pyproject.toml
 └── vibesrails.yaml
 
-34 directories, 291 files
+34 directories, 305 files

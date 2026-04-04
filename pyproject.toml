@@ -5,15 +5,15 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "vibesrails"
 version = "2.3.0"
-description = "Security guardrails for AI-assisted development"
+description = "Engineering methodology enforcer and security guardrails for AI-assisted development"
 readme = "README.md"
 license = {text = "Apache-2.0"}
 requires-python = ">=3.10"
 authors = [{name = "SM"}]
 maintainers = [{name = "SM"}]
 keywords = [
-    "security", "ai", "code-review", "mcp", "guardrails",
-    "vibe-coding", "claude", "cursor", "copilot",
+    "methodology", "ai", "engineering", "mcp", "guardrails",
+    "vibe-coding", "claude", "cursor", "copilot", "code-quality",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
