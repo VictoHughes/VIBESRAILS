@@ -208,6 +208,10 @@ assertions:
       - "vibesrails/context/phase.py"
       - "vibesrails/hooks/post_tool_use.py"
       - "vibesrails/hooks/pre_tool_use.py"
+      - "vibesrails/openspec_interop.py"
+      - "vibesrails/pev_tracker.py"
+      - "vibesrails/status.py"
+      - "vibesrails/hooks/status_trigger.py"
       - "tests/"
   baselines:
-    test_count: 2283           # Minimum test count
+    test_count: 2418           # Minimum test count

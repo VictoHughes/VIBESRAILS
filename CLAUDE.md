@@ -7,7 +7,7 @@
 
 VibesRails is an engineering methodology enforcer for AI-assisted Python development. It combines phase detection, context adaptation, gate-based progression, a YAML-driven CLI scanner, an MCP server, and a hook system that enforces engineering discipline in real-time.
 
-**Key numbers:** 2283 tests | 12 MCP tools | 16 V2 guards | 7 hook modules
+**Key numbers:** 2418 tests | 12 MCP tools | 16 V2 guards | 8 hook modules
 <!-- /AUTO:overview -->
 
 ## Setup
@@ -119,6 +119,7 @@ vibesrails --uninstall           # Remove vibesrails from project
 vibesrails --force               # Force overwrite existing config
 vibesrails --config              # Path to vibesrails.yaml
 vibesrails --validate            # Validate YAML config
+vibesrails --init-hooks          # Install Claude Code hooks (tier: minimal/standard/full, default: standard)
 vibesrails --init-methodology    # Initialize methodology scaffolding (ADR, ROADMAP, phases)
 ```
 
@@ -157,6 +158,7 @@ vibesrails --check-gates         # Show gate status for advancing to the next ph
 vibesrails --promote             # Promote to next phase if all gates are met
 vibesrails --force-promote       # Force promote even if gates are not met
 vibesrails --set-phase           # Set phase override (-1=auto, 0-4=phase)
+vibesrails --check-contracts     # Compare current public signatures against last snapshot
 ```
 
 ### Community & Extensions
@@ -178,6 +180,9 @@ vibesrails --throttle-reset      # Reset write throttle counter
 vibesrails --sync-claude         # Auto-generate factual CLAUDE.md sections from code
 vibesrails --sync-memory         # Auto-generate PROJECT_MEMORY.md from runtime data
 vibesrails --mode                # Force session mode (rnd/bugfix/auto)
+vibesrails --status              # Unified project status report
+vibesrails --quiet               # Compact single-line output (for --status, --preflight)
+vibesrails --json                # JSON output (for --status)
 ```
 
 ### Guardian (AI mode)
