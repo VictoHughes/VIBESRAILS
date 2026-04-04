@@ -187,6 +187,25 @@ def _dispatch_single_guard(args) -> None:
         logger.info(guard.generate_report(issues))
         sys.exit(1 if any(i.severity == "block" for i in issues) else 0)
 
+    if getattr(args, "status", False):
+        from .status import (
+            collect_status,
+            format_full,
+            format_json,
+            format_quiet,
+        )
+        from .status import (
+            exit_code as status_exit_code,
+        )
+        data = collect_status(Path.cwd())
+        if getattr(args, "json_output", False):
+            print(format_json(data))
+        elif getattr(args, "quiet", False):
+            print(format_quiet(data))
+        else:
+            logger.info(format_full(data))
+        sys.exit(status_exit_code(data))
+
     if args.preflight:
         from .preflight import exit_code, format_report, run_preflight
         results = run_preflight(Path.cwd())

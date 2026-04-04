@@ -131,6 +131,12 @@ def _parse_args():
                            help="Auto-generate PROJECT_MEMORY.md from runtime data")
     g_session.add_argument("--mode", choices=["rnd", "bugfix", "auto"],
                            help="Force session mode (rnd/bugfix/auto)")
+    g_session.add_argument("--status", action="store_true",
+                           help="Unified project status report")
+    g_session.add_argument("--quiet", action="store_true",
+                           help="Compact single-line output (for --status, --preflight)")
+    g_session.add_argument("--json", action="store_true", dest="json_output",
+                           help="JSON output (for --status)")
 
     # --- Guardian ---
     g_guardian = parser.add_argument_group("Guardian (AI mode)")

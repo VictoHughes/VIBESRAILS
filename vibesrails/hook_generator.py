@@ -162,11 +162,12 @@ def _standard() -> dict[str, list]:
 
     # SessionStart
     hooks["SessionStart"] = [_group([
+        _cmd(_py("vibesrails") + " --status --quiet"),
         _cmd(_py("vibesrails.hooks.session_scan")),
         _prompt(
             "VibesRails is active on this project. "
-            "Report the session scan results (files, blocking, warnings) to the user. "
-            "If BLOCKING issues exist, flag them immediately."
+            "The status report above shows project context (phase, mode, gates, actions). "
+            "Report the session scan results and any required actions to the user."
         ),
         _cmd(_pyc(_THROTTLE_RESET)),
         _cmd(_pyc(_SESSION_LOCK_ACQUIRE)),
