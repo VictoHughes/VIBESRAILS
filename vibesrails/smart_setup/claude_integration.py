@@ -118,28 +118,38 @@ def _merge_hooks(existing: dict, source_hooks: dict) -> None:
 
 
 def install_claude_hooks(project_root: Path) -> bool:
-    """Install Claude Code hooks for vibesrails integration."""
-    hooks_source = get_package_data_path("claude_integration/hooks.json")
-    if not hooks_source or not hooks_source.exists():
-        return False
+    """Install Claude Code hooks for vibesrails integration.
 
-    claude_dir = project_root / ".claude"
-    claude_dir.mkdir(exist_ok=True)
-    hooks_dest = claude_dir / "hooks.json"
-    source_hooks = json.loads(hooks_source.read_text())
+    Delegates to hook_generator with 'standard' tier.
+    """
+    try:
+        from vibesrails.hook_generator import install_hooks
+        install_hooks(project_root, tier="standard")
+        return True
+    except Exception:
+        logger.debug("hook_generator failed, falling back to template")
+        # Fallback: use static template if hook_generator unavailable
+        hooks_source = get_package_data_path("claude_integration/hooks.json")
+        if not hooks_source or not hooks_source.exists():
+            return False
 
-    if not hooks_dest.exists():
-        hooks_dest.write_text(json.dumps(source_hooks, indent=2))
-    else:
-        existing = json.loads(hooks_dest.read_text())
-        _merge_hooks(existing, source_hooks)
-        hooks_dest.write_text(json.dumps(existing, indent=2))
+        claude_dir = project_root / ".claude"
+        claude_dir.mkdir(exist_ok=True)
+        hooks_dest = claude_dir / "hooks.json"
+        source_hooks = json.loads(hooks_source.read_text())
 
-    # Install rules_reminder.md for post-commit scope checks
-    reminder_source = get_package_data_path("claude_integration/rules_reminder.md")
-    if reminder_source and reminder_source.exists():
-        reminder_dest = claude_dir / "rules_reminder.md"
-        if not reminder_dest.exists():
-            reminder_dest.write_text(reminder_source.read_text())
+        if not hooks_dest.exists():
+            hooks_dest.write_text(json.dumps(source_hooks, indent=2))
+        else:
+            existing = json.loads(hooks_dest.read_text())
+            _merge_hooks(existing, source_hooks)
+            hooks_dest.write_text(json.dumps(existing, indent=2))
 
-    return True
+        # Install rules_reminder.md for post-commit scope checks
+        reminder_source = get_package_data_path("claude_integration/rules_reminder.md")
+        if reminder_source and reminder_source.exists():
+            reminder_dest = claude_dir / "rules_reminder.md"
+            if not reminder_dest.exists():
+                reminder_dest.write_text(reminder_source.read_text())
+
+        return True

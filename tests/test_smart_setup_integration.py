@@ -116,15 +116,17 @@ class TestClaudeIntegration:
         assert "PreToolUse" in merged["hooks"]
         assert "PostToolUse" in merged["hooks"]
 
-    def test_install_claude_hooks_no_source(self, project_dir):
-        """install_claude_hooks returns False when source missing."""
-        import vibesrails.smart_setup.claude_integration as _ci
+    def test_install_claude_hooks_uses_generator(self, project_dir):
+        """install_claude_hooks delegates to hook_generator (no template needed)."""
         from vibesrails.smart_setup.claude_integration import install_claude_hooks
 
-        with mock.patch.object(_ci, 'get_package_data_path', return_value=None):
-            result = install_claude_hooks(project_dir)
+        result = install_claude_hooks(project_dir)
 
-        assert result is False
+        assert result is True
+        hooks_path = project_dir / ".claude" / "hooks.json"
+        assert hooks_path.exists()
+        content = json.loads(hooks_path.read_text())
+        assert "PreToolUse" in content["hooks"]
 
     def test_install_claude_hooks_avoids_duplicates(self, project_dir):
         """install_claude_hooks doesn't duplicate vibesrails hooks."""
