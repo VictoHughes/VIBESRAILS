@@ -32,12 +32,12 @@ async def _get_session():
 
 
 @pytest.mark.anyio
-async def test_tools_list_returns_12_tools():
-    """tools/list returns exactly 12 registered tools."""
+async def test_tools_list_returns_14_tools():
+    """tools/list returns exactly 14 registered tools."""
     async with create_connected_server_and_client_session(mcp) as session:
         await session.initialize()
         result = await session.list_tools()
-        assert len(result.tools) == 12
+        assert len(result.tools) == 14
 
 
 @pytest.mark.anyio

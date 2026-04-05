@@ -7,7 +7,7 @@
 
 VibesRails is an engineering methodology enforcer for AI-assisted Python development. It combines phase detection, context adaptation, gate-based progression, a YAML-driven CLI scanner, an MCP server, and a hook system that enforces engineering discipline in real-time.
 
-**Key numbers:** 2419 tests | 12 MCP tools | 16 V2 guards | 8 hook modules
+**Key numbers:** 2471 tests | 14 MCP tools | 17 V2 guards | 8 hook modules
 <!-- /AUTO:overview -->
 
 ## Setup
@@ -119,7 +119,7 @@ vibesrails --uninstall           # Remove vibesrails from project
 vibesrails --force               # Force overwrite existing config
 vibesrails --config              # Path to vibesrails.yaml
 vibesrails --validate            # Validate YAML config
-vibesrails --init-hooks          # Install Claude Code hooks (tier: minimal/standard/full, default: standard)
+vibesrails --init-hooks          # Install hooks (minimal/standard/full for Claude Code, opencode for OpenCode)
 vibesrails --init-methodology    # Initialize methodology scaffolding (ADR, ROADMAP, phases)
 ```
 
@@ -129,6 +129,7 @@ vibesrails --all                 # Scan all Python files
 vibesrails --file                # Scan specific file
 vibesrails --senior              # Run Senior Mode (architecture + guards + review)
 vibesrails --senior-v2           # Run ALL v2 guards (comprehensive scan)
+vibesrails --bandit              # Run Bandit SAST scan on all Python files
 vibesrails --show                # Show all active patterns
 vibesrails --stats               # Show scan statistics and metrics
 vibesrails --fixable             # Show auto-fixable patterns
@@ -159,6 +160,8 @@ vibesrails --promote             # Promote to next phase if all gates are met
 vibesrails --force-promote       # Force promote even if gates are not met
 vibesrails --set-phase           # Set phase override (-1=auto, 0-4=phase)
 vibesrails --check-contracts     # Compare current public signatures against last snapshot
+vibesrails --impact-check        # AST impact analysis — find callers of changed functions
+vibesrails --audit-mcp           # Security audit of MCP server configurations
 ```
 
 ### Community & Extensions
@@ -193,13 +196,15 @@ vibesrails --guardian-stats      # Show AI coding block statistics
 <!-- /AUTO:cli_commands -->
 
 <!-- AUTO:mcp_tools -->
-## MCP Server (12 Tools)
+## MCP Server (14 Tools)
 
 | Tool | Description |
 |------|-------------|
 | `scan_code` | Run AST security guards on code |
 | `scan_senior` | Run Senior Mode guards on code |
 | `scan_semgrep` | Run Semgrep vulnerability scan on a file |
+| `scan_bandit` | Run Bandit SAST security scan on a Python file |
+| `audit_mcp` | Security audit of MCP server configurations |
 | `monitor_entropy` | Monitor AI coding session entropy --- tracks session health over time |
 | `deep_hallucination` | Multi-level verification of AI-generated imports (hallucination detection) |
 | `check_drift` | Measure architectural drift velocity between coding sessions |

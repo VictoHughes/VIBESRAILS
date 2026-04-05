@@ -212,6 +212,8 @@ assertions:
       - "vibesrails/pev_tracker.py"
       - "vibesrails/status.py"
       - "vibesrails/hooks/status_trigger.py"
+      - "vibesrails/mcp_audit.py"
+      - "vibesrails/adapters/coverage_reader.py"
       - "tests/"
   baselines:
-    test_count: 2418           # Minimum test count
+    test_count: 2471           # Minimum test count

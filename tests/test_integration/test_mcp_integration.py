@@ -51,7 +51,7 @@ class TestMCPToolRegistration:
 
     def test_expected_tool_count(self):
         tools = asyncio.run(mcp_server.mcp.list_tools())
-        assert len(tools) == 12, f"Expected 12 tools, got {len(tools)}: {[t.name for t in tools]}"
+        assert len(tools) == 14, f"Expected 14 tools, got {len(tools)}: {[t.name for t in tools]}"
 
     def test_expected_tool_names(self):
         tools = asyncio.run(mcp_server.mcp.list_tools())
@@ -61,6 +61,7 @@ class TestMCPToolRegistration:
             "scan_semgrep", "monitor_entropy", "check_config",
             "deep_hallucination", "check_drift", "enforce_brief",
             "shield_prompt", "get_learning",
+            "scan_bandit", "audit_mcp",
         }
         assert names == expected, f"Tool names mismatch: {names} vs {expected}"
 
