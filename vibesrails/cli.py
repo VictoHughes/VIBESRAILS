@@ -25,9 +25,11 @@ from .cli_v2 import dispatch_v2_commands
 from .learn_runner import handle_learn_command
 from .scan_runner import run_scan
 from .scanner import (
+    BLUE,
     GREEN,
     NC,
     RED,
+    YELLOW,
     get_all_python_files,
     get_staged_files,
     load_config,
@@ -58,8 +60,8 @@ def _parse_args():
     g_setup.add_argument("--config", "-c", help="Path to vibesrails.yaml")
     g_setup.add_argument("--validate", action="store_true", help="Validate YAML config")
     g_setup.add_argument("--init-hooks", nargs="?", const="standard",
-                          choices=["minimal", "standard", "full"],
-                          help="Install Claude Code hooks (tier: minimal/standard/full, default: standard)")
+                          choices=["minimal", "standard", "full", "opencode"],
+                          help="Install hooks (minimal/standard/full for Claude Code, opencode for OpenCode)")
     g_setup.add_argument("--init-methodology", action="store_true",
                          help="Initialize methodology scaffolding (ADR, ROADMAP, phases)")
 
@@ -70,6 +72,8 @@ def _parse_args():
     g_scan.add_argument("--senior", action="store_true",
                         help="Run Senior Mode (architecture + guards + review)")
     g_scan.add_argument("--senior-v2", action="store_true", help="Run ALL v2 guards (comprehensive scan)")
+    g_scan.add_argument("--bandit", action="store_true",
+                        help="Run Bandit SAST scan on all Python files")
     g_scan.add_argument("--show", action="store_true", help="Show all active patterns")
     g_scan.add_argument("--stats", action="store_true", help="Show scan statistics and metrics")
     g_scan.add_argument("--fixable", action="store_true", help="Show auto-fixable patterns")
@@ -109,6 +113,10 @@ def _parse_args():
                           help="Set phase override (-1=auto, 0-4=phase)")
     g_guards.add_argument("--check-contracts", action="store_true",
                           help="Compare current public signatures against last snapshot")
+    g_guards.add_argument("--impact-check", action="store_true",
+                          help="AST impact analysis — find callers of changed functions")
+    g_guards.add_argument("--audit-mcp", action="store_true",
+                          help="Security audit of MCP server configurations")
 
     # --- Community & Extensions ---
     g_community = parser.add_argument_group("Community & Extensions")
@@ -237,6 +245,11 @@ def _handle_setup_commands(args) -> None:
         sys.exit(0 if init_methodology(Path.cwd()) else 1)
 
     if args.init_hooks:
+        if args.init_hooks == "opencode":
+            from .opencode_adapter import generate_opencode_plugin
+            path = generate_opencode_plugin(Path.cwd())
+            logger.info(f"{GREEN}OpenCode plugin installed → {path}{NC}")
+            sys.exit(0)
         from .hook_generator import install_hooks
         tier = args.init_hooks
         hooks_path = install_hooks(Path.cwd(), tier)
@@ -261,6 +274,57 @@ def _handle_setup_commands(args) -> None:
         diff = compare(old_data, current)
         logger.info(format_diff(diff, phase_num))
         sys.exit(1 if diff.has_breaking else 0)
+
+    if getattr(args, "bandit", False):
+        from .adapters.bandit_adapter import BanditAdapter, classify_severity
+        adapter = BanditAdapter({})
+        if not adapter.is_installed():
+            logger.error("Bandit not installed. Run: pip install bandit")
+            sys.exit(1)
+        files = get_all_python_files(Path.cwd())
+        results = adapter.scan([str(f) for f in files])
+        if not results:
+            logger.info(f"{GREEN}Bandit: no issues found{NC}")
+            sys.exit(0)
+        for r in results:
+            sev = classify_severity(r.severity, r.confidence)
+            icon = {"block": RED, "warn": YELLOW, "info": BLUE}.get(sev, "")
+            logger.info(f"{icon}[{r.test_id}] {r.file}:{r.line} — {r.message}{NC}")
+        sys.exit(1 if any(classify_severity(r.severity, r.confidence) == "block" for r in results) else 0)
+
+    if getattr(args, "impact_check", False):
+        from .contract_tracker import compare, latest_snapshot, snapshot
+        from .guards_v2.impact_check import ImpactCheckGuard, build_call_index
+        root = Path.cwd()
+        prev = latest_snapshot(root)
+        if prev is None:
+            logger.info("No contract snapshot. Run --promote to create one first.")
+            sys.exit(0)
+        phase_num, old_data = prev
+        current = snapshot(root)
+        diff = compare(old_data, current)
+        if not diff.has_breaking:
+            logger.info(f"{GREEN}Impact check: no breaking changes{NC}")
+            sys.exit(0)
+        index = build_call_index(root)
+        guard = ImpactCheckGuard()
+        issues = guard.check_removed(diff.removed, index)
+        issues.extend(guard.check_modified([m[0] for m in diff.modified], index))
+        for issue in issues:
+            icon = {"block": RED, "warn": YELLOW}.get(issue.severity, "")
+            logger.info(f"{icon}{issue.message}{NC}")
+        sys.exit(1 if any(i.severity == "block" for i in issues) else 0)
+
+    if getattr(args, "audit_mcp", False):
+        from .mcp_audit import audit_mcp_config
+        findings = audit_mcp_config(Path.cwd())
+        if not findings:
+            logger.info(f"{GREEN}MCP audit: no issues found{NC}")
+            sys.exit(0)
+        for f in findings:
+            icon = {"block": RED, "warn": YELLOW, "info": BLUE}.get(f.severity, "")
+            logger.info(f"{icon}[{f.check_type}] {f.server_name}: {f.message}{NC}")
+        sys.exit(1 if any(f.severity == "block" for f in findings) else 0)
 
     if args.check_gates:
         from .gates import check_gates, format_gate_report
