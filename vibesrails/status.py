@@ -227,6 +227,21 @@ def _contracts_info(root: Path) -> dict:
     return info
 
 
+def _coverage_info(root: Path) -> dict:
+    """Read coverage data if available."""
+    info: dict = {"available": False, "total_percent": 0.0, "stale": False}
+    try:
+        from .adapters.coverage_reader import is_coverage_stale, read_coverage
+        report = read_coverage(root)
+        if report:
+            info["available"] = True
+            info["total_percent"] = report.total_percent
+            info["stale"] = is_coverage_stale(root)
+    except Exception:
+        pass
+    return info
+
+
 def collect_status(root: Path) -> dict:
     """Collect all status data. Fast (no pytest, no subprocess for tests)."""
     return {
@@ -240,6 +255,7 @@ def collect_status(root: Path) -> dict:
         "openspec": _openspec_info(root),
         "pev": _pev_info(),
         "contracts": _contracts_info(root),
+        "coverage": _coverage_info(root),
     }
 
 
@@ -353,6 +369,11 @@ def format_full(data: dict) -> str:
         f"{BLUE}TESTS{NC}",
         f"  Baseline  : {t['declared']} declared",
     ])
+    cov = data.get("coverage", {})
+    if cov.get("available"):
+        cov_color = GREEN if cov["total_percent"] >= 80 else YELLOW
+        stale_note = f" {YELLOW}(stale){NC}" if cov.get("stale") else ""
+        lines.append(f"  Coverage  : {cov_color}{cov['total_percent']:.1f}%{NC}{stale_note}")
     lines.append("")
 
     # DOCS

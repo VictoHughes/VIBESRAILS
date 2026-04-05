@@ -473,6 +473,21 @@ def check_openspec(root: Path) -> CheckResult | None:
         return None
 
 
+def check_mcp_config(root: Path) -> CheckResult | None:
+    """Audit MCP config if present. Returns None if no .mcp.json."""
+    try:
+        from .mcp_audit import audit_mcp_config
+        findings = audit_mcp_config(root)
+        if not findings:
+            return None
+        blocking = sum(1 for f in findings if f.severity == "block")
+        if blocking:
+            return CheckResult("MCP config", "block", f"{blocking} security issue(s) in .mcp.json")
+        return CheckResult("MCP config", "warn", f"{len(findings)} issue(s) in .mcp.json")
+    except Exception:
+        return None
+
+
 def run_preflight(root: Path) -> list[CheckResult]:
     """Run all preflight checks and return results."""
     results = [
@@ -494,6 +509,10 @@ def run_preflight(root: Path) -> list[CheckResult]:
     openspec_result = check_openspec(root)
     if openspec_result:
         results.append(openspec_result)
+    # MCP config audit (only shown if .mcp.json exists)
+    mcp_result = check_mcp_config(root)
+    if mcp_result:
+        results.append(mcp_result)
     # Unified session context (mode + phase + adapted thresholds)
     results.extend(check_session_context(root))
     return results

@@ -98,6 +98,45 @@ def scan_semgrep(
 
 
 @mcp.tool()
+def scan_bandit(file_path: str) -> dict:
+    """Run Bandit SAST security scan on a Python file.
+
+    Detects security vulnerabilities like hardcoded passwords, SQL injection,
+    use of eval/exec, insecure deserialization, and more.
+    """
+    if limited := _check_rate_limit("scan_bandit"):
+        return limited
+    import asyncio
+
+    from tools.scan_bandit import scan_bandit_impl
+    args = {"file_path": file_path}
+    with tool_timer() as t:
+        result = asyncio.run(scan_bandit_impl(file_path))
+    log_tool_call("scan_bandit", args, result.get("status", "unknown"), t.ms)
+    return result
+
+
+@mcp.tool()
+def audit_mcp(project_path: str | None = None) -> dict:
+    """Security audit of MCP server configurations.
+
+    Checks .mcp.json for hardcoded secrets, unpinned versions,
+    shell injection patterns, and sensitive path access.
+    References OWASP MCP Top 10.
+    """
+    if limited := _check_rate_limit("audit_mcp"):
+        return limited
+    import asyncio
+
+    from tools.audit_mcp import audit_mcp_impl
+    args = {"project_path": project_path}
+    with tool_timer() as t:
+        result = asyncio.run(audit_mcp_impl(project_path))
+    log_tool_call("audit_mcp", args, result.get("status", "unknown"), t.ms)
+    return result
+
+
+@mcp.tool()
 def monitor_entropy(
     action: str,
     project_path: str | None = None,
