@@ -27,6 +27,48 @@ _BRANCH_TYPES: dict[str, str] = {
 # Session mode override file
 _MODE_FILE = ".vibesrails/.session_mode"
 
+_WEB_MARKERS = {"flask", "django", "fastapi", "starlette", "tornado", "sanic", "bottle"}
+_ML_MARKERS = {"torch", "tensorflow", "transformers", "keras", "jax", "sklearn"}
+_DATA_MARKERS = {"pandas", "numpy", "scipy", "polars", "dask", "pyspark"}
+
+
+def detect_project_type(root: Path) -> str:
+    """Detect project type from requirements and structure."""
+    deps: set[str] = set()
+    req = root / "requirements.txt"
+    if req.exists():
+        try:
+            for line in req.read_text().splitlines():
+                line = line.strip().split("==")[0].split(">=")[0].split("[")[0].lower()
+                if line and not line.startswith(("#", "-")):
+                    deps.add(line)
+        except OSError:
+            pass
+    pyproject = root / "pyproject.toml"
+    if pyproject.exists():
+        try:
+            content = pyproject.read_text().lower()
+            for marker in _WEB_MARKERS | _ML_MARKERS | _DATA_MARKERS:
+                if marker in content:
+                    deps.add(marker)
+            if "[project.scripts]" in content or "[tool.poetry.scripts]" in content:
+                deps.add("__has_scripts__")
+        except OSError:
+            pass
+    if (root / "manage.py").exists():
+        return "web"
+    if deps & _WEB_MARKERS:
+        return "web"
+    if deps & _ML_MARKERS:
+        return "ml"
+    if deps & _DATA_MARKERS:
+        return "data"
+    if "__has_scripts__" in deps:
+        return "cli"
+    if (root / "src").is_dir() or (root / "pyproject.toml").exists():
+        return "library"
+    return "unknown"
+
 
 def _classify_branch(name: str) -> str:
     """Classify a branch name into a type based on its prefix."""
@@ -117,6 +159,8 @@ class ContextDetector:
         if ok:
             commits = [line for line in log_output.splitlines() if line.strip()]
             signals.commit_frequency = len(commits)
+
+        signals.project_type = detect_project_type(self.root)
 
         return signals
 

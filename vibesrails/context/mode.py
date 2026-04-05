@@ -39,6 +39,7 @@ class ContextSignals:
     files_created_ratio: float | None = None
     commit_frequency: int | None = None  # commits in last hour
     diff_spread: int | None = None  # unique dirs in last diff
+    project_type: str = "unknown"  # "web"|"cli"|"library"|"data"|"ml"|"unknown"
 
 
 @dataclass
