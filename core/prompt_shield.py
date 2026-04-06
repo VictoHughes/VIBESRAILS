@@ -1,11 +1,12 @@
 """Prompt Shield — prompt injection detection for text, code, and MCP inputs.
 
-Detects 5 categories of prompt injection:
+Detects 6 categories of prompt injection:
   1. system_override — ignore/bypass/override instructions
   2. role_hijack — reassign AI identity or behavior
   3. exfiltration — send data to external endpoints
   4. encoding_evasion — base64/hex/Unicode-hidden instructions
   5. delimiter_escape — LLM tokenizer delimiter injection
+  6. reasoning_manipulation — bypass logical reasoning/CCS v2 certificates
 
 Reference: "Rules File Backdoor" attack (Pillar Security, March 2025).
 """
@@ -23,6 +24,7 @@ from core.prompt_shield_patterns import (
     _DECODED_INJECTION_PATTERNS,
     _DELIMITER_ESCAPE_PATTERNS,
     _EXFILTRATION_PATTERNS,
+    _REASONING_MANIPULATION_PATTERNS,
     _ROLE_HIJACK_PATTERNS,
     _SYSTEM_OVERRIDE_PATTERNS,
     _TAG_RANGE,
@@ -39,6 +41,7 @@ __all__ = [
     "_DECODED_INJECTION_PATTERNS",
     "_DELIMITER_ESCAPE_PATTERNS",
     "_EXFILTRATION_PATTERNS",
+    "_REASONING_MANIPULATION_PATTERNS",
     "_ROLE_HIJACK_PATTERNS",
     "_SYSTEM_OVERRIDE_PATTERNS",
     "_TAG_RANGE",
@@ -74,6 +77,7 @@ class PromptShield:
         findings.extend(self._check_exfiltration(text))
         findings.extend(self._check_encoding_evasion(text))
         findings.extend(self._check_delimiter_escape(text))
+        findings.extend(self._check_reasoning_manipulation(text))
         return findings
 
     def scan_file(self, file_path: str | Path) -> list[ShieldFinding]:
@@ -132,6 +136,11 @@ class PromptShield:
 
     def _check_delimiter_escape(self, text: str) -> list[ShieldFinding]:
         return _scan_patterns(text, _DELIMITER_ESCAPE_PATTERNS, "delimiter_escape", "block")
+
+    def _check_reasoning_manipulation(self, text: str) -> list[ShieldFinding]:
+        return _scan_patterns(
+            text, _REASONING_MANIPULATION_PATTERNS, "reasoning_manipulation", "block",
+        )
 
     def _check_encoding_evasion(self, text: str) -> list[ShieldFinding]:
         findings: list[ShieldFinding] = []

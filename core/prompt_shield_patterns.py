@@ -16,7 +16,7 @@ from dataclasses import dataclass
 class ShieldFinding:
     """A prompt injection finding."""
 
-    category: str  # system_override | role_hijack | exfiltration | encoding_evasion | delimiter_escape
+    category: str  # system_override | role_hijack | exfiltration | encoding_evasion | delimiter_escape | reasoning_manipulation
     severity: str  # block | warn
     message: str
     line: int
@@ -202,4 +202,54 @@ _DECODED_INJECTION_PATTERNS: list[re.Pattern] = [
     re.compile(r"(?:bypass|override)\s+(?:security|safety)", re.I),
     re.compile(r"(?:do\s+not|don'?t)\s+tell\s+the\s+user", re.I),
     re.compile(r"disregard\s+(?:previous|all)\s+", re.I),
+]
+
+# ── Reasoning Manipulation patterns (category 6) ──────────────────
+
+_REASONING_MANIPULATION_PATTERNS: list[tuple[re.Pattern, str]] = [
+    (
+        re.compile(r"trust\s+this\s+reasoning", re.I),
+        "Reasoning manipulation: instructs to trust reasoning without verification",
+    ),
+    (
+        re.compile(r"(?:the\s+)?conclusion\s+is\s+obvious", re.I),
+        "Reasoning manipulation: declares conclusion obvious to bypass analysis",
+    ),
+    (
+        re.compile(r"no\s+need\s+to\s+verify", re.I),
+        "Reasoning manipulation: instructs to skip verification",
+    ),
+    (
+        re.compile(
+            r"skip\s+the\s+(?:analysis|trace|certificate|verification|reasoning)",
+            re.I,
+        ),
+        "Reasoning manipulation: instructs to skip reasoning phases",
+    ),
+    (
+        re.compile(r"accept\s+without\s+check", re.I),
+        "Reasoning manipulation: instructs to accept without validation",
+    ),
+    (
+        re.compile(
+            r"(?:don'?t|do\s+not|never)\s+question\s+(?:this|the|my)\s+"
+            r"(?:logic|reasoning|conclusion|analysis)",
+            re.I,
+        ),
+        "Reasoning manipulation: forbids questioning the reasoning",
+    ),
+    (
+        re.compile(
+            r"(?:ignore|skip|bypass)\s+(?:the\s+)?(?:premises?|trace|gates?|certificate)",
+            re.I,
+        ),
+        "Reasoning manipulation: instructs to bypass CCS v2 structure",
+    ),
+    (
+        re.compile(
+            r"just\s+(?:answer|respond)\s+directly",
+            re.I,
+        ),
+        "Reasoning manipulation: attempts to bypass certificate requirement",
+    ),
 ]
