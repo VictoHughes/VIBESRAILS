@@ -107,6 +107,59 @@ you READ and REPORT. You do NOT write, edit, or commit.
 Never disable, remove, skip, or work around vibesrails hooks, pre-commit hooks, or security checks. If vibesrails blocks your code, fix the code — do not bypass the guard. Never use --no-verify, never delete hook files, never modify .claude/hooks.json or vibesrails.yaml to weaken protections.
 </anti_bypass>
 
+## CCS v2 Protocol — VibesRails Adaptations
+
+Ce projet opère sous le protocole CCS v2 (hérité de `~/.claude/CLAUDE.md`).
+Référence : CCS KIONOS 2025-2026, Semi-Formal Reasoning (Ugare & Chandra, Meta, arXiv:2603.01896).
+
+### Certificat logique — Contexte projet
+
+Chaque réponse substantielle sur ce projet suit PRÉMISSES → TRACE → CONCLUSION.
+Adaptations spécifiques au développement de VibesRails :
+
+**Phase 1 — Prémisses (ancre S)** :
+- P1 SAIS : cite fichier:ligne, git log, ou test existant. Pas de "je crois que cette fonction fait X".
+- P2 NE SAIS PAS : identifie les call sites non vérifiés (`grep -rn`), modules non lus.
+- P3 SUPPOSE : toute hypothèse sur le comportement d'un guard, hook, ou adapter = [HYPOTHÈSE] explicite.
+
+**Phase 2 — Trace (ancre R)** :
+- Trace l'impact à travers la chaîne : hooks → guards → scanner → CLI → MCP.
+- Vérifie le module dependency graph (import-linter enforced, voir section Architecture).
+- Flag [MAILLON FAIBLE] si un changement affecte >3 modules ou touche un hot path (pre_tool_use, scanner).
+
+**Phase 3 — Conclusion (ancre V)** :
+- Tests passent (baseline 2471+, voir `vibesrails.yaml:assertions.baselines.test_count`).
+- `vibesrails --all` clean (0 blocking, 0 warning sur code modifié).
+- Pas de régression sur les 14 MCP tools (`pytest tests/test_mcp_integration.py`).
+- `--check-assertions` valide.
+
+### Hard Gates projet (étendent les gates CCS v2)
+
+| Gate | Condition | Action |
+|------|-----------|--------|
+| GATE V | Tests cassés après changement | NE COMMITE PAS — corrige d'abord |
+| GATE H | Hook `.claude/hooks.json` modifié sans test | NE COMMITE PAS |
+| GATE B | Baseline tests < valeur dans vibesrails.yaml | BLOQUE — régression détectée |
+| GATE I | Module référencé dans hooks.json non importable | BLOQUE — hook cassé silencieusement |
+| GATE S | Secret, SQL injection, ou eval dans code soumis | BLOQUE — PreToolUse rejette |
+| GATE P | Phase STABILIZE/DEPLOY + nouveau fichier .py | BLOQUE — uniquement bug fixes |
+
+### Mapping CCS v2 → Workflow VibesRails
+
+| CCS v2 Phase | Workflow | Livrable |
+|---|---|---|
+| Prémisses (P1-P3) | AUDIT | Tableau fichier / fonction / état |
+| Trace (T1-T3) | ROOT CAUSE + DESIGN | Chaîne causale + diff AVANT/APRÈS/IMPACT |
+| Gates (1-3) | VALIDATION | Stan valide le design |
+| Conclusion (C1-C3) | IMPL + TEST + COMMIT | Code + tests verts + commit atomique |
+
+### Diagnostic condensé (en fin de réponse technique)
+
+```
+📋 CCS v2 : S[■■■□□] R[■■■■□] V[■■■□□]
+⚠️ Non vérifié : [liste]  |  Confiance : [FORT/MOYEN/FAIBLE]
+```
+
 <!-- AUTO:cli_commands -->
 ## CLI Commands
 
