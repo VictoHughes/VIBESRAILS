@@ -216,4 +216,4 @@ assertions:
       - "vibesrails/adapters/coverage_reader.py"
       - "tests/"
   baselines:
-    test_count: 2494           # Minimum test count
+    test_count: 2514           # Minimum test count
