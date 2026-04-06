@@ -334,7 +334,8 @@ _REASONING_MANIPULATION_PATTERNS: list[tuple[re.Pattern, str]] = [
     ),
     (
         re.compile(
-            r"(?:no\s+(?:need\s+for|certificate|proof)\s+(?:needed|required)|"
+            r"(?:no\s+(?:certificate|proof)\s+(?:needed|required)|"
+            r"no\s+need\s+for\s+(?:certificate|proof|verification)|"
             r"just\s+(?:answer|respond)\s+directly)",
             re.I,
         ),

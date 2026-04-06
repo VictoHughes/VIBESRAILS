@@ -247,7 +247,9 @@ _REASONING_MANIPULATION_PATTERNS: list[tuple[re.Pattern, str]] = [
     ),
     (
         re.compile(
-            r"just\s+(?:answer|respond)\s+directly",
+            r"(?:no\s+(?:certificate|proof)\s+(?:needed|required)|"
+            r"no\s+need\s+for\s+(?:certificate|proof|verification)|"
+            r"just\s+(?:answer|respond)\s+directly)",
             re.I,
         ),
         "Reasoning manipulation: attempts to bypass certificate requirement",
