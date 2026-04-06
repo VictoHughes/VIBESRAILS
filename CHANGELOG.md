@@ -2,6 +2,23 @@
 
 All notable changes to VibesRails will be documented in this file.
 
+## [2.5.0] - 2026-04-05
+
+### Added
+- `vibesrails --bandit` — Bandit SAST scan on all Python files
+- `vibesrails --impact-check` — AST call graph analysis for breaking changes
+- `vibesrails --audit-mcp` — security audit of MCP server configurations (OWASP MCP Top 10)
+- `vibesrails --init-hooks opencode` — OpenCode plugin generator
+- Coverage reader — parse coverage.json for gate checks (no pytest dependency)
+- Project type detection — web/cli/library/data/ml/unknown
+- MCP tools: `scan_bandit`, `audit_mcp` (14 total)
+- Coverage section in `--status` and `--preflight`
+- MCP config check in `--preflight`
+
+### Changed
+- MCP server version synced to package version (was 0.1.0)
+- Tests: 2418 → 2471 (+53)
+
 ## [2.4.1] - 2026-04-04
 
 ### Added

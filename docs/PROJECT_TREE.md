@@ -1,7 +1,11 @@
 /Users/stan/Dev/vibesrails
+├── ADR
+│   └── 001-template.md
 ├── adapters
 │   ├── __init__.py
 │   └── semgrep_adapter.py
+├── bin
+│   └── graph
 ├── core
 │   ├── __init__.py
 │   ├── brief_enforcer.py
@@ -25,7 +29,8 @@
 │   └── session_tracker.py
 ├── docs
 │   ├── plans
-│   │   └── 2026-03-06-project-memory-design.md
+│   │   ├── 2026-03-06-project-memory-design.md
+│   │   └── 2026-04-05-v2.5.0-features.md
 │   ├── METRICS.md
 │   ├── PROJECT_TREE.md
 │   ├── RATE_LIMITING.md
@@ -135,10 +140,12 @@
 │   ├── conftest.py
 │   ├── test_assertions.py
 │   ├── test_autofix.py
+│   ├── test_bandit_adapter.py
 │   ├── test_cli_lifecycle.py
 │   ├── test_cli_setup.py
 │   ├── test_config.py
 │   ├── test_contract_tracker.py
+│   ├── test_coverage_reader.py
 │   ├── test_decisions_template.py
 │   ├── test_dialogue.py
 │   ├── test_duplication_guard.py
@@ -146,10 +153,13 @@
 │   ├── test_gates.py
 │   ├── test_guardian.py
 │   ├── test_hook_generator.py
+│   ├── test_impact_check.py
 │   ├── test_integration_learning.py
 │   ├── test_learn.py
 │   ├── test_learn_command.py
+│   ├── test_mcp_audit.py
 │   ├── test_mcp_server.py
+│   ├── test_opencode_adapter.py
 │   ├── test_openspec_interop.py
 │   ├── test_pattern_detector.py
 │   ├── test_pentest_fixes.py
@@ -157,6 +167,7 @@
 │   ├── test_pev_tracker.py
 │   ├── test_placement_guard.py
 │   ├── test_preflight.py
+│   ├── test_project_type.py
 │   ├── test_rate_limiting.py
 │   ├── test_scanner_core.py
 │   ├── test_scanner_integration.py
@@ -179,6 +190,7 @@
 │   └── test_watch.py
 ├── tools
 │   ├── __init__.py
+│   ├── audit_mcp.py
 │   ├── check_config.py
 │   ├── check_drift.py
 │   ├── check_session.py
@@ -187,6 +199,7 @@
 │   ├── enforce_brief.py
 │   ├── get_learning.py
 │   ├── monitor_entropy.py
+│   ├── scan_bandit.py
 │   ├── scan_code.py
 │   ├── scan_code_pedagogy.py
 │   ├── scan_semgrep.py
@@ -195,6 +208,8 @@
 ├── vibesrails
 │   ├── adapters
 │   │   ├── __init__.py
+│   │   ├── bandit_adapter.py
+│   │   ├── coverage_reader.py
 │   │   └── semgrep_adapter.py
 │   ├── advisors
 │   │   ├── __init__.py
@@ -252,6 +267,7 @@
 │   │   ├── docstring.py
 │   │   ├── env_safety.py
 │   │   ├── git_workflow.py
+│   │   ├── impact_check.py
 │   │   ├── observability.py
 │   │   ├── performance.py
 │   │   ├── pr_checklist.py
@@ -315,7 +331,9 @@
 │   ├── learn.py
 │   ├── learn_command.py
 │   ├── learn_runner.py
+│   ├── mcp_audit.py
 │   ├── metrics.py
+│   ├── opencode_adapter.py
 │   ├── openspec_interop.py
 │   ├── pev_tracker.py
 │   ├── preflight.py
@@ -341,6 +359,7 @@
 ├── Makefile
 ├── PROJECT_MEMORY.md
 ├── README.md
+├── ROADMAP.md
 ├── SECURITY.md
 ├── claude code.command
 ├── mcp_server.py
@@ -349,4 +368,4 @@
 ├── pyproject.toml
 └── vibesrails.yaml
 
-34 directories, 316 files
+36 directories, 333 files

@@ -41,9 +41,9 @@ class TestPingTool:
         assert len(parts) == 3, f"Expected semver, got {version}"
         assert all(p.isdigit() for p in parts)
 
-    def test_ping_version_is_0_1_0(self):
+    def test_ping_version_is_current(self):
         result = ping()
-        assert result["version"] == "0.1.0"
+        assert result["version"] == VERSION
 
     def test_version_constant_matches_ping(self):
         assert VERSION == ping()["version"]

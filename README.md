@@ -4,8 +4,8 @@
 
 Your AI agent writes 200 files per hour. VibesRails makes sure it follows your specs, respects your architecture, and doesn't skip the steps that matter.
 
-![Version](https://img.shields.io/badge/version-2.4.1-blue)
-![Tests](https://img.shields.io/badge/tests-2283_passing-green)
+![Version](https://img.shields.io/badge/version-2.5.0-blue)
+![Tests](https://img.shields.io/badge/tests-2471_passing-green)
 ![Python](https://img.shields.io/badge/python-3.10+-blue)
 ![License](https://img.shields.io/badge/license-Apache_2.0-orange)
 ![PyPI](https://img.shields.io/pypi/v/vibesrails)
